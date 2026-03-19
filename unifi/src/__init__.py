@@ -1,1 +1,1 @@
-"""UniFi MCP server plugin for network intelligence."""
+"""unifi — EmberAI vendor plugin for UniFi networks."""
