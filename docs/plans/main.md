@@ -94,12 +94,12 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 18 | Implement `unifi__topology__list_devices(site_id)` tool: call local API `/api/s/{site}/stat/device`, normalize to `Device` model, register via `@server.tool()`. | M | M1.2 | pending |
-| 19 | Implement `unifi__topology__get_device(device_id)` tool: fetch single device with port_table, uplink, vlan_assignments, radio_table. | M | M1.2 | pending |
-| 20 | Implement `unifi__topology__get_vlans(site_id)` tool: call `/api/s/{site}/rest/networkconf`, normalize to `VLAN` model. | M | M1.2 | pending |
-| 21 | Implement `unifi__topology__get_uplinks(site_id)` tool: derive uplink graph from device port_table and uplink fields. Return device-to-device relationships. | M | Task 18 | pending |
-| 22 | Create topology agent (`unifi/src/agents/topology.py`): orchestrates topology tools to build a complete site map. Uses OX formatters for output. Used by `unifi scan` command. | M | Tasks 18-21 | pending |
-| 23 | Write tests for all topology tools: mock API responses with realistic UniFi data (use fixtures), verify model normalization, test edge cases (offline devices, empty VLANs, single-device sites). | L | Tasks 18-21 | pending |
+| 18 | Implement `unifi__topology__list_devices(site_id)` tool: call local API `/api/s/{site}/stat/device`, normalize to `Device` model, register via `@server.tool()`. | M | M1.2 | done |
+| 19 | Implement `unifi__topology__get_device(device_id)` tool: fetch single device with port_table, uplink, vlan_assignments, radio_table. | M | M1.2 | done |
+| 20 | Implement `unifi__topology__get_vlans(site_id)` tool: call `/api/s/{site}/rest/networkconf`, normalize to `VLAN` model. | M | M1.2 | done |
+| 21 | Implement `unifi__topology__get_uplinks(site_id)` tool: derive uplink graph from device port_table and uplink fields. Return device-to-device relationships. | M | Task 18 | done |
+| 22 | Create topology agent (`unifi/src/agents/topology.py`): orchestrates topology tools to build a complete site map. Uses OX formatters for output. Used by `unifi scan` command. | M | Tasks 18-21 | done |
+| 23 | Write tests for all topology tools: mock API responses with realistic UniFi data (use fixtures), verify model normalization, test edge cases (offline devices, empty VLANs, single-device sites). | L | Tasks 18-21 | done |
 
 **Parallelizable:** Tasks 18, 19, 20 can run concurrently. Task 21 depends on 18. Task 22 depends on 18-21. Task 23 can start alongside Task 22.
 **Milestone Value:** `unifi scan` can discover and map all devices, VLANs, and uplinks for a site. Live-testable against real UniFi hardware.

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from tests.fixtures import load_fixture
 from unifi.api.response import NormalizedResponse
 from unifi.errors import APIError, NetworkError
 from unifi.server import mcp_server
