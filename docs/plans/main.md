@@ -108,13 +108,13 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 24 | Implement `unifi__health__get_site_health(site_id)` tool: call `/api/s/{site}/stat/health`, return WAN/LAN/WLAN/WWW status, device counts. | M | M1.2 | pending |
-| 25 | Implement `unifi__health__get_device_health(device_id)` tool: uptime, CPU, memory, temperature, satisfaction score, firmware upgrade availability. | M | M1.2 | pending |
-| 26 | Implement `unifi__health__get_isp_metrics(site_id)` tool: WAN IP, latency, packet loss, uptime percentage, ISP name from gateway stats. | M | M1.2 | pending |
-| 27 | Implement `unifi__health__get_events(site_id, hours, severity)` tool: call `/api/s/{site}/stat/event`, filter by time window and severity. | M | M1.2 | pending |
-| 28 | Implement `unifi__health__get_firmware_status(site_id)` tool: list devices with current vs. latest firmware versions. Uses local device data only in Phase 1 (Cloud V1 enhancement in Phase 2 Task 56). | M | M1.2 | pending |
-| 29 | Create health agent (`unifi/src/agents/health.py`): aggregates all health tools into a severity-tiered report using OX formatters (Critical / Warning / Informational). Critical findings surfaced first. | M | Tasks 24-28 | pending |
-| 30 | Write tests for health tools and agent: mock data with healthy devices, degraded devices, offline devices, firmware-behind devices. Test severity classification logic. Use fixtures. | L | Tasks 24-29 | pending |
+| 24 | Implement `unifi__health__get_site_health(site_id)` tool: call `/api/s/{site}/stat/health`, return WAN/LAN/WLAN/WWW status, device counts. | M | M1.2 | done |
+| 25 | Implement `unifi__health__get_device_health(device_id)` tool: uptime, CPU, memory, temperature, satisfaction score, firmware upgrade availability. | M | M1.2 | done |
+| 26 | Implement `unifi__health__get_isp_metrics(site_id)` tool: WAN IP, latency, packet loss, uptime percentage, ISP name from gateway stats. | M | M1.2 | done |
+| 27 | Implement `unifi__health__get_events(site_id, hours, severity)` tool: call `/api/s/{site}/stat/event`, filter by time window and severity. | M | M1.2 | done |
+| 28 | Implement `unifi__health__get_firmware_status(site_id)` tool: list devices with current vs. latest firmware versions. Uses local device data only in Phase 1 (Cloud V1 enhancement in Phase 2 Task 56). | M | M1.2 | done |
+| 29 | Create health agent (`unifi/src/agents/health.py`): aggregates all health tools into a severity-tiered report using OX formatters (Critical / Warning / Informational). Critical findings surfaced first. | M | Tasks 24-28 | done |
+| 30 | Write tests for health tools and agent: mock data with healthy devices, degraded devices, offline devices, firmware-behind devices. Test severity classification logic. Use fixtures. | L | Tasks 24-29 | done |
 
 **Parallelizable:** Tasks 24-28 can all run concurrently (5 tasks). Task 29 depends on 24-28. Task 30 can start alongside 29.
 **Milestone Value:** `unifi health` produces a tiered health report. Live-testable. Surfaces critical issues immediately.
