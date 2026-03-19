@@ -1,0 +1,278 @@
+# Synthex — Project Configuration
+#
+# This is the default configuration for the Synthex plugin.
+# To customize for your project, copy this file to:
+#   .synthex/config.yaml
+# in your project root.
+#
+# You only need to include sections you want to override.
+# Unspecified values use the defaults shown here.
+#
+# To create this file automatically, run the `init` command.
+
+# -------------------------------------------------------------------
+# Review Loop Settings (Global)
+# Shared defaults for all commands that run reviewer sub-agents.
+# Individual commands can override these under their own section.
+# Resolution order: per-command override > global > hardcoded default.
+# -------------------------------------------------------------------
+review_loops:
+
+  # Maximum review loop iterations before forcing completion.
+  # Each cycle: reviewers provide findings → caller fixes → re-review.
+  # If unresolved findings remain after max cycles, they are documented
+  # in the output (e.g., Open Questions, Summary).
+  max_cycles: 2
+
+  # Minimum severity level that must be addressed before exiting the loop.
+  # Options: critical, high, medium, low
+  # Default "high" means all CRITICAL and HIGH findings must be resolved.
+  # WARN-only results (MEDIUM and below) do NOT trigger the loop.
+  min_severity_to_address: high
+
+# -------------------------------------------------------------------
+# Implementation Plan Settings
+# Used by the `write-implementation-plan` command
+# -------------------------------------------------------------------
+implementation_plan:
+
+  # Sub-agents that review the draft implementation plan.
+  # Each reviewer provides structured feedback (CRITICAL/HIGH/MEDIUM/LOW)
+  # that the Product Manager must address before the plan is finalized.
+  #
+  # You can:
+  #   - Add project-specific reviewers (e.g., security-reviewer, compliance)
+  #   - Disable default reviewers by setting enabled: false
+  #   - Customize the focus area for each reviewer
+  reviewers:
+    - agent: architect
+      enabled: true
+      focus: "Technical architecture, feasibility, NFR coverage, missing technical tasks"
+
+    - agent: designer
+      enabled: true
+      focus: "Design tasks, UX impact, visual/interaction design clarity"
+
+    - agent: tech-lead
+      enabled: true
+      focus: "Task clarity, acceptance criteria, parallelizability, dependency accuracy"
+
+  # Maximum number of tasks to recommend for parallel execution per milestone.
+  # The PM uses this to size parallelizable work batches in the plan output.
+  # Can be overridden per-invocation via the `concurrent_tasks` parameter.
+  concurrent_tasks: 12
+
+  # Override: higher max_cycles for high-stakes implementation plans.
+  # (Global default is 2; plans get 3 because they affect many downstream tasks.)
+  review_loops:
+    max_cycles: 3
+
+# -------------------------------------------------------------------
+# Refine Requirements Settings
+# Used by the `refine-requirements` command
+# -------------------------------------------------------------------
+refine_requirements:
+
+  # Sub-agents that review the PRD for clarity and completeness.
+  # Each reviewer identifies ambiguities, gaps, and unclear areas
+  # from their professional perspective.
+  reviewers:
+    - agent: product-manager
+      enabled: true
+      focus: "Requirement clarity, acceptance criteria, scope boundaries, success metrics"
+
+    - agent: tech-lead
+      enabled: true
+      focus: "Technical clarity, implicit assumptions, NFR targets, missing requirements"
+
+    - agent: designer
+      enabled: true
+      focus: "UX clarity, interaction patterns, accessibility, user flow completeness"
+
+  # Per-command review loop overrides (inherits global review_loops defaults).
+  # review_loops:
+  #   max_cycles: 2
+
+# -------------------------------------------------------------------
+# Code Review Settings
+# Used by the `review-code` command
+# -------------------------------------------------------------------
+code_review:
+
+  # Reviewers to run in parallel during code review.
+  # code-reviewer and security-reviewer are always recommended.
+  # Add performance-engineer for performance-critical codebases.
+  reviewers:
+    - code-reviewer
+    - security-reviewer
+    # - performance-engineer  # Uncomment for performance-critical code
+
+  # Maximum diff size (in lines) before warning about review quality.
+  # Large diffs produce lower-quality reviews. Google recommends < 300 LOC.
+  max_diff_lines: 300
+
+  # Files to read for project conventions (code-reviewer uses these).
+  convention_sources:
+    - CLAUDE.md
+    - .eslintrc
+    - .prettierrc
+
+  # Specification paths for compliance checking.
+  # The code-reviewer checks code against specifications in these directories.
+  spec_paths:
+    - docs/specs
+
+  # Additional specialist reviewers (optional).
+  # Example: Add a domain-specific reviewer for regulated industries.
+  # specialists:
+  #   - agent: compliance-reviewer
+  #     focus: "Regulatory compliance, audit trail requirements"
+
+  # Per-command review loop overrides (inherits global review_loops defaults).
+  # review_loops:
+  #   max_cycles: 2
+
+# -------------------------------------------------------------------
+# Quality / Testing Settings
+# Used by the `test-coverage-analysis` command
+# -------------------------------------------------------------------
+quality:
+
+  # Coverage thresholds — new code should not drop below these.
+  coverage_thresholds:
+    line: 80
+    branch: 70
+    function: 80
+
+  # Test runner to use for coverage reports.
+  test_runner: vitest
+
+  # High-priority modules that should always have thorough coverage.
+  # Leave empty to auto-detect based on risk (auth, payments, data mutations).
+  priority_modules: []
+
+# -------------------------------------------------------------------
+# Architecture Settings
+# Used by `write-adr` and `write-rfc` commands
+# -------------------------------------------------------------------
+architecture:
+
+  # Where Architecture Decision Records are stored.
+  decisions_path: docs/specs/decisions
+
+  # Where RFCs (Request for Comments) are stored.
+  rfcs_path: docs/specs/rfcs
+
+  # Per-command review loop overrides (inherits global review_loops defaults).
+  # review_loops:
+  #   max_cycles: 2
+
+# -------------------------------------------------------------------
+# Design System Settings
+# Used by `design-system-audit` command and Design System Agent
+# -------------------------------------------------------------------
+design_system:
+
+  # Path to the design system specification document.
+  # This is the canonical reference for tokens, components, and patterns.
+  spec_path: docs/specs/design-system.md
+
+  # Directories to scan during compliance audits.
+  scan_paths:
+    - src/
+
+  # Design system specialist sub-agents (optional).
+  # Add framework-specific specialists for targeted guidance.
+  # specialists:
+  #   - agent: storybook-expert
+  #     focus: "Storybook configuration, story authoring, addon guidance"
+  #   - agent: figma-expert
+  #     focus: "Design token sync, Figma plugin guidance, handoff workflows"
+
+  # Per-command review loop overrides (inherits global review_loops defaults).
+  # review_loops:
+  #   max_cycles: 2
+
+# -------------------------------------------------------------------
+# Reliability Settings
+# Used by `reliability-review` command and SRE Agent
+# -------------------------------------------------------------------
+reliability:
+
+  # Path to SLO/SLI definitions document.
+  slo_document: docs/specs/slos.md
+
+  # Path to operational runbooks directory.
+  runbooks_path: docs/runbooks
+
+  # Per-command review loop overrides (inherits global review_loops defaults).
+  # review_loops:
+  #   max_cycles: 2
+
+# -------------------------------------------------------------------
+# Performance Audit Settings
+# Used by the `performance-audit` command
+# -------------------------------------------------------------------
+performance_audit:
+
+  # Per-command review loop overrides (inherits global review_loops defaults).
+  # review_loops:
+  #   max_cycles: 2
+
+# -------------------------------------------------------------------
+# Retrospective Settings
+# Used by `retrospective` command
+# -------------------------------------------------------------------
+retrospective:
+
+  # Where retrospective documents are stored.
+  output_path: docs/retros
+
+  # Retrospective format.
+  # Options: start-stop-continue, 4ls, sailboat
+  format: start-stop-continue
+
+  # Maximum improvement items per cycle.
+  # More than 3 competing for attention means none get done.
+  max_improvement_items: 3
+
+# -------------------------------------------------------------------
+# Next Priority Settings
+# Used by the `next-priority` command
+# -------------------------------------------------------------------
+next_priority:
+
+  # Maximum number of tasks to execute in parallel.
+  # Can be overridden per-invocation via the `concurrent_tasks` parameter.
+  concurrent_tasks: 12
+
+# -------------------------------------------------------------------
+# Worktree Settings
+# Used by the `next-priority` command for parallel task execution
+# -------------------------------------------------------------------
+worktrees:
+
+  # Base directory for git worktrees created during parallel execution.
+  # Relative paths resolve from the repository root.
+  # Use an absolute path (e.g., /tmp/) to place worktrees outside the repo.
+  #
+  # Default aligns with Claude Code's own convention (.claude/worktrees/).
+  # Ensure this path is in your .gitignore.
+  base_path: .claude/worktrees
+
+  # Prefix for worktree branch names.
+  branch_prefix: "feature/"
+
+# -------------------------------------------------------------------
+# Document Paths
+# Default locations for key project documents.
+# These can also be overridden via command parameters.
+# -------------------------------------------------------------------
+documents:
+  requirements: docs/reqs/main.md
+  implementation_plan: docs/plans/main.md
+  specs: docs/specs
+  decisions: docs/specs/decisions
+  rfcs: docs/specs/rfcs
+  runbooks: docs/runbooks
+  retros: docs/retros
