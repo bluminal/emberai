@@ -197,3 +197,85 @@ async def unifi__topology__get_vlans(site_id: str = "default") -> list[dict[str,
     )
 
     return vlans
+
+
+# ---------------------------------------------------------------------------
+# Uplink graph
+# ---------------------------------------------------------------------------
+
+
+def _build_uplink_graph(devices: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build an uplink graph from a list of raw device dicts.
+
+    For each device that has an ``uplink`` field with an ``uplink_mac``,
+    resolve the parent device from the device list and emit a relationship
+    record.  Devices without an uplink (root gateways) or with
+    self-referencing uplinks are silently skipped.
+
+    Returns:
+        A list of uplink-relationship dicts, one per non-root device.
+    """
+    # Index devices by MAC for O(1) parent lookup
+    mac_to_device: dict[str, dict[str, Any]] = {
+        d["mac"]: d for d in devices if "mac" in d
+    }
+
+    graph: list[dict[str, Any]] = []
+
+    for device in devices:
+        uplink = device.get("uplink")
+        if not uplink:
+            continue
+
+        uplink_mac = uplink.get("uplink_mac")
+        if not uplink_mac:
+            continue
+
+        device_mac = device.get("mac", "")
+        # Skip self-referencing uplinks
+        if uplink_mac == device_mac:
+            continue
+
+        parent = mac_to_device.get(uplink_mac)
+
+        graph.append({
+            "device_id": device.get("_id", ""),
+            "device_name": device.get("name", ""),
+            "device_mac": device_mac,
+            "uplink_device_id": parent.get("_id", "") if parent else "",
+            "uplink_device_name": parent.get("name", "") if parent else "",
+            "uplink_device_mac": uplink_mac,
+            "uplink_port": uplink.get("uplink_remote_port"),
+            "uplink_type": uplink.get("type", ""),
+            "speed": uplink.get("speed"),
+        })
+
+    return graph
+
+
+@mcp_server.tool()
+async def unifi__topology__get_uplinks(site_id: str = "default") -> list[dict[str, Any]]:
+    """Derive the uplink graph showing device-to-device connections.
+
+    Returns uplink relationships: which device connects to which,
+    through which port, at what speed, and via what connection type.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+    """
+    client = _get_client()
+    try:
+        normalized = await client.get_normalized(f"/api/s/{site_id}/stat/device")
+    finally:
+        await client.close()
+
+    graph = _build_uplink_graph(normalized.data)
+
+    logger.info(
+        "Built uplink graph with %d links for site '%s'",
+        len(graph),
+        site_id,
+        extra={"component": "topology"},
+    )
+
+    return graph

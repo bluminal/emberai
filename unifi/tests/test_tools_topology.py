@@ -11,11 +11,13 @@ from unifi.api.response import NormalizedResponse
 from unifi.errors import APIError, NetworkError
 from unifi.server import mcp_server
 from unifi.tools.topology import (
+    _build_uplink_graph,
     _get_client,
     _is_vlan_network,
-    unifi__topology__get_device,
-    unifi__topology__get_vlans,
     _state_to_str,
+    unifi__topology__get_device,
+    unifi__topology__get_uplinks,
+    unifi__topology__get_vlans,
     unifi__topology__list_devices,
 )
 
@@ -459,3 +461,218 @@ class TestGetVlans:
             await unifi__topology__get_vlans(site_id="site-abc")
 
         mock_client.get_normalized.assert_called_once_with("/api/s/site-abc/rest/networkconf")
+
+
+# ---------------------------------------------------------------------------
+# _build_uplink_graph unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildUplinkGraph:
+    """Unit tests for the _build_uplink_graph helper."""
+
+    def test_builds_graph_from_fixture(
+        self, device_list: list[dict[str, Any]]
+    ) -> None:
+        """Fixture has 3 devices: gateway (root), switch -> gateway, AP -> switch."""
+        graph = _build_uplink_graph(device_list)
+
+        assert len(graph) == 2
+
+        # Switch -> Gateway
+        switch_link = next(g for g in graph if g["device_name"] == "Office-Switch-16")
+        assert switch_link["device_id"] == "64b2c3d4e5f6a7b8c9d0e1f2"
+        assert switch_link["device_mac"] == "74:ac:b9:bb:33:44"
+        assert switch_link["uplink_device_id"] == "64a1b2c3d4e5f6a7b8c9d0e1"
+        assert switch_link["uplink_device_name"] == "USG-Gateway"
+        assert switch_link["uplink_device_mac"] == "f0:9f:c2:aa:11:22"
+        assert switch_link["uplink_port"] == 1
+        assert switch_link["uplink_type"] == "wire"
+        assert switch_link["speed"] == 10000
+
+        # AP -> Switch
+        ap_link = next(g for g in graph if g["device_name"] == "Office-AP-Main")
+        assert ap_link["device_id"] == "64c3d4e5f6a7b8c9d0e1f2a3"
+        assert ap_link["uplink_device_id"] == "64b2c3d4e5f6a7b8c9d0e1f2"
+        assert ap_link["uplink_device_name"] == "Office-Switch-16"
+        assert ap_link["uplink_device_mac"] == "74:ac:b9:bb:33:44"
+        assert ap_link["uplink_port"] == 1
+        assert ap_link["uplink_type"] == "wire"
+        assert ap_link["speed"] == 1000
+
+    def test_root_device_excluded(self) -> None:
+        """A gateway with no uplink field should not appear in the graph."""
+        devices = [
+            {"_id": "gw1", "mac": "aa:bb:cc:dd:ee:ff", "name": "Gateway"},
+        ]
+        graph = _build_uplink_graph(devices)
+        assert graph == []
+
+    def test_empty_device_list(self) -> None:
+        """An empty device list should produce an empty graph."""
+        assert _build_uplink_graph([]) == []
+
+    def test_self_referencing_uplink_skipped(self) -> None:
+        """A device whose uplink_mac matches its own MAC should be skipped."""
+        devices = [
+            {
+                "_id": "dev1",
+                "mac": "aa:bb:cc:dd:ee:ff",
+                "name": "Self-Link",
+                "uplink": {
+                    "uplink_mac": "aa:bb:cc:dd:ee:ff",
+                    "uplink_remote_port": 1,
+                    "speed": 1000,
+                    "type": "wire",
+                },
+            },
+        ]
+        graph = _build_uplink_graph(devices)
+        assert graph == []
+
+    def test_uplink_to_unknown_parent(self) -> None:
+        """Uplink referencing a MAC not in the device list should still appear
+        but with empty parent fields."""
+        devices = [
+            {
+                "_id": "dev1",
+                "mac": "11:22:33:44:55:66",
+                "name": "Orphan-Switch",
+                "uplink": {
+                    "uplink_mac": "ff:ff:ff:ff:ff:ff",
+                    "uplink_remote_port": 2,
+                    "speed": 1000,
+                    "type": "wire",
+                },
+            },
+        ]
+        graph = _build_uplink_graph(devices)
+
+        assert len(graph) == 1
+        link = graph[0]
+        assert link["device_id"] == "dev1"
+        assert link["device_name"] == "Orphan-Switch"
+        assert link["uplink_device_id"] == ""
+        assert link["uplink_device_name"] == ""
+        assert link["uplink_device_mac"] == "ff:ff:ff:ff:ff:ff"
+
+    def test_uplink_missing_uplink_mac_skipped(self) -> None:
+        """A device with an uplink dict but no uplink_mac key should be skipped."""
+        devices = [
+            {
+                "_id": "dev1",
+                "mac": "11:22:33:44:55:66",
+                "name": "Partial-Uplink",
+                "uplink": {
+                    "speed": 1000,
+                    "type": "wire",
+                },
+            },
+        ]
+        graph = _build_uplink_graph(devices)
+        assert graph == []
+
+
+# ---------------------------------------------------------------------------
+# unifi__topology__get_uplinks MCP tool tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetUplinks:
+    """Integration tests for the unifi__topology__get_uplinks MCP tool."""
+
+    @pytest.fixture()
+    def mock_normalized_response(
+        self, device_list_response: dict[str, Any]
+    ) -> NormalizedResponse:
+        return NormalizedResponse(
+            data=device_list_response["data"],
+            count=len(device_list_response["data"]),
+            meta=device_list_response["meta"],
+        )
+
+    async def test_returns_uplink_graph(
+        self,
+        mock_normalized_response: NormalizedResponse,
+    ) -> None:
+        """Tool should return the uplink graph derived from the device list."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(return_value=mock_normalized_response)
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_uplinks(site_id="default")
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/stat/device")
+        mock_client.close.assert_called_once()
+
+    async def test_uplink_graph_structure(
+        self,
+        mock_normalized_response: NormalizedResponse,
+    ) -> None:
+        """Each entry should contain all expected fields."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(return_value=mock_normalized_response)
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_uplinks()
+
+        expected_keys = {
+            "device_id", "device_name", "device_mac",
+            "uplink_device_id", "uplink_device_name", "uplink_device_mac",
+            "uplink_port", "uplink_type", "speed",
+        }
+        for entry in result:
+            assert set(entry.keys()) == expected_keys
+
+    async def test_empty_device_list(self) -> None:
+        """Tool should return an empty list when no devices exist."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=[], count=0, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_uplinks()
+
+        assert result == []
+        mock_client.close.assert_called_once()
+
+    async def test_custom_site_id(self) -> None:
+        """Tool should pass a custom site_id to the API endpoint."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=[], count=0, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            await unifi__topology__get_uplinks(site_id="my-site")
+
+        mock_client.get_normalized.assert_called_once_with("/api/s/my-site/stat/device")
+
+    async def test_client_closed_on_error(self) -> None:
+        """Client should be closed even when the API call fails."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            side_effect=APIError("Server error", status_code=500)
+        )
+        mock_client.close = AsyncMock()
+
+        with (
+            patch("unifi.tools.topology._get_client", return_value=mock_client),
+            pytest.raises(APIError, match="Server error"),
+        ):
+            await unifi__topology__get_uplinks()
+
+        mock_client.close.assert_called_once()
+
+    async def test_tool_registered(self) -> None:
+        """The get_uplinks tool should be registered on the MCP server."""
+        tool_names = [tool.name for tool in mcp_server._tool_manager.list_tools()]
+        assert "unifi__topology__get_uplinks" in tool_names
