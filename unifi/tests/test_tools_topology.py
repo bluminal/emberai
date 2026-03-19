@@ -1,4 +1,4 @@
-"""Tests for the topology MCP tools (list_devices)."""
+"""Tests for the topology MCP tools (list_devices, get_device, get_vlans)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ from unifi.errors import APIError, NetworkError
 from unifi.server import mcp_server
 from unifi.tools.topology import (
     _get_client,
+    _is_vlan_network,
+    unifi__topology__get_device,
+    unifi__topology__get_vlans,
     _state_to_str,
     unifi__topology__list_devices,
 )
@@ -271,11 +274,188 @@ class TestListDevices:
 
 
 class TestToolRegistration:
-    """Verify the tool is registered on the MCP server."""
+    """Verify the tools are registered on the MCP server."""
 
-    def test_tool_is_registered(self) -> None:
-        """unifi__topology__list_devices should be registered on mcp_server."""
-        # FastMCP stores tools in an internal registry; check the tool list
-        # by verifying the decorated function can be found.
+    def test_list_devices_registered(self) -> None:
         tool_names = [tool.name for tool in mcp_server._tool_manager.list_tools()]
         assert "unifi__topology__list_devices" in tool_names
+
+    def test_get_device_registered(self) -> None:
+        tool_names = [tool.name for tool in mcp_server._tool_manager.list_tools()]
+        assert "unifi__topology__get_device" in tool_names
+
+    def test_get_vlans_registered(self) -> None:
+        tool_names = [tool.name for tool in mcp_server._tool_manager.list_tools()]
+        assert "unifi__topology__get_vlans" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# unifi__topology__get_device tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetDevice:
+    """Test the unifi__topology__get_device MCP tool."""
+
+    @pytest.fixture(autouse=True)
+    def _set_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
+        monkeypatch.setenv("UNIFI_LOCAL_KEY", "test-key")
+
+    async def test_returns_full_device_with_detail_fields(self) -> None:
+        """Verify port_table, uplink, config_network are included."""
+        device_data = load_fixture("device_single.json")["data"][0]
+
+        mock_client = AsyncMock()
+        mock_client.get_single = AsyncMock(return_value=device_data)
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_device(device_id="74:ac:b9:bb:33:44")
+
+        assert result["mac"] == "74:ac:b9:bb:33:44"
+        assert result["status"] == "connected"
+        assert result["port_table"] is not None
+        assert result["uplink"] is not None
+        mock_client.close.assert_called_once()
+
+    async def test_device_not_found(self) -> None:
+        mock_client = AsyncMock()
+        mock_client.get_single = AsyncMock(
+            side_effect=APIError("data array is empty", status_code=200),
+        )
+        mock_client.close = AsyncMock()
+
+        with (
+            patch("unifi.tools.topology._get_client", return_value=mock_client),
+            pytest.raises(APIError, match="data array is empty"),
+        ):
+            await unifi__topology__get_device(device_id="00:00:00:00:00:00")
+
+        mock_client.close.assert_called_once()
+
+    async def test_api_error_propagation(self) -> None:
+        mock_client = AsyncMock()
+        mock_client.get_single = AsyncMock(
+            side_effect=APIError("Server error", status_code=500),
+        )
+        mock_client.close = AsyncMock()
+
+        with (
+            patch("unifi.tools.topology._get_client", return_value=mock_client),
+            pytest.raises(APIError, match="Server error"),
+        ):
+            await unifi__topology__get_device(device_id="bad-id")
+
+    async def test_unexpected_error_wrapped(self) -> None:
+        mock_client = AsyncMock()
+        mock_client.get_single = AsyncMock(side_effect=RuntimeError("reset"))
+        mock_client.close = AsyncMock()
+
+        with (
+            patch("unifi.tools.topology._get_client", return_value=mock_client),
+            pytest.raises(APIError, match="Failed to fetch device"),
+        ):
+            await unifi__topology__get_device(device_id="74:ac:b9:bb:33:44")
+
+    async def test_optional_fields_excluded_when_none(self) -> None:
+        minimal = {
+            "_id": "abc123", "mac": "aa:bb:cc:dd:ee:ff", "model": "U6-Pro",
+            "name": "Test-AP", "ip": "192.168.1.50", "state": 1,
+            "uptime": 3600, "version": "7.0.76",
+        }
+        mock_client = AsyncMock()
+        mock_client.get_single = AsyncMock(return_value=minimal)
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_device(device_id="aa:bb:cc:dd:ee:ff")
+
+        assert "port_table" not in result
+        assert "radio_table" not in result
+
+
+# ---------------------------------------------------------------------------
+# VLAN filtering tests
+# ---------------------------------------------------------------------------
+
+
+class TestIsVlanNetwork:
+    """Tests for the VLAN/LAN network filter function."""
+
+    def test_default_lan_included(self) -> None:
+        network = {"_id": "001", "name": "Default", "purpose": "corporate", "vlan_enabled": False}
+        assert _is_vlan_network(network) is True
+
+    def test_tagged_vlan_included(self) -> None:
+        network = {"_id": "002", "name": "Guest", "purpose": "guest", "vlan_enabled": True, "vlan": 10}
+        assert _is_vlan_network(network) is True
+
+    def test_wan_excluded(self) -> None:
+        network = {"_id": "003", "name": "WAN", "purpose": "wan", "vlan_enabled": False}
+        assert _is_vlan_network(network) is False
+
+    def test_wan2_excluded(self) -> None:
+        network = {"_id": "004", "name": "WAN2", "purpose": "wan2", "vlan_enabled": False}
+        assert _is_vlan_network(network) is False
+
+
+# ---------------------------------------------------------------------------
+# unifi__topology__get_vlans tests
+# ---------------------------------------------------------------------------
+
+
+def _normalized_from_fixture(fixture: dict[str, Any]) -> NormalizedResponse:
+    data = fixture.get("data", [])
+    return NormalizedResponse(data=data, count=len(data), total_count=None, meta=fixture.get("meta", {}))
+
+
+class TestGetVlans:
+    """Test the unifi__topology__get_vlans MCP tool."""
+
+    @pytest.fixture(autouse=True)
+    def _set_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
+        monkeypatch.setenv("UNIFI_LOCAL_KEY", "test-api-key")
+
+    def _patch_client(self, fixture_data: dict[str, Any]) -> Any:
+        normalized = _normalized_from_fixture(fixture_data)
+        mock_client = AsyncMock()
+        mock_client.get_normalized.return_value = normalized
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        return patch("unifi.tools.topology._get_client", return_value=mock_client)
+
+    async def test_parses_vlan_fixture(self) -> None:
+        fixture = load_fixture("vlan_config.json")
+        with self._patch_client(fixture):
+            result = await unifi__topology__get_vlans()
+        assert len(result) == 4
+
+    async def test_empty_vlan_list(self) -> None:
+        with self._patch_client({"meta": {"rc": "ok"}, "data": []}):
+            result = await unifi__topology__get_vlans()
+        assert result == []
+
+    async def test_wan_filtered_out(self) -> None:
+        data = {"meta": {"rc": "ok"}, "data": [
+            {"_id": "wan001", "name": "WAN", "purpose": "wan", "vlan_enabled": False},
+            {"_id": "lan001", "name": "Default", "purpose": "corporate",
+             "vlan_enabled": False, "ip_subnet": "192.168.1.0/24", "dhcpd_enabled": True},
+        ]}
+        with self._patch_client(data):
+            result = await unifi__topology__get_vlans()
+        assert len(result) == 1
+        assert result[0]["name"] == "Default"
+
+    async def test_custom_site_id(self) -> None:
+        normalized = _normalized_from_fixture({"meta": {"rc": "ok"}, "data": []})
+        mock_client = AsyncMock()
+        mock_client.get_normalized.return_value = normalized
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            await unifi__topology__get_vlans(site_id="site-abc")
+
+        mock_client.get_normalized.assert_called_once_with("/api/s/site-abc/rest/networkconf")
