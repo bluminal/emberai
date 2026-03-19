@@ -1,2 +1,12 @@
 # Synthex worktrees (parallel task execution)
 .claude/worktrees/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.coverage
+.pytest_cache/
+dist/
+build/
