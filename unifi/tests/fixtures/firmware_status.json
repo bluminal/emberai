@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "mac": "f0:9f:c2:aa:11:22",
+      "model": "UXG-Max",
+      "type": "ugw",
+      "name": "USG-Gateway",
+      "ip": "192.168.1.1",
+      "version": "4.0.6.6754",
+      "adopted": true,
+      "state": 1,
+      "upgradable": false,
+      "uptime": 1728432,
+      "last_seen": 1710876543,
+      "model_incompatible": false,
+      "model_in_lts": false,
+      "model_in_eol": false
+    },
+    {
+      "_id": "64b2c3d4e5f6a7b8c9d0e1f2",
+      "mac": "74:ac:b9:bb:33:44",
+      "model": "USLITE16P",
+      "type": "usw",
+      "name": "Office-Switch-16",
+      "ip": "192.168.1.10",
+      "version": "7.0.50.15116",
+      "adopted": true,
+      "state": 1,
+      "upgradable": true,
+      "upgrade_to_firmware": "7.0.72.15290",
+      "uptime": 864210,
+      "last_seen": 1710876540,
+      "model_incompatible": false,
+      "model_in_lts": false,
+      "model_in_eol": false
+    },
+    {
+      "_id": "64c3d4e5f6a7b8c9d0e1f2a3",
+      "mac": "e0:63:da:cc:55:66",
+      "model": "U6-Pro",
+      "type": "uap",
+      "name": "Office-AP-Main",
+      "ip": "192.168.1.20",
+      "version": "7.0.76.15293",
+      "adopted": true,
+      "state": 1,
+      "upgradable": false,
+      "uptime": 1728430,
+      "last_seen": 1710876542,
+      "model_incompatible": false,
+      "model_in_lts": false,
+      "model_in_eol": false
+    }
+  ]
+}
