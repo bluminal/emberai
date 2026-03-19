@@ -82,10 +82,10 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 14 | Create `unifi/src/api/local_gateway_client.py`: async httpx client, base URL from `UNIFI_LOCAL_HOST`, X-API-KEY auth header from `UNIFI_LOCAL_KEY`, SSL verification toggle, request/response logging via structlog, error handling using error hierarchy (D14) -- map 401->AuthenticationError, 429->RateLimitError, 5xx->APIError, timeout->NetworkError. | L | M1.1 | pending |
-| 15 | Implement response normalization: unwrap `{data, count, totalCount}` envelope into clean data. Handle pagination for list endpoints. | M | Task 14 | pending |
-| 16 | Integrate TTL cache into API client: cache GET responses with configurable TTL per endpoint category (device list: 5 min, client list: 30 sec, events: no cache). Cache key = endpoint + params. Manual flush method. | M | Tasks 7, 14 | pending |
-| 17 | Write comprehensive tests for local gateway client: mock httpx responses, test auth header injection, response normalization, cache hit/miss/expiry, error handling for all status codes, pagination. Use fixtures from Task 13. | L | Tasks 14-16 | pending |
+| 14 | Create `unifi/src/api/local_gateway_client.py`: async httpx client, base URL from `UNIFI_LOCAL_HOST`, X-API-KEY auth header from `UNIFI_LOCAL_KEY`, SSL verification toggle, request/response logging via structlog, error handling using error hierarchy (D14) -- map 401->AuthenticationError, 429->RateLimitError, 5xx->APIError, timeout->NetworkError. | L | M1.1 | done |
+| 15 | Implement response normalization: unwrap `{data, count, totalCount}` envelope into clean data. Handle pagination for list endpoints. | M | Task 14 | done |
+| 16 | Integrate TTL cache into API client: cache GET responses with configurable TTL per endpoint category (device list: 5 min, client list: 30 sec, events: no cache). Cache key = endpoint + params. Manual flush method. | M | Tasks 7, 14 | done |
+| 17 | Write comprehensive tests for local gateway client: mock httpx responses, test auth header injection, response normalization, cache hit/miss/expiry, error handling for all status codes, pagination. Use fixtures from Task 13. | L | Tasks 14-16 | done |
 
 **Parallelizable:** Task 14 must complete first. Tasks 15 and 16 can run concurrently after Task 14. Task 17 after all.
 **Milestone Value:** Verified API client that can authenticate, make requests, normalize responses, and cache results. All tested with mocks.
