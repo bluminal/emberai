@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""Tests for the structured error hierarchy in unifi.src.errors."""
+"""Tests for the structured error hierarchy in unifi.errors."""
 
 from __future__ import annotations
 
 import pytest
 
-from unifi.src.errors import (
+from unifi.errors import (
     APIError,
     AuthenticationError,
     NetexError,

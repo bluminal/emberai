@@ -306,7 +306,7 @@ class ValidationError(NetexError):
 class WriteGateError(NetexError):
     """Raised when a write operation is blocked by the safety gate.
 
-    The safety gate (see ``unifi/src/safety.py``) enforces two preconditions
+    The safety gate (see ``unifi/safety.py``) enforces two preconditions
     before any write can proceed:
 
     1. The ``{PLUGIN}_WRITE_ENABLED`` environment variable must be ``"true"``.

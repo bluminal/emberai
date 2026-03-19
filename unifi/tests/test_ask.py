@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: MIT
-"""Tests for unifi.src.ask — AskUserQuestion formatting utilities."""
+"""Tests for unifi.ask — AskUserQuestion formatting utilities."""
 
 from __future__ import annotations
 
 import pytest
 
-from unifi.src.ask import (
+from unifi.ask import (
     Assumption,
     PlanStep,
     format_assumption_resolution,

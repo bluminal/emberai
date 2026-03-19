@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from unifi.src.server import (
+from unifi.server import (
     ConfigError,
     JSONFormatter,
     _check_connectivity,
@@ -171,7 +171,7 @@ class TestCheckConnectivity:
     async def test_successful_connection(self) -> None:
         mock_response = httpx.Response(200, request=httpx.Request("GET", "https://192.168.1.1"))
 
-        with patch("unifi.src.server.httpx.AsyncClient") as mock_client_cls:
+        with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -184,7 +184,7 @@ class TestCheckConnectivity:
 
     @pytest.mark.asyncio
     async def test_connection_refused(self) -> None:
-        with patch("unifi.src.server.httpx.AsyncClient") as mock_client_cls:
+        with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.side_effect = httpx.ConnectError("Connection refused")
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -197,7 +197,7 @@ class TestCheckConnectivity:
 
     @pytest.mark.asyncio
     async def test_connection_timeout(self) -> None:
-        with patch("unifi.src.server.httpx.AsyncClient") as mock_client_cls:
+        with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.side_effect = httpx.TimeoutException("timed out")
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -210,7 +210,7 @@ class TestCheckConnectivity:
 
     @pytest.mark.asyncio
     async def test_unexpected_error(self) -> None:
-        with patch("unifi.src.server.httpx.AsyncClient") as mock_client_cls:
+        with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.side_effect = RuntimeError("something broke")
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -225,7 +225,7 @@ class TestCheckConnectivity:
     async def test_host_without_scheme_gets_https(self) -> None:
         mock_response = httpx.Response(200, request=httpx.Request("GET", "https://192.168.1.1"))
 
-        with patch("unifi.src.server.httpx.AsyncClient") as mock_client_cls:
+        with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -242,7 +242,7 @@ class TestCheckConnectivity:
             200, request=httpx.Request("GET", "http://192.168.1.1")
         )
 
-        with patch("unifi.src.server.httpx.AsyncClient") as mock_client_cls:
+        with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -267,7 +267,7 @@ class TestRunCheck:
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "secret-key-123")
 
         mock_check = AsyncMock(return_value=(True, "HTTP 200"))
-        with patch("unifi.src.server._check_connectivity", mock_check):
+        with patch("unifi.server._check_connectivity", mock_check):
             exit_code = _run_check()
 
         assert exit_code == 0
@@ -294,7 +294,7 @@ class TestRunCheck:
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "secret-key-123")
 
         mock_check = AsyncMock(return_value=(False, "Connection refused"))
-        with patch("unifi.src.server._check_connectivity", mock_check):
+        with patch("unifi.server._check_connectivity", mock_check):
             exit_code = _run_check()
 
         assert exit_code == 1
@@ -309,7 +309,7 @@ class TestRunCheck:
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "super-secret-key-12345")
 
         mock_check = AsyncMock(return_value=(True, "HTTP 200"))
-        with patch("unifi.src.server._check_connectivity", mock_check):
+        with patch("unifi.server._check_connectivity", mock_check):
             _run_check()
 
         output = capsys.readouterr().out
@@ -326,7 +326,7 @@ class TestRunCheck:
         monkeypatch.setenv("NETEX_CACHE_TTL", "600")
 
         mock_check = AsyncMock(return_value=(True, "HTTP 200"))
-        with patch("unifi.src.server._check_connectivity", mock_check):
+        with patch("unifi.server._check_connectivity", mock_check):
             _run_check()
 
         output = capsys.readouterr().out
@@ -340,7 +340,7 @@ class TestRunCheck:
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "key")
 
         mock_check = AsyncMock(return_value=(True, "HTTP 200"))
-        with patch("unifi.src.server._check_connectivity", mock_check):
+        with patch("unifi.server._check_connectivity", mock_check):
             _run_check()
 
         output = capsys.readouterr().out
@@ -355,7 +355,7 @@ class TestRunCheck:
         monkeypatch.setenv("UNIFI_API_KEY", "cloud-secret-abc")
 
         mock_check = AsyncMock(return_value=(True, "HTTP 200"))
-        with patch("unifi.src.server._check_connectivity", mock_check):
+        with patch("unifi.server._check_connectivity", mock_check):
             _run_check()
 
         output = capsys.readouterr().out
@@ -537,7 +537,7 @@ class TestPluginInfo:
 class TestMain:
     def test_check_mode_exits(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """--check should run health probe and exit via SystemExit."""
-        from unifi.src.server import main
+        from unifi.server import main
 
         # No env vars set -> health check will fail -> exit 1
         with pytest.raises(SystemExit) as exc_info:
@@ -546,7 +546,7 @@ class TestMain:
 
     def test_missing_env_exits(self) -> None:
         """Starting without required env vars should exit 1."""
-        from unifi.src.server import main
+        from unifi.server import main
 
         with pytest.raises(SystemExit) as exc_info:
             main(["--transport", "stdio"])
@@ -554,7 +554,7 @@ class TestMain:
 
     def test_startup_calls_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """With valid config, main() should call mcp_server.run()."""
-        from unifi.src.server import main
+        from unifi.server import main
 
         monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "secret-key-123")
@@ -567,7 +567,7 @@ class TestMain:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """--transport http should map to 'streamable-http' for FastMCP."""
-        from unifi.src.server import main
+        from unifi.server import main
 
         monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "secret-key-123")
@@ -578,7 +578,7 @@ class TestMain:
 
     def test_log_level_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """--log-level should reconfigure the logger."""
-        from unifi.src.server import main
+        from unifi.server import main
 
         monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "key")

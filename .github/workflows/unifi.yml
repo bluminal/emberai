@@ -41,7 +41,7 @@ jobs:
         run: ruff format --check unifi/
 
       - name: Type check (mypy)
-        run: mypy unifi/src/
+        run: mypy unifi/src/unifi/
 
       - name: Run tests with coverage
-        run: pytest unifi/tests/ --cov=unifi/src --cov-report=term-missing --cov-fail-under=80
+        run: pytest unifi/tests/ --cov=unifi --cov-report=term-missing --cov-fail-under=80

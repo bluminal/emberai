@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from unifi.tests.fixtures import load_fixture
+from tests.fixtures import load_fixture
 
 
 # ---------------------------------------------------------------------------

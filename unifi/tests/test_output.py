@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unifi.src.output import (
+from unifi.output import (
     Finding,
     Severity,
     format_change_plan,

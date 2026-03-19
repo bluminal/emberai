@@ -7,7 +7,7 @@ representation.
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from unifi.src.models._types import FlexibleDatetime
+from unifi.models._types import FlexibleDatetime
 
 
 class Event(BaseModel):

@@ -2,6 +2,9 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/unifi"]
+
 [project]
 name = "unifi"
 version = "0.1.0"
@@ -29,10 +32,10 @@ dependencies = [
 ]
 
 [project.scripts]
-unifi-server = "unifi.src.server:main"
+unifi-server = "unifi.server:main"
 
 [project.entry-points."netex.plugins"]
-unifi = "unifi.src.server:plugin_info"
+unifi = "unifi.server:plugin_info"
 
 [dependency-groups]
 dev = [
@@ -76,7 +79,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src/unifi"]
 omit = ["tests/*"]
 
 [tool.coverage.report]

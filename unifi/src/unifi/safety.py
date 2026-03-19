@@ -10,7 +10,7 @@ PRD Section 6.2:
     3. Operator confirmation -- The operator must confirm the presented
        change plan in the Claude conversation.  **This step is NOT handled
        here.**  It is the responsibility of the agent/command layer
-       (see ``unifi.src.ask`` and the orchestrator).
+       (see ``unifi.ask`` and the orchestrator).
 
 All write operations across all three Netex plugins (unifi, opnsense, netex)
 follow this same gate pattern.  Each plugin implements its own copy of this
@@ -19,7 +19,7 @@ implementation plan).
 
 Usage::
 
-    from unifi.src.safety import write_gate
+    from unifi.safety import write_gate
 
     @write_gate("UNIFI")
     async def create_port_profile(name: str, *, apply: bool = False) -> dict:
@@ -34,7 +34,7 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import ParamSpec, TypeVar
 
-from unifi.src.errors import WriteGateError
+from unifi.errors import WriteGateError
 
 P = ParamSpec("P")
 T = TypeVar("T")

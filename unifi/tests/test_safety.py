@@ -18,8 +18,8 @@ from unittest.mock import patch
 
 import pytest
 
-from unifi.src.errors import WriteGateError
-from unifi.src.safety import (
+from unifi.errors import WriteGateError
+from unifi.safety import (
     WriteBlockReason,
     check_write_enabled,
     describe_write_status,

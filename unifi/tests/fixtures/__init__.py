@@ -2,7 +2,7 @@
 
 Usage::
 
-    from unifi.tests.fixtures import load_fixture
+    from tests.fixtures import load_fixture
 
     def test_device_parsing():
         data = load_fixture("device_list.json")

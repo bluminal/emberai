@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from unifi.src.cache import TTLCache
+from unifi.cache import TTLCache
 
 
 # ---------------------------------------------------------------------------
