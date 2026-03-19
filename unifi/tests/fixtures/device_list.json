@@ -1,0 +1,376 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "mac": "f0:9f:c2:aa:11:22",
+      "model": "UXG-Max",
+      "model_in_lts": false,
+      "model_in_eol": false,
+      "type": "ugw",
+      "name": "USG-Gateway",
+      "ip": "192.168.1.1",
+      "version": "4.0.6.6754",
+      "adopted": true,
+      "site_id": "5f9a8b7c6d5e4f3a2b1c0d9e",
+      "state": 1,
+      "uptime": 1728432,
+      "last_seen": 1710876543,
+      "upgradable": false,
+      "default": false,
+      "config_network": {
+        "type": "dhcp",
+        "ip": "192.168.1.1"
+      },
+      "ethernet_table": [
+        {
+          "mac": "f0:9f:c2:aa:11:22",
+          "num_port": 1,
+          "name": "eth0"
+        },
+        {
+          "mac": "f0:9f:c2:aa:11:23",
+          "num_port": 2,
+          "name": "eth1"
+        }
+      ],
+      "num_sta": 47,
+      "wan1": {
+        "type": "pppoe",
+        "ip": "203.0.113.42",
+        "gateway": "203.0.113.1",
+        "ifname": "eth0",
+        "up": true,
+        "max_speed": 1000,
+        "full_duplex": true,
+        "tx_bytes": 482910384720,
+        "rx_bytes": 1283740192837
+      },
+      "wan2": {
+        "type": "disabled"
+      },
+      "system-stats": {
+        "cpu": "12.4",
+        "mem": "42.1",
+        "uptime": "1728432"
+      },
+      "temperatures": [
+        {
+          "name": "CPU",
+          "type": "cpu",
+          "value": 52.0
+        },
+        {
+          "name": "Local",
+          "type": "board",
+          "value": 38.5
+        }
+      ],
+      "storage": [
+        {
+          "mount_point": "/persistent",
+          "name": "Storage",
+          "size": 14917,
+          "type": "emmc",
+          "used": 2841
+        }
+      ],
+      "speedtest-status": {
+        "latency": 8,
+        "rundate": 1710876000,
+        "runtime": 45,
+        "server": {
+          "cc": "US",
+          "city": "San Francisco",
+          "provider": "Cloudflare"
+        },
+        "status_download": 2,
+        "status_ping": 2,
+        "status_summary": 2,
+        "status_upload": 2,
+        "xput_download": 423.7,
+        "xput_upload": 38.2
+      }
+    },
+    {
+      "_id": "64b2c3d4e5f6a7b8c9d0e1f2",
+      "mac": "74:ac:b9:bb:33:44",
+      "model": "USLITE16P",
+      "model_in_lts": false,
+      "model_in_eol": false,
+      "type": "usw",
+      "name": "Office-Switch-16",
+      "ip": "192.168.1.10",
+      "version": "7.0.50.15116",
+      "adopted": true,
+      "site_id": "5f9a8b7c6d5e4f3a2b1c0d9e",
+      "state": 1,
+      "uptime": 864210,
+      "last_seen": 1710876540,
+      "upgradable": true,
+      "upgrade_to_firmware": "7.0.72.15290",
+      "default": false,
+      "port_table": [
+        {
+          "port_idx": 1,
+          "media": "GE",
+          "name": "Port 1",
+          "op_mode": "switch",
+          "poe_caps": 7,
+          "poe_class": "Class 3",
+          "poe_current": "0.095",
+          "poe_enable": true,
+          "poe_good": true,
+          "poe_mode": "auto",
+          "poe_power": "4.56",
+          "poe_voltage": "48.02",
+          "portconf_id": "6a7b8c9d0e1f2a3b4c5d6e7f",
+          "speed": 1000,
+          "full_duplex": true,
+          "is_uplink": false,
+          "up": true,
+          "rx_bytes": 38291047,
+          "tx_bytes": 12938471,
+          "rx_packets": 293847,
+          "tx_packets": 102938
+        },
+        {
+          "port_idx": 2,
+          "media": "GE",
+          "name": "Port 2",
+          "op_mode": "switch",
+          "poe_caps": 7,
+          "poe_enable": true,
+          "poe_good": true,
+          "poe_mode": "auto",
+          "poe_power": "6.21",
+          "poe_voltage": "48.05",
+          "portconf_id": "6a7b8c9d0e1f2a3b4c5d6e7f",
+          "speed": 1000,
+          "full_duplex": true,
+          "is_uplink": false,
+          "up": true,
+          "rx_bytes": 84729103,
+          "tx_bytes": 29384710,
+          "rx_packets": 582910,
+          "tx_packets": 203847
+        },
+        {
+          "port_idx": 16,
+          "media": "SFP+",
+          "name": "SFP+ 1",
+          "op_mode": "switch",
+          "poe_caps": 0,
+          "poe_enable": false,
+          "speed": 10000,
+          "full_duplex": true,
+          "is_uplink": true,
+          "up": true,
+          "rx_bytes": 1928374650,
+          "tx_bytes": 482910384,
+          "rx_packets": 19283746,
+          "tx_packets": 4829103
+        }
+      ],
+      "uplink": {
+        "full_duplex": true,
+        "ip": "192.168.1.10",
+        "mac": "f0:9f:c2:aa:11:22",
+        "name": "eth0",
+        "num_port": 16,
+        "rx_bytes": 1928374650,
+        "rx_packets": 19283746,
+        "speed": 10000,
+        "tx_bytes": 482910384,
+        "tx_packets": 4829103,
+        "type": "wire",
+        "up": true,
+        "uplink_mac": "f0:9f:c2:aa:11:22",
+        "uplink_remote_port": 1
+      },
+      "total_max_power": 45,
+      "overheating": false,
+      "general_temperature": 42,
+      "fan_level": 0,
+      "num_sta": 12,
+      "system-stats": {
+        "cpu": "3.2",
+        "mem": "28.7",
+        "uptime": "864210"
+      }
+    },
+    {
+      "_id": "64c3d4e5f6a7b8c9d0e1f2a3",
+      "mac": "e0:63:da:cc:55:66",
+      "model": "U6-Pro",
+      "model_in_lts": false,
+      "model_in_eol": false,
+      "type": "uap",
+      "name": "Office-AP-Main",
+      "ip": "192.168.1.20",
+      "version": "7.0.76.15293",
+      "adopted": true,
+      "site_id": "5f9a8b7c6d5e4f3a2b1c0d9e",
+      "state": 1,
+      "uptime": 1728430,
+      "last_seen": 1710876542,
+      "upgradable": false,
+      "default": false,
+      "radio_table": [
+        {
+          "radio": "ng",
+          "name": "ra0",
+          "channel": 6,
+          "ht": "40",
+          "tx_power": 23,
+          "tx_power_mode": "auto",
+          "min_rssi_enabled": false,
+          "nss": 2,
+          "antenna_gain": 0,
+          "builtin_antenna": true,
+          "current_antenna_gain": 4,
+          "max_txpower": 23,
+          "min_txpower": 6,
+          "is_11ax": true,
+          "has_dfs": false,
+          "has_fccdfs": false
+        },
+        {
+          "radio": "na",
+          "name": "rai0",
+          "channel": 44,
+          "ht": "80",
+          "tx_power": 26,
+          "tx_power_mode": "auto",
+          "min_rssi_enabled": false,
+          "nss": 4,
+          "antenna_gain": 0,
+          "builtin_antenna": true,
+          "current_antenna_gain": 4,
+          "max_txpower": 26,
+          "min_txpower": 8,
+          "is_11ax": true,
+          "has_dfs": true,
+          "has_fccdfs": true
+        }
+      ],
+      "radio_table_stats": [
+        {
+          "name": "ra0",
+          "channel": 6,
+          "radio": "ng",
+          "ast_txto": 0,
+          "ast_cst": 0,
+          "ast_be_xmit": 1928374,
+          "cu_total": 32,
+          "cu_self_rx": 12,
+          "cu_self_tx": 8,
+          "satisfaction": 92,
+          "num_sta": 18
+        },
+        {
+          "name": "rai0",
+          "channel": 44,
+          "radio": "na",
+          "ast_txto": 0,
+          "ast_cst": 0,
+          "ast_be_xmit": 8472910,
+          "cu_total": 18,
+          "cu_self_rx": 5,
+          "cu_self_tx": 4,
+          "satisfaction": 98,
+          "num_sta": 17
+        }
+      ],
+      "uplink": {
+        "full_duplex": true,
+        "ip": "192.168.1.20",
+        "mac": "74:ac:b9:bb:33:44",
+        "name": "eth0",
+        "num_port": 1,
+        "rx_bytes": 582910384,
+        "rx_packets": 5829103,
+        "speed": 1000,
+        "tx_bytes": 192837465,
+        "tx_packets": 1928374,
+        "type": "wire",
+        "up": true,
+        "uplink_mac": "74:ac:b9:bb:33:44",
+        "uplink_remote_port": 1
+      },
+      "vap_table": [
+        {
+          "ap_mac": "e0:63:da:cc:55:66",
+          "bssid": "e0:63:da:cc:55:67",
+          "ccq": 996,
+          "channel": 6,
+          "essid": "HomeNet",
+          "id": "wlan-001",
+          "is_guest": false,
+          "is_wep": false,
+          "name": "ra0",
+          "num_sta": 12,
+          "radio": "ng",
+          "radio_name": "ra0",
+          "rx_bytes": 182937465,
+          "rx_packets": 1829374,
+          "tx_bytes": 82910384,
+          "tx_packets": 829103,
+          "up": true,
+          "wlanconf_id": "7b8c9d0e1f2a3b4c5d6e7f80"
+        },
+        {
+          "ap_mac": "e0:63:da:cc:55:66",
+          "bssid": "e0:63:da:cc:55:68",
+          "ccq": 998,
+          "channel": 44,
+          "essid": "HomeNet",
+          "id": "wlan-002",
+          "is_guest": false,
+          "is_wep": false,
+          "name": "rai0",
+          "num_sta": 15,
+          "radio": "na",
+          "radio_name": "rai0",
+          "rx_bytes": 829103847,
+          "rx_packets": 8291038,
+          "tx_bytes": 382910384,
+          "tx_packets": 3829103,
+          "up": true,
+          "wlanconf_id": "7b8c9d0e1f2a3b4c5d6e7f80"
+        },
+        {
+          "ap_mac": "e0:63:da:cc:55:66",
+          "bssid": "e0:63:da:cc:55:69",
+          "ccq": 987,
+          "channel": 6,
+          "essid": "Guest-Net",
+          "id": "wlan-003",
+          "is_guest": true,
+          "is_wep": false,
+          "name": "ra1",
+          "num_sta": 3,
+          "radio": "ng",
+          "radio_name": "ra0",
+          "rx_bytes": 29384710,
+          "rx_packets": 293847,
+          "tx_bytes": 12938471,
+          "tx_packets": 129384,
+          "up": true,
+          "wlanconf_id": "8c9d0e1f2a3b4c5d6e7f8091"
+        }
+      ],
+      "num_sta": 35,
+      "user-num_sta": 32,
+      "guest-num_sta": 3,
+      "satisfaction": 95,
+      "system-stats": {
+        "cpu": "8.1",
+        "mem": "34.2",
+        "uptime": "1728430"
+      }
+    }
+  ]
+}

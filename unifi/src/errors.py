@@ -335,9 +335,15 @@ class WriteGateError(NetexError):
         message: str,
         *,
         reason: WriteGateReason,
+        plugin_name: str | None = None,
+        env_var: str | None = None,
         details: dict[str, Any] | None = None,
     ) -> None:
         extra_details: dict[str, Any] = {"reason": reason.value}
+        if plugin_name is not None:
+            extra_details["plugin_name"] = plugin_name
+        if env_var is not None:
+            extra_details["env_var"] = env_var
         if details:
             extra_details.update(details)
 
@@ -349,6 +355,8 @@ class WriteGateError(NetexError):
             details=extra_details,
         )
         self.reason = reason
+        self.plugin_name = plugin_name
+        self.env_var = env_var
 
     def __str__(self) -> str:
         parts: list[str] = [self.message, f"Reason: {self.reason.value}"]
