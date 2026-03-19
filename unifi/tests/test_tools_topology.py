@@ -676,3 +676,588 @@ class TestGetUplinks:
         """The get_uplinks tool should be registered on the MCP server."""
         tool_names = [tool.name for tool in mcp_server._tool_manager.list_tools()]
         assert "unifi__topology__get_uplinks" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# Edge case tests for list_devices
+# ---------------------------------------------------------------------------
+
+
+class TestListDevicesEdgeCases:
+    """Edge case tests for unifi__topology__list_devices."""
+
+    async def test_device_missing_optional_fields(self) -> None:
+        """A device with no port_table, uplink, or radio_table should parse cleanly."""
+        raw_data = [
+            {
+                "_id": "minimal001",
+                "mac": "aa:bb:cc:dd:ee:01",
+                "model": "USW-Lite-8-PoE",
+                "state": 1,
+                "name": "Bare-Switch",
+                "ip": "10.0.0.50",
+                "version": "7.0.50",
+                "uptime": 600,
+            },
+        ]
+
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=raw_data, count=1, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__list_devices()
+
+        assert len(result) == 1
+        device = result[0]
+        assert device["device_id"] == "minimal001"
+        assert device["name"] == "Bare-Switch"
+        assert device["status"] == "connected"
+        # Optional fields should default to None and appear (model_dump includes None by default)
+        assert device.get("port_table") is None
+        assert device.get("uplink") is None
+        assert device.get("radio_table") is None
+
+    async def test_device_with_unknown_state_code(self) -> None:
+        """A device with an unmapped numeric state (e.g. 99) should get 'unknown(99)'."""
+        raw_data = [
+            {
+                "_id": "unk001",
+                "mac": "aa:bb:cc:dd:ee:02",
+                "model": "U6-Pro",
+                "state": 99,
+                "name": "Mystery-AP",
+                "ip": "10.0.0.51",
+                "version": "7.0.76",
+                "uptime": 100,
+            },
+        ]
+
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=raw_data, count=1, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__list_devices()
+
+        assert result[0]["status"] == "unknown(99)"
+
+    async def test_device_with_state_already_string(self) -> None:
+        """A device whose state is already a string should pass through unchanged."""
+        raw_data = [
+            {
+                "_id": "str001",
+                "mac": "aa:bb:cc:dd:ee:03",
+                "model": "UDM-Pro",
+                "state": "connected",
+                "name": "Already-String",
+                "ip": "10.0.0.52",
+                "version": "4.0.6",
+                "uptime": 500,
+            },
+        ]
+
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=raw_data, count=1, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__list_devices()
+
+        assert result[0]["status"] == "connected"
+
+    async def test_mixed_online_and_offline_devices(self) -> None:
+        """A mix of state=1 (connected) and state=0 (disconnected) devices."""
+        raw_data = [
+            {
+                "_id": "on001",
+                "mac": "aa:bb:cc:dd:ee:10",
+                "model": "USW-24",
+                "state": 1,
+                "name": "Online-Switch",
+                "ip": "10.0.0.60",
+                "version": "7.0.50",
+                "uptime": 86400,
+            },
+            {
+                "_id": "off001",
+                "mac": "aa:bb:cc:dd:ee:11",
+                "model": "U6-LR",
+                "state": 0,
+                "name": "Offline-AP",
+                "ip": "10.0.0.61",
+                "version": "7.0.76",
+                "uptime": 0,
+            },
+            {
+                "_id": "on002",
+                "mac": "aa:bb:cc:dd:ee:12",
+                "model": "UXG-Max",
+                "state": 1,
+                "name": "Online-Gateway",
+                "ip": "10.0.0.1",
+                "version": "4.0.6",
+                "uptime": 172800,
+            },
+            {
+                "_id": "off002",
+                "mac": "aa:bb:cc:dd:ee:13",
+                "model": "U6-Mesh",
+                "state": 0,
+                "name": "Offline-Mesh",
+                "ip": "10.0.0.62",
+                "version": "7.0.76",
+                "uptime": 0,
+            },
+        ]
+
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=raw_data, count=4, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__list_devices()
+
+        assert len(result) == 4
+
+        statuses = [d["status"] for d in result]
+        assert statuses == ["connected", "disconnected", "connected", "disconnected"]
+
+        # Verify all devices parsed correctly despite mixed states
+        assert result[0]["name"] == "Online-Switch"
+        assert result[1]["name"] == "Offline-AP"
+        assert result[2]["name"] == "Online-Gateway"
+        assert result[3]["name"] == "Offline-Mesh"
+
+
+# ---------------------------------------------------------------------------
+# Edge case tests for get_vlans
+# ---------------------------------------------------------------------------
+
+
+class TestGetVlansEdgeCases:
+    """Edge case tests for unifi__topology__get_vlans."""
+
+    @pytest.fixture(autouse=True)
+    def _set_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
+        monkeypatch.setenv("UNIFI_LOCAL_KEY", "test-api-key")
+
+    def _patch_client(self, fixture_data: dict[str, Any]) -> Any:
+        normalized = _normalized_from_fixture(fixture_data)
+        mock_client = AsyncMock()
+        mock_client.get_normalized.return_value = normalized
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        return patch("unifi.tools.topology._get_client", return_value=mock_client)
+
+    async def test_vlan_enabled_but_no_vlan_field_excluded(self) -> None:
+        """A network with vlan_enabled=True but missing 'vlan' key should be excluded.
+
+        The _is_vlan_network filter requires both vlan_enabled=True AND
+        a 'vlan' key present for tagged VLANs. Without the vlan tag number,
+        it is not a valid tagged VLAN and should also not match the
+        default-LAN path (because vlan_enabled is True).
+        """
+        data = {
+            "meta": {"rc": "ok"},
+            "data": [
+                {
+                    "_id": "broken001",
+                    "name": "Broken-VLAN",
+                    "purpose": "corporate",
+                    "vlan_enabled": True,
+                    # Note: no "vlan" key
+                    "ip_subnet": "192.168.50.0/24",
+                    "dhcpd_enabled": True,
+                },
+                {
+                    "_id": "good001",
+                    "name": "Good-Default",
+                    "purpose": "corporate",
+                    "vlan_enabled": False,
+                    "ip_subnet": "192.168.1.0/24",
+                    "dhcpd_enabled": True,
+                },
+            ],
+        }
+        with self._patch_client(data):
+            result = await unifi__topology__get_vlans()
+
+        # Only the default LAN should survive; the broken VLAN should be filtered
+        assert len(result) == 1
+        assert result[0]["name"] == "Good-Default"
+
+    async def test_network_with_empty_purpose_included(self) -> None:
+        """A network with purpose='' (empty string) should be included.
+
+        Empty purpose is not 'wan' or 'wan2', so it passes the WAN filter.
+        With vlan_enabled=False and purpose not in WAN_PURPOSES, it matches
+        the default-LAN path.
+        """
+        data = {
+            "meta": {"rc": "ok"},
+            "data": [
+                {
+                    "_id": "empty001",
+                    "name": "No-Purpose-Net",
+                    "purpose": "",
+                    "vlan_enabled": False,
+                    "ip_subnet": "10.0.0.0/24",
+                    "dhcpd_enabled": False,
+                },
+            ],
+        }
+        with self._patch_client(data):
+            result = await unifi__topology__get_vlans()
+
+        assert len(result) == 1
+        assert result[0]["name"] == "No-Purpose-Net"
+
+    async def test_all_wan_networks_returns_empty(self) -> None:
+        """When every network has purpose='wan' or 'wan2', result should be empty."""
+        data = {
+            "meta": {"rc": "ok"},
+            "data": [
+                {
+                    "_id": "wan001",
+                    "name": "WAN",
+                    "purpose": "wan",
+                    "vlan_enabled": False,
+                    "ip_subnet": "203.0.113.0/24",
+                    "dhcpd_enabled": False,
+                },
+                {
+                    "_id": "wan002",
+                    "name": "WAN2-Backup",
+                    "purpose": "wan2",
+                    "vlan_enabled": False,
+                    "ip_subnet": "198.51.100.0/24",
+                    "dhcpd_enabled": False,
+                },
+            ],
+        }
+        with self._patch_client(data):
+            result = await unifi__topology__get_vlans()
+
+        assert result == []
+
+    async def test_unparseable_network_skipped_gracefully(self) -> None:
+        """A network that passes _is_vlan_network but fails VLAN.model_validate
+        should be skipped without raising, and other valid networks should
+        still be returned."""
+        data = {
+            "meta": {"rc": "ok"},
+            "data": [
+                {
+                    # Missing required '_id' field -- will fail model_validate
+                    "name": "Bad-Network",
+                    "purpose": "corporate",
+                    "vlan_enabled": False,
+                },
+                {
+                    "_id": "good002",
+                    "name": "Good-Network",
+                    "purpose": "corporate",
+                    "vlan_enabled": False,
+                    "ip_subnet": "192.168.2.0/24",
+                    "dhcpd_enabled": True,
+                },
+            ],
+        }
+        with self._patch_client(data):
+            result = await unifi__topology__get_vlans()
+
+        # The bad network should be skipped, the good one should survive
+        assert len(result) == 1
+        assert result[0]["name"] == "Good-Network"
+
+
+# ---------------------------------------------------------------------------
+# Edge case tests for get_uplinks / _build_uplink_graph
+# ---------------------------------------------------------------------------
+
+
+class TestGetUplinksEdgeCases:
+    """Edge case tests for uplink graph building."""
+
+    def test_all_root_devices_empty_graph(self) -> None:
+        """When every device is a root (no uplink field), the graph should be empty."""
+        devices = [
+            {"_id": "gw1", "mac": "aa:bb:cc:dd:ee:01", "name": "Gateway-1"},
+            {"_id": "gw2", "mac": "aa:bb:cc:dd:ee:02", "name": "Gateway-2"},
+            {"_id": "gw3", "mac": "aa:bb:cc:dd:ee:03", "name": "Gateway-3"},
+        ]
+        graph = _build_uplink_graph(devices)
+        assert graph == []
+
+    def test_uplink_missing_speed_field(self) -> None:
+        """A device with an uplink but no speed field should have speed=None."""
+        devices = [
+            {"_id": "parent01", "mac": "aa:bb:cc:dd:ee:10", "name": "Parent-Switch"},
+            {
+                "_id": "child01",
+                "mac": "aa:bb:cc:dd:ee:11",
+                "name": "Child-AP",
+                "uplink": {
+                    "uplink_mac": "aa:bb:cc:dd:ee:10",
+                    "uplink_remote_port": 5,
+                    "type": "wire",
+                    # No "speed" key
+                },
+            },
+        ]
+        graph = _build_uplink_graph(devices)
+
+        assert len(graph) == 1
+        assert graph[0]["device_name"] == "Child-AP"
+        assert graph[0]["uplink_device_name"] == "Parent-Switch"
+        assert graph[0]["speed"] is None
+
+    def test_large_device_list_performance(self) -> None:
+        """Verify _build_uplink_graph handles 10+ devices with O(1) MAC lookup.
+
+        This test generates a chain of 15 devices where each device's uplink
+        points to the previous one. The MAC-indexed dict should make parent
+        resolution constant-time per device.
+        """
+        devices: list[dict[str, Any]] = []
+        for i in range(15):
+            mac = f"aa:bb:cc:dd:{i:02x}:00"
+            device: dict[str, Any] = {
+                "_id": f"dev{i:03d}",
+                "mac": mac,
+                "name": f"Device-{i}",
+            }
+            if i > 0:
+                parent_mac = f"aa:bb:cc:dd:{(i - 1):02x}:00"
+                device["uplink"] = {
+                    "uplink_mac": parent_mac,
+                    "uplink_remote_port": 1,
+                    "speed": 1000,
+                    "type": "wire",
+                }
+            devices.append(device)
+
+        graph = _build_uplink_graph(devices)
+
+        # 14 non-root devices should produce 14 uplink entries
+        assert len(graph) == 14
+
+        # Verify each link resolves the correct parent
+        for i, link in enumerate(graph):
+            child_idx = i + 1
+            parent_idx = i
+            assert link["device_id"] == f"dev{child_idx:03d}"
+            assert link["device_name"] == f"Device-{child_idx}"
+            assert link["uplink_device_id"] == f"dev{parent_idx:03d}"
+            assert link["uplink_device_name"] == f"Device-{parent_idx}"
+
+    def test_uplink_with_missing_remote_port(self) -> None:
+        """A device whose uplink has no uplink_remote_port should get port=None."""
+        devices = [
+            {"_id": "parent02", "mac": "aa:bb:cc:dd:ee:20", "name": "Parent"},
+            {
+                "_id": "child02",
+                "mac": "aa:bb:cc:dd:ee:21",
+                "name": "Child",
+                "uplink": {
+                    "uplink_mac": "aa:bb:cc:dd:ee:20",
+                    "type": "wire",
+                    "speed": 1000,
+                    # No "uplink_remote_port" key
+                },
+            },
+        ]
+        graph = _build_uplink_graph(devices)
+
+        assert len(graph) == 1
+        assert graph[0]["uplink_port"] is None
+        assert graph[0]["speed"] == 1000
+
+    async def test_get_uplinks_tool_all_roots(self) -> None:
+        """The MCP tool should return an empty list when all devices are root."""
+        raw_data = [
+            {"_id": "gw1", "mac": "ff:00:00:00:00:01", "name": "Root-GW"},
+            {"_id": "gw2", "mac": "ff:00:00:00:00:02", "name": "Root-GW-2"},
+        ]
+
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(data=raw_data, count=2, meta={"rc": "ok"})
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_uplinks()
+
+        assert result == []
+        mock_client.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Fixture validation tests (round-trip through tools)
+# ---------------------------------------------------------------------------
+
+
+class TestFixtureValidation:
+    """Validate that fixture JSON files round-trip through the MCP tools correctly.
+
+    These tests load the real fixture files and verify that they can be
+    parsed by the tools without errors, producing the expected model
+    output shapes.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _set_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("UNIFI_LOCAL_HOST", "192.168.1.1")
+        monkeypatch.setenv("UNIFI_LOCAL_KEY", "test-api-key")
+
+    async def test_device_list_fixture_roundtrip(
+        self, device_list_response: dict[str, Any]
+    ) -> None:
+        """device_list.json -> list_devices -> list of Device-shaped dicts."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(
+                data=device_list_response["data"],
+                count=len(device_list_response["data"]),
+                meta=device_list_response["meta"],
+            )
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__list_devices()
+
+        assert len(result) == 3
+
+        # Every device dict must have all core Device model fields
+        required_keys = {"device_id", "name", "model", "mac", "ip", "status", "uptime", "firmware"}
+        for device in result:
+            assert required_keys.issubset(device.keys()), (
+                f"Device {device.get('name', '?')} missing keys: "
+                f"{required_keys - device.keys()}"
+            )
+            # status must be a string, not an int
+            assert isinstance(device["status"], str)
+
+        # Verify specific fixture devices were parsed correctly
+        names = [d["name"] for d in result]
+        assert "USG-Gateway" in names
+        assert "Office-Switch-16" in names
+        assert "Office-AP-Main" in names
+
+    async def test_vlan_config_fixture_roundtrip(
+        self, vlan_config_response: dict[str, Any]
+    ) -> None:
+        """vlan_config.json -> get_vlans -> list of VLAN-shaped dicts."""
+        normalized = _normalized_from_fixture(vlan_config_response)
+        mock_client = AsyncMock()
+        mock_client.get_normalized.return_value = normalized
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_vlans()
+
+        assert len(result) == 4
+
+        # Every VLAN dict must have all VLAN model fields
+        required_keys = {"vlan_id", "name", "subnet", "purpose", "dhcp_enabled"}
+        for vlan in result:
+            assert required_keys.issubset(vlan.keys()), (
+                f"VLAN {vlan.get('name', '?')} missing keys: "
+                f"{required_keys - vlan.keys()}"
+            )
+
+        # Verify specific fixture VLANs were parsed correctly
+        vlan_names = [v["name"] for v in result]
+        assert "Default" in vlan_names
+        assert "Guest" in vlan_names
+        assert "IoT" in vlan_names
+        assert "Management" in vlan_names
+
+        # Verify VLAN tag values are correct for tagged VLANs
+        guest = next(v for v in result if v["name"] == "Guest")
+        assert guest["purpose"] == "guest"
+
+        iot = next(v for v in result if v["name"] == "IoT")
+        assert iot["subnet"] == "192.168.30.0/24"
+
+    async def test_device_list_fixture_uplinks_roundtrip(
+        self, device_list_response: dict[str, Any]
+    ) -> None:
+        """device_list.json -> get_uplinks -> uplink graph with correct topology."""
+        mock_client = AsyncMock()
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(
+                data=device_list_response["data"],
+                count=len(device_list_response["data"]),
+                meta=device_list_response["meta"],
+            )
+        )
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_uplinks()
+
+        # The fixture has 3 devices: gateway (root), switch -> gateway, AP -> switch
+        assert len(result) == 2
+
+        expected_keys = {
+            "device_id", "device_name", "device_mac",
+            "uplink_device_id", "uplink_device_name", "uplink_device_mac",
+            "uplink_port", "uplink_type", "speed",
+        }
+        for link in result:
+            assert set(link.keys()) == expected_keys
+
+        # Verify the topology chain: switch -> gateway, AP -> switch
+        link_map = {link["device_name"]: link for link in result}
+
+        switch_link = link_map["Office-Switch-16"]
+        assert switch_link["uplink_device_name"] == "USG-Gateway"
+        assert switch_link["uplink_type"] == "wire"
+        assert switch_link["speed"] == 10000
+
+        ap_link = link_map["Office-AP-Main"]
+        assert ap_link["uplink_device_name"] == "Office-Switch-16"
+        assert ap_link["uplink_type"] == "wire"
+        assert ap_link["speed"] == 1000
+
+    async def test_device_single_fixture_roundtrip(
+        self, device_single_response: dict[str, Any]
+    ) -> None:
+        """device_single.json -> get_device -> Device dict with detail fields."""
+        device_data = device_single_response["data"][0]
+
+        mock_client = AsyncMock()
+        mock_client.get_single = AsyncMock(return_value=device_data)
+        mock_client.close = AsyncMock()
+
+        with patch("unifi.tools.topology._get_client", return_value=mock_client):
+            result = await unifi__topology__get_device(
+                device_id=device_data["mac"],
+            )
+
+        # Core fields
+        assert result["device_id"] == device_data["_id"]
+        assert result["mac"] == device_data["mac"]
+        assert result["status"] == "connected"  # state=1 -> "connected"
+
+        # Detail fields (present in single-device fixture)
+        assert result["port_table"] is not None
+        assert isinstance(result["port_table"], list)
+        assert len(result["port_table"]) > 0
+
+        assert result["uplink"] is not None
+        assert isinstance(result["uplink"], dict)
