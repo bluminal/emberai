@@ -1,0 +1,47 @@
+name: unifi CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "unifi/**"
+  pull_request:
+    paths:
+      - "unifi/**"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint, Type-check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: unifi/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./unifi"
+          pip install pytest pytest-asyncio coverage ruff mypy
+
+      - name: Lint (ruff check)
+        run: ruff check unifi/
+
+      - name: Format check (ruff format)
+        run: ruff format --check unifi/
+
+      - name: Type check (mypy)
+        run: mypy unifi/src/
+
+      - name: Run tests with coverage
+        run: pytest unifi/tests/ --cov=unifi/src --cov-report=term-missing --cov-fail-under=80
