@@ -30,6 +30,7 @@ import httpx
 if TYPE_CHECKING:
     from types import TracebackType
 
+from unifi.api.response import NormalizedResponse, normalize_response, normalize_single
 from unifi.errors import APIError, AuthenticationError, NetworkError, RateLimitError
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,169 @@ class LocalGatewayClient:
             On connection failures, timeouts, or SSL errors.
         """
         return await self._request("POST", endpoint, json_data=data)
+
+    async def get_normalized(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+    ) -> NormalizedResponse:
+        """Make a GET request and return the normalized (unwrapped) response.
+
+        This is the preferred method for most callers.  It unwraps the
+        UniFi API envelope and returns a :class:`NormalizedResponse` with
+        the ``data`` array, item count, and optional pagination metadata.
+
+        Parameters
+        ----------
+        endpoint:
+            API path relative to ``/proxy/network/``.
+        params:
+            Optional query parameters.
+
+        Returns
+        -------
+        NormalizedResponse
+            The unwrapped response data.
+
+        Raises
+        ------
+        APIError
+            If the API envelope signals an error (``meta.rc == "error"``),
+            or on HTTP 4xx/5xx responses.
+        AuthenticationError
+            On 401 or 403 responses.
+        RateLimitError
+            On 429 responses.
+        NetworkError
+            On connection failures, timeouts, or SSL errors.
+        """
+        raw = await self.get(endpoint, params=params)
+        return normalize_response(raw)
+
+    async def get_single(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Make a GET request and return the first item from the data array.
+
+        Convenience method for endpoints expected to return a single item
+        (e.g., fetching a specific device by MAC address).
+
+        Parameters
+        ----------
+        endpoint:
+            API path relative to ``/proxy/network/``.
+        params:
+            Optional query parameters.
+
+        Returns
+        -------
+        dict
+            The first item from the ``data`` array.
+
+        Raises
+        ------
+        APIError
+            If the data array is empty, or the API envelope signals an error.
+        AuthenticationError
+            On 401 or 403 responses.
+        RateLimitError
+            On 429 responses.
+        NetworkError
+            On connection failures, timeouts, or SSL errors.
+        """
+        raw = await self.get(endpoint, params=params)
+        return normalize_single(raw)
+
+    async def get_all(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        page_size: int = 100,
+    ) -> NormalizedResponse:
+        """Fetch all pages of a paginated endpoint and combine the results.
+
+        Makes successive GET requests with ``offset`` and ``limit`` query
+        parameters, collecting results until all items have been fetched
+        (i.e., ``count >= totalCount``).
+
+        If the first response has no ``totalCount`` (i.e., the endpoint does
+        not support pagination), returns that single response as-is.
+
+        Parameters
+        ----------
+        endpoint:
+            API path relative to ``/proxy/network/``.
+        params:
+            Optional base query parameters (``offset`` and ``limit`` will be
+            added/overridden by the pagination logic).
+        page_size:
+            Number of items to request per page (default: 100).
+
+        Returns
+        -------
+        NormalizedResponse
+            Combined response with all pages of data merged into a single
+            ``data`` list.  ``count`` reflects the total number of items
+            returned, and ``total_count`` reflects the API's ``totalCount``.
+
+        Raises
+        ------
+        APIError
+            If any page returns an API-level error.
+        AuthenticationError
+            On 401 or 403 responses.
+        RateLimitError
+            On 429 responses.
+        NetworkError
+            On connection failures, timeouts, or SSL errors.
+        """
+        base_params = dict(params) if params else {}
+        all_data: list[dict[str, Any]] = []
+        offset = 0
+        total_count: int | None = None
+        last_meta: dict[str, Any] = {}
+
+        while True:
+            page_params = {**base_params, "offset": offset, "limit": page_size}
+            raw = await self.get(endpoint, params=page_params)
+            page = normalize_response(raw)
+
+            all_data.extend(page.data)
+            last_meta = page.meta
+
+            # If no totalCount is reported, the endpoint does not paginate.
+            if page.total_count is None:
+                logger.debug(
+                    "Endpoint %s does not report totalCount; returning single page",
+                    endpoint,
+                )
+                return page
+
+            total_count = page.total_count
+
+            # If we have fetched all available items, stop.
+            if len(all_data) >= total_count:
+                break
+
+            # If the page returned no data, stop to avoid infinite loops.
+            if not page.data:
+                logger.warning(
+                    "Endpoint %s returned empty page at offset %d; stopping pagination",
+                    endpoint,
+                    offset,
+                )
+                break
+
+            offset += len(page.data)
+
+        return NormalizedResponse(
+            data=all_data,
+            count=len(all_data),
+            total_count=total_count,
+            meta=last_meta,
+        )
 
     async def close(self) -> None:
         """Close the underlying httpx client and release resources."""
