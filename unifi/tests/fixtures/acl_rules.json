@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "_id": "acl001",
+      "name": "Management ACL",
+      "entries": [
+        { "action": "allow", "src": "192.168.1.0/24", "dst": "10.0.0.1" },
+        { "action": "deny", "src": "any", "dst": "10.0.0.1" }
+      ],
+      "applied_to": ["switch001", "ap001"]
+    },
+    {
+      "_id": "acl002",
+      "name": "Guest Isolation",
+      "entries": [
+        { "action": "deny", "src": "10.0.100.0/24", "dst": "192.168.1.0/24" }
+      ],
+      "applied_to": ["switch001"]
+    }
+  ],
+  "meta": { "rc": "ok" }
+}

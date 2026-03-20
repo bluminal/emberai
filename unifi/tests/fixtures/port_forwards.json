@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "_id": "pf001",
+      "name": "Web Server",
+      "proto": "tcp",
+      "dst_port": "443",
+      "fwd": "192.168.1.100",
+      "fwd_port": "443",
+      "enabled": true
+    },
+    {
+      "_id": "pf002",
+      "name": "SSH Access",
+      "proto": "tcp",
+      "dst_port": "22",
+      "fwd": "192.168.1.50",
+      "fwd_port": "22",
+      "enabled": true
+    },
+    {
+      "_id": "pf003",
+      "name": "Game Server",
+      "proto": "udp",
+      "dst_port": "27015",
+      "fwd": "192.168.1.200",
+      "fwd_port": "27015",
+      "enabled": true
+    },
+    {
+      "_id": "pf004",
+      "name": "Old RDP",
+      "proto": "tcp",
+      "dst_port": "3389",
+      "fwd": "192.168.1.10",
+      "fwd_port": "3389",
+      "enabled": false
+    }
+  ],
+  "meta": { "rc": "ok" }
+}

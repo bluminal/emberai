@@ -1,0 +1,16 @@
+{
+  "data": [
+    {
+      "autobackup": true,
+      "last_backup_time": 1742256000,
+      "backup_type": "auto",
+      "backup_size_mb": 12.5,
+      "cloud_backup_enabled": true,
+      "cloud_key": "CK-abc123",
+      "version": "8.1.113",
+      "hostname": "UDM-Pro",
+      "uptime": 2592000
+    }
+  ],
+  "meta": { "rc": "ok" }
+}

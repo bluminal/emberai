@@ -1,0 +1,60 @@
+{
+  "data": [
+    {
+      "_id": "rule001",
+      "name": "Allow LAN to WAN",
+      "action": "accept",
+      "enabled": true,
+      "src_address": "192.168.1.0/24",
+      "dst_address": "",
+      "protocol": "all",
+      "rule_index": 2001,
+      "ruleset": "WAN_OUT"
+    },
+    {
+      "_id": "rule002",
+      "name": "Block IoT to LAN",
+      "action": "drop",
+      "enabled": true,
+      "src_address": "10.0.50.0/24",
+      "dst_address": "192.168.1.0/24",
+      "protocol": "all",
+      "rule_index": 2002,
+      "ruleset": "LAN_IN"
+    },
+    {
+      "_id": "rule003",
+      "name": "Allow DNS",
+      "action": "accept",
+      "enabled": true,
+      "src_address": "",
+      "dst_address": "",
+      "protocol": "tcp_udp",
+      "rule_index": 2003,
+      "ruleset": "LAN_IN"
+    },
+    {
+      "_id": "rule004",
+      "name": "Old Test Rule",
+      "action": "accept",
+      "enabled": false,
+      "src_address": "10.0.0.0/8",
+      "dst_address": "",
+      "protocol": "tcp",
+      "rule_index": 2004,
+      "ruleset": "WAN_IN"
+    },
+    {
+      "_id": "rule005",
+      "name": "Allow Guest DNS Only",
+      "action": "accept",
+      "enabled": true,
+      "src_address": "10.0.100.0/24",
+      "dst_address": "1.1.1.1",
+      "protocol": "tcp_udp",
+      "rule_index": 2005,
+      "ruleset": "GUEST_OUT"
+    }
+  ],
+  "meta": { "rc": "ok" }
+}

@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "_id": "ids001",
+      "timestamp": 1742342400000,
+      "inner_alert_signature": "ET SCAN Potential SSH Brute Force",
+      "inner_alert_severity": 1,
+      "src_ip": "203.0.113.50",
+      "dst_ip": "192.168.1.50",
+      "inner_alert_action": "blocked"
+    },
+    {
+      "_id": "ids002",
+      "timestamp": 1742339000000,
+      "inner_alert_signature": "ET POLICY DNS Query to .onion Domain",
+      "inner_alert_severity": 2,
+      "src_ip": "192.168.1.105",
+      "dst_ip": "1.1.1.1",
+      "inner_alert_action": "alert"
+    },
+    {
+      "_id": "ids003",
+      "timestamp": 1742335000000,
+      "inner_alert_signature": "ET INFO Outbound Connection to Public IP",
+      "inner_alert_severity": 3,
+      "src_ip": "192.168.1.200",
+      "dst_ip": "8.8.8.8",
+      "inner_alert_action": "alert"
+    },
+    {
+      "_id": "ids004",
+      "timestamp": 1742330000000,
+      "inner_alert_signature": "ET EXPLOIT Possible SQL Injection",
+      "inner_alert_severity": 1,
+      "src_ip": "198.51.100.20",
+      "dst_ip": "192.168.1.100",
+      "inner_alert_action": "blocked"
+    }
+  ],
+  "meta": { "rc": "ok" }
+}
