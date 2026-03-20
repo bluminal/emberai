@@ -7,15 +7,32 @@ packages = ["src/opnsense"]
 
 [project]
 name = "opnsense"
-version = "0.1.0"
-description = "OPNsense gateway intelligence plugin for EmberAI"
+version = "0.2.0"
+description = "OPNsense gateway intelligence plugin for EmberAI -- firewall, routing, VPN, DNS, DHCP, IDS/IPS, and diagnostics via MCP"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [
     { name = "Bluminal Labs" },
 ]
-keywords = ["opnsense", "firewall", "gateway", "mcp", "emberai", "netex", "monitoring"]
+keywords = [
+    "opnsense",
+    "firewall",
+    "gateway",
+    "mcp",
+    "emberai",
+    "netex",
+    "monitoring",
+    "network",
+    "vpn",
+    "ipsec",
+    "wireguard",
+    "dns",
+    "dhcp",
+    "suricata",
+    "ids",
+    "ips",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: System Administrators",
@@ -26,9 +43,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: System :: Networking",
+    "Topic :: System :: Networking :: Firewalls",
+    "Topic :: System :: Networking :: Monitoring",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Systems Administration",
+    "Topic :: Security",
     "Typing :: Typed",
+    "Framework :: Pydantic :: 2",
 ]
 
 dependencies = [
