@@ -4,8 +4,6 @@ Maps from OPNsense API responses for VPN sessions and peers to normalized
 Python representations.
 """
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -60,10 +58,10 @@ class IPSecSession(BaseModel):
         alias="bytes-out",
         description="Bytes transmitted through this tunnel",
     )
-    established_at: datetime | None = Field(
+    established_at: str | None = Field(
         default=None,
         alias="established",
-        description="Timestamp when the tunnel was established",
+        description="Timestamp when the tunnel was established (ISO 8601)",
     )
 
 
