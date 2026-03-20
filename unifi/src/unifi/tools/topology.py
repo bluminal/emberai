@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
-"""Topology skill MCP tools -- device, VLAN, and uplink discovery.
+"""Topology skill MCP tools -- device, VLAN, uplink, site, and host discovery.
 
 Provides MCP tools for listing and inspecting UniFi network devices
-(switches, access points, gateways, consoles) and VLANs via the
-Local Gateway API.
+(switches, access points, gateways, consoles), VLANs, sites, and hosts
+via the Local Gateway API and Cloud V1 API.
 """
 
 from __future__ import annotations
@@ -12,9 +12,11 @@ import logging
 import os
 from typing import Any
 
+from unifi.api.cloud_v1_client import CloudV1Client
 from unifi.api.local_gateway_client import LocalGatewayClient
-from unifi.errors import APIError
+from unifi.errors import APIError, AuthenticationError
 from unifi.models.device import Device
+from unifi.models.site import Site
 from unifi.models.vlan import VLAN
 from unifi.server import mcp_server
 
@@ -59,6 +61,24 @@ def _get_client() -> LocalGatewayClient:
     host = os.environ.get("UNIFI_LOCAL_HOST", "")
     key = os.environ.get("UNIFI_LOCAL_KEY", "")
     return LocalGatewayClient(host=host, api_key=key)
+
+
+def _get_cloud_client() -> CloudV1Client:
+    """Get a configured CloudV1Client from the ``UNIFI_API_KEY`` env var.
+
+    Raises
+    ------
+    AuthenticationError
+        If ``UNIFI_API_KEY`` is not set or empty.
+    """
+    api_key = os.environ.get("UNIFI_API_KEY", "").strip()
+    if not api_key:
+        raise AuthenticationError(
+            "UNIFI_API_KEY is not configured. "
+            "Set this environment variable to use Cloud V1 API features.",
+            env_var="UNIFI_API_KEY",
+        )
+    return CloudV1Client(api_key=api_key)
 
 
 # ---------------------------------------------------------------------------
@@ -279,3 +299,77 @@ async def unifi__topology__get_uplinks(site_id: str = "default") -> list[dict[st
     )
 
     return graph
+
+
+# ---------------------------------------------------------------------------
+# Cloud V1 tools: Sites and Hosts
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def unifi__topology__list_sites() -> list[dict[str, Any]]:
+    """List all UniFi sites accessible via Cloud V1 API.
+
+    Requires UNIFI_API_KEY to be configured. Returns site inventory
+    with ID, name, description, device count, and client count.
+    """
+    client = _get_cloud_client()
+    try:
+        normalized = await client.get_normalized("sites")
+    finally:
+        await client.close()
+
+    sites: list[dict[str, Any]] = []
+    for raw_site in normalized.data:
+        try:
+            site = Site.model_validate(raw_site)
+            sites.append(site.model_dump(by_alias=False))
+        except Exception:
+            logger.warning(
+                "Skipping unparseable site entry: %s",
+                raw_site.get("name", raw_site.get("_id", "unknown")),
+                exc_info=True,
+            )
+
+    logger.info(
+        "Listed %d sites via Cloud V1 API",
+        len(sites),
+        extra={"component": "topology"},
+    )
+
+    return sites
+
+
+@mcp_server.tool()
+async def unifi__topology__list_hosts() -> list[dict[str, Any]]:
+    """List all UniFi hosts (controllers/consoles) via Cloud V1 API.
+
+    Requires UNIFI_API_KEY to be configured. Returns host inventory
+    with host ID, name, IP address, hardware type, and firmware version.
+    """
+    client = _get_cloud_client()
+    try:
+        normalized = await client.get_normalized("hosts")
+    finally:
+        await client.close()
+
+    hosts: list[dict[str, Any]] = []
+    for raw_host in normalized.data:
+        hosts.append({
+            "host_id": raw_host.get("_id", raw_host.get("id", "")),
+            "name": raw_host.get("hostname", raw_host.get("name", "")),
+            "ip": raw_host.get("ip", raw_host.get("wan_ip", "")),
+            "type": raw_host.get("type", raw_host.get("hardware_type", "")),
+            "firmware_version": raw_host.get(
+                "firmware_version",
+                raw_host.get("version", ""),
+            ),
+        })
+
+    logger.info(
+        "Listed %d hosts via Cloud V1 API",
+        len(hosts),
+        extra={"component": "topology"},
+    )
+
+    return hosts

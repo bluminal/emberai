@@ -3,7 +3,11 @@
 
 Provides MCP tools for monitoring UniFi network health, device status,
 ISP connectivity metrics, event retrieval, and firmware upgrade status
-via the Local Gateway API.
+via the Local Gateway API and Cloud V1 API.
+
+When ``UNIFI_API_KEY`` is configured, the firmware status tool uses the
+Cloud V1 ``/v1/devices`` endpoint for more accurate cloud-reported
+firmware state.  Otherwise it falls back to local device data.
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from unifi.api.cloud_v1_client import CloudV1Client
 from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.api.response import NormalizedResponse
 from unifi.models.event import Event
@@ -56,6 +61,17 @@ def _get_client() -> LocalGatewayClient:
     host = os.environ.get("UNIFI_LOCAL_HOST", "")
     key = os.environ.get("UNIFI_LOCAL_KEY", "")
     return LocalGatewayClient(host=host, api_key=key)
+
+
+def _has_cloud_api_key() -> bool:
+    """Return True if ``UNIFI_API_KEY`` is set and non-empty."""
+    return bool(os.environ.get("UNIFI_API_KEY", "").strip())
+
+
+def _get_cloud_client() -> CloudV1Client:
+    """Get a configured CloudV1Client from the ``UNIFI_API_KEY`` env var."""
+    api_key = os.environ.get("UNIFI_API_KEY", "").strip()
+    return CloudV1Client(api_key=api_key)
 
 
 # ---------------------------------------------------------------------------
@@ -383,9 +399,53 @@ async def unifi__health__get_firmware_status(
     Returns each device's current firmware version, latest available
     version, and whether an upgrade is available.
 
+    When ``UNIFI_API_KEY`` is configured, uses the Cloud V1
+    ``/v1/devices`` endpoint for more accurate cloud-reported firmware
+    state.  Falls back to local device data when the key is not set.
+
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    if _has_cloud_api_key():
+        return await _firmware_status_cloud()
+    return await _firmware_status_local(site_id)
+
+
+async def _firmware_status_cloud() -> list[dict[str, Any]]:
+    """Fetch firmware status via Cloud V1 ``/v1/devices``."""
+    cloud_client = _get_cloud_client()
+    try:
+        normalized = await cloud_client.get_normalized("devices")
+    finally:
+        await cloud_client.close()
+
+    firmware_list: list[dict[str, Any]] = []
+    for raw_device in normalized.data:
+        # Cloud V1 may return state as int or string
+        if "state" in raw_device:
+            raw_device["state"] = _state_to_str(raw_device["state"])
+
+        try:
+            fw = FirmwareStatus.model_validate(raw_device)
+            firmware_list.append(fw.model_dump(by_alias=False))
+        except Exception:
+            logger.warning(
+                "Skipping device for firmware status (cloud): %s",
+                raw_device.get("name", raw_device.get("_id", "unknown")),
+                exc_info=True,
+            )
+
+    logger.info(
+        "Retrieved firmware status for %d devices via Cloud V1 API",
+        len(firmware_list),
+        extra={"component": "health"},
+    )
+
+    return firmware_list
+
+
+async def _firmware_status_local(site_id: str) -> list[dict[str, Any]]:
+    """Fetch firmware status via the local gateway API."""
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/device")
