@@ -9,11 +9,13 @@ Skill modules:
 - ``services`` -- DNS overrides, DHCP leases, traffic shaping
 - ``diagnostics`` -- Ping, traceroute, DNS lookup, LLDP, host discovery
 - ``firmware`` -- Firmware status, package inventory
+- ``commands`` -- User-facing command tools (scan, health, diagnose, etc.)
 """
 
-from opnsense.tools import diagnostics, firmware, security, services, vpn
+from opnsense.tools import commands, diagnostics, firmware, security, services, vpn
 
 __all__ = [
+    "commands",
     "diagnostics",
     "firmware",
     "security",
