@@ -748,7 +748,7 @@ class TestConfigAgentIntegration:
             patch("unifi.agents.config.unifi__config__get_backup_state", mock_backup),
             patch("unifi.agents.config.unifi__config__diff_baseline", mock_diff),
         ):
-            result = await config_review()
+            result = await config_review(drift=True)
 
         assert "## Config Review" in result
         assert "**Networks:** 3" in result
@@ -792,7 +792,7 @@ class TestConfigAgentIntegration:
             patch("unifi.agents.config.unifi__config__get_backup_state", mock_backup),
             patch("unifi.agents.config.unifi__config__diff_baseline", mock_diff),
         ):
-            result = await config_review()
+            result = await config_review(drift=True)
 
         assert "Warning" in result
         assert "Configuration drift" in result
@@ -812,7 +812,7 @@ class TestConfigAgentIntegration:
             patch("unifi.agents.config.unifi__config__get_backup_state", mock_backup),
             patch("unifi.agents.config.unifi__config__diff_baseline", mock_diff),
         ):
-            result = await config_review()
+            result = await config_review(drift=True)
 
         assert "No baseline available" in result
         assert "Save a baseline first" in result
