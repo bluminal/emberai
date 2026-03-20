@@ -160,20 +160,20 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 48 | Create `unifi/src/api/cloud_v1_client.py`: async httpx client, base URL `api.ui.com/v1/`, X-API-KEY auth from `UNIFI_API_KEY`, response normalization (`{data, httpStatusCode, traceId}` envelope). **Rate limit handling (D14):** track remaining quota via response headers, handle 429 with exponential backoff (initial 1s, max 60s, jitter), log quota usage at 80% threshold. 10,000 req/min limit. Update `unifi/src/server.py` to load and validate `UNIFI_API_KEY` when Cloud V1 features are used. | L | Plan Phase 1 | pending |
-| 49 | Implement `unifi__topology__list_sites()` tool: call Cloud V1 `/v1/sites`, normalize to `Site` model. | M | Task 48 | pending |
-| 50 | Update `unifi scan` command: when Cloud V1 is configured (`UNIFI_API_KEY` set), list sites and use AskUserQuestion to let operator select target site before scanning. Fall back to single-site mode (Phase 1 behavior) when Cloud V1 is not configured. | M | Task 49 | pending |
-| 51 | Implement `unifi__topology__list_hosts()` tool: call Cloud V1 `/v1/hosts`, return host IDs, names, IPs, firmware. | M | Task 48 | pending |
-| 52 | Implement wifi skill tools (6 tools): `get_wlans`, `get_aps`, `get_channel_utilization`, `get_rf_scan`, `get_roaming_events`, `get_client_rf`. All Local Gateway API. | L | Plan Phase 1 | pending |
-| 53 | Create wifi agent (`unifi/src/agents/wifi.py`): orchestrates wifi tools, uses OX formatters for channel/RF reports. | M | Task 52 | pending |
-| 54 | Implement traffic skill tools (4 tools): `get_bandwidth`, `get_dpi_stats`, `get_port_stats`, `get_wan_usage`. | L | Plan Phase 1 | pending |
-| 55 | Create traffic agent (`unifi/src/agents/traffic.py`). | M | Task 54 | pending |
-| 56 | Update `unifi__health__get_firmware_status` to use Cloud V1 `/v1/devices` for cloud-reported firmware state when available. Fall back to local data. | S | Task 48 | pending |
-| 57 | Implement security skill tools (5 tools): `get_firewall_rules`, `get_zbf_policies`, `get_acls`, `get_port_forwards`, `get_ids_alerts`. | L | Plan Phase 1 | pending |
-| 58 | Create security agent (`unifi/src/agents/security.py`): risk-ranked security posture summary. | M | Task 57 | pending |
-| 59 | Implement config skill tools (3 read tools): `get_config_snapshot`, `diff_baseline`, `get_backup_state`. | M | Plan Phase 1 | pending |
-| 60 | Create config agent (`unifi/src/agents/config.py`). | M | Task 59 | pending |
-| 61 | Write tests for Cloud V1 client (rate limit handling, 429 backoff, envelope normalization), all new skill tools, and all new agents. Break into per-skill-group test files. | L | Tasks 48-60 | pending |
+| 48 | Create `unifi/src/api/cloud_v1_client.py`: async httpx client, base URL `api.ui.com/v1/`, X-API-KEY auth from `UNIFI_API_KEY`, response normalization (`{data, httpStatusCode, traceId}` envelope). **Rate limit handling (D14):** track remaining quota via response headers, handle 429 with exponential backoff (initial 1s, max 60s, jitter), log quota usage at 80% threshold. 10,000 req/min limit. Update `unifi/src/server.py` to load and validate `UNIFI_API_KEY` when Cloud V1 features are used. | L | Plan Phase 1 | done |
+| 49 | Implement `unifi__topology__list_sites()` tool: call Cloud V1 `/v1/sites`, normalize to `Site` model. | M | Task 48 | done |
+| 50 | Update `unifi scan` command: when Cloud V1 is configured (`UNIFI_API_KEY` set), list sites and use AskUserQuestion to let operator select target site before scanning. Fall back to single-site mode (Phase 1 behavior) when Cloud V1 is not configured. | M | Task 49 | done |
+| 51 | Implement `unifi__topology__list_hosts()` tool: call Cloud V1 `/v1/hosts`, return host IDs, names, IPs, firmware. | M | Task 48 | done |
+| 52 | Implement wifi skill tools (6 tools): `get_wlans`, `get_aps`, `get_channel_utilization`, `get_rf_scan`, `get_roaming_events`, `get_client_rf`. All Local Gateway API. | L | Plan Phase 1 | done |
+| 53 | Create wifi agent (`unifi/src/agents/wifi.py`): orchestrates wifi tools, uses OX formatters for channel/RF reports. | M | Task 52 | done |
+| 54 | Implement traffic skill tools (4 tools): `get_bandwidth`, `get_dpi_stats`, `get_port_stats`, `get_wan_usage`. | L | Plan Phase 1 | done |
+| 55 | Create traffic agent (`unifi/src/agents/traffic.py`). | M | Task 54 | done |
+| 56 | Update `unifi__health__get_firmware_status` to use Cloud V1 `/v1/devices` for cloud-reported firmware state when available. Fall back to local data. | S | Task 48 | done |
+| 57 | Implement security skill tools (5 tools): `get_firewall_rules`, `get_zbf_policies`, `get_acls`, `get_port_forwards`, `get_ids_alerts`. | L | Plan Phase 1 | done |
+| 58 | Create security agent (`unifi/src/agents/security.py`): risk-ranked security posture summary. | M | Task 57 | done |
+| 59 | Implement config skill tools (3 read tools): `get_config_snapshot`, `diff_baseline`, `get_backup_state`. | M | Plan Phase 1 | done |
+| 60 | Create config agent (`unifi/src/agents/config.py`). | M | Task 59 | done |
+| 61 | Write tests for Cloud V1 client (rate limit handling, 429 backoff, envelope normalization), all new skill tools, and all new agents. Break into per-skill-group test files. | L | Tasks 48-60 | done |
 
 **Parallelizable:** Tasks 48, 52, 54, 57, 59 can run concurrently (5 tasks). Tasks 49, 51, 56 depend on 48. Tasks 53, 55, 58, 60 depend on their respective tools. Task 61 after all.
 **Milestone Value:** Full read-only unifi skill coverage (topology, health, wifi, clients, traffic, security, config). Cloud V1 enables multi-site awareness and site selection.
