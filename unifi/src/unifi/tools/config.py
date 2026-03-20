@@ -1,0 +1,279 @@
+# SPDX-License-Identifier: MIT
+"""Config skill MCP tools -- config snapshots, baseline diffs, backup state.
+
+Provides MCP tools for reviewing UniFi site configuration state including
+configuration snapshots, baseline comparison, and backup status via the
+Local Gateway API. All tools are read-only.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from typing import Any
+
+from unifi.api.local_gateway_client import LocalGatewayClient
+from unifi.api.response import NormalizedResponse
+from unifi.server import mcp_server
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Client factory
+# ---------------------------------------------------------------------------
+
+
+def _get_client() -> LocalGatewayClient:
+    """Get a configured LocalGatewayClient from environment variables."""
+    host = os.environ.get("UNIFI_LOCAL_HOST", "")
+    key = os.environ.get("UNIFI_LOCAL_KEY", "")
+    return LocalGatewayClient(host=host, api_key=key)
+
+
+# ---------------------------------------------------------------------------
+# Tool 1: Config Snapshot
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_config_data(
+    client: LocalGatewayClient,
+    site_id: str,
+) -> dict[str, Any]:
+    """Fetch configuration data from multiple endpoints and build a snapshot.
+
+    Collects networks, WLANs, and firewall rules into a single summary.
+    """
+    networks_resp = await client.get_normalized(f"/api/s/{site_id}/rest/networkconf")
+    wlans_resp = await client.get_normalized(f"/api/s/{site_id}/rest/wlanconf")
+    rules_resp = await client.get_normalized(f"/api/s/{site_id}/rest/firewallrule")
+
+    return {
+        "networks": networks_resp.data,
+        "wlans": wlans_resp.data,
+        "firewall_rules": rules_resp.data,
+    }
+
+
+@mcp_server.tool()
+async def unifi__config__get_config_snapshot(
+    site_id: str = "default",
+) -> dict[str, Any]:
+    """Get a configuration snapshot for a site.
+
+    Fetches network, WLAN, and firewall rule configurations and returns
+    a summary with counts and the raw configuration data.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+    """
+    client = _get_client()
+    try:
+        raw_config = await _fetch_config_data(client, site_id)
+    finally:
+        await client.close()
+
+    from datetime import UTC, datetime
+
+    snapshot: dict[str, Any] = {
+        "site_id": site_id,
+        "timestamp": datetime.now(tz=UTC).isoformat(),
+        "network_count": len(raw_config["networks"]),
+        "wlan_count": len(raw_config["wlans"]),
+        "rule_count": len(raw_config["firewall_rules"]),
+        "raw_config": raw_config,
+    }
+
+    logger.info(
+        "Config snapshot for site '%s': %d networks, %d WLANs, %d rules",
+        site_id,
+        snapshot["network_count"],
+        snapshot["wlan_count"],
+        snapshot["rule_count"],
+        extra={"component": "config"},
+    )
+
+    return snapshot
+
+
+# ---------------------------------------------------------------------------
+# Tool 2: Diff Baseline
+# ---------------------------------------------------------------------------
+
+
+def _compute_structural_diff(
+    current: dict[str, list[dict[str, Any]]],
+    baseline: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Compute a structural diff between current config and a stored baseline.
+
+    Compares items by their ``_id`` field across each config section
+    (networks, wlans, firewall_rules). Reports added, removed, and
+    modified entries.
+    """
+    added: list[dict[str, Any]] = []
+    removed: list[dict[str, Any]] = []
+    modified: list[dict[str, Any]] = []
+
+    for section in ("networks", "wlans", "firewall_rules"):
+        current_items = current.get(section, [])
+        baseline_items = baseline.get(section, [])
+
+        current_by_id = {item.get("_id", ""): item for item in current_items}
+        baseline_by_id = {item.get("_id", ""): item for item in baseline_items}
+
+        current_ids = set(current_by_id.keys())
+        baseline_ids = set(baseline_by_id.keys())
+
+        # Items in current but not in baseline
+        for item_id in sorted(current_ids - baseline_ids):
+            item = current_by_id[item_id]
+            added.append({
+                "section": section,
+                "id": item_id,
+                "name": item.get("name", ""),
+            })
+
+        # Items in baseline but not in current
+        for item_id in sorted(baseline_ids - current_ids):
+            item = baseline_by_id[item_id]
+            removed.append({
+                "section": section,
+                "id": item_id,
+                "name": item.get("name", ""),
+            })
+
+        # Items in both but changed
+        for item_id in sorted(current_ids & baseline_ids):
+            if current_by_id[item_id] != baseline_by_id[item_id]:
+                modified.append({
+                    "section": section,
+                    "id": item_id,
+                    "name": current_by_id[item_id].get("name", ""),
+                })
+
+    return {
+        "added": added,
+        "removed": removed,
+        "modified": modified,
+    }
+
+
+# Stored baselines (in-memory for now; production would use persistent storage)
+_baselines: dict[str, dict[str, list[dict[str, Any]]]] = {}
+
+
+@mcp_server.tool()
+async def unifi__config__diff_baseline(
+    site_id: str = "default",
+    baseline_id: str = "latest",
+) -> dict[str, Any]:
+    """Compare current config against a stored baseline.
+
+    Returns a structural diff showing added, removed, and modified
+    configuration items across networks, WLANs, and firewall rules.
+
+    If no baseline exists for the given baseline_id, returns an error
+    message indicating that a baseline must be saved first.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+        baseline_id: Identifier of the stored baseline to compare against.
+            Defaults to "latest".
+    """
+    baseline_key = f"{site_id}:{baseline_id}"
+    baseline = _baselines.get(baseline_key)
+
+    if baseline is None:
+        logger.warning(
+            "No baseline found for '%s' at site '%s'",
+            baseline_id,
+            site_id,
+            extra={"component": "config"},
+        )
+        return {
+            "error": f"No baseline found for '{baseline_id}' at site '{site_id}'.",
+            "hint": "Save a baseline first using the config save_baseline tool.",
+            "added": [],
+            "removed": [],
+            "modified": [],
+        }
+
+    client = _get_client()
+    try:
+        current_config = await _fetch_config_data(client, site_id)
+    finally:
+        await client.close()
+
+    diff = _compute_structural_diff(current_config, baseline)
+
+    logger.info(
+        "Config diff for site '%s' vs baseline '%s': %d added, %d removed, %d modified",
+        site_id,
+        baseline_id,
+        len(diff["added"]),
+        len(diff["removed"]),
+        len(diff["modified"]),
+        extra={"component": "config"},
+    )
+
+    return diff
+
+
+# ---------------------------------------------------------------------------
+# Tool 3: Backup State
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def unifi__config__get_backup_state(
+    site_id: str = "default",
+) -> dict[str, Any]:
+    """Get backup status for a site.
+
+    Returns the last backup time, backup type, and whether cloud backup
+    is enabled.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+    """
+    client = _get_client()
+    try:
+        normalized = await client.get_normalized(f"/api/s/{site_id}/stat/sysinfo")
+    finally:
+        await client.close()
+
+    # The sysinfo endpoint returns system-level info including backup state
+    sysinfo = normalized.data[0] if normalized.data else {}
+
+    # Extract backup-related fields
+    autobackup = sysinfo.get("autobackup", False)
+    last_backup_time = sysinfo.get("last_backup_time", sysinfo.get("previous_heartbeat_at"))
+
+    # Format the timestamp if present
+    formatted_time = ""
+    if isinstance(last_backup_time, (int, float)):
+        if last_backup_time > 1e12:
+            last_backup_time = last_backup_time / 1000
+        from datetime import UTC, datetime
+
+        formatted_time = datetime.fromtimestamp(last_backup_time, tz=UTC).isoformat()
+    elif isinstance(last_backup_time, str):
+        formatted_time = last_backup_time
+
+    backup_state: dict[str, Any] = {
+        "last_backup_time": formatted_time,
+        "backup_type": sysinfo.get("backup_type", "auto" if autobackup else "manual"),
+        "size_mb": sysinfo.get("backup_size_mb"),
+        "cloud_enabled": sysinfo.get("cloud_backup_enabled", sysinfo.get("cloud_key", "") != ""),
+    }
+
+    logger.info(
+        "Retrieved backup state for site '%s': last=%s, cloud=%s",
+        site_id,
+        backup_state["last_backup_time"],
+        backup_state["cloud_enabled"],
+        extra={"component": "config"},
+    )
+
+    return backup_state

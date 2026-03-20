@@ -1,0 +1,26 @@
+{
+  "data": [
+    {
+      "_id": "zbf001",
+      "src_zone": "LAN",
+      "dst_zone": "WAN",
+      "action": "accept",
+      "match_all": false
+    },
+    {
+      "_id": "zbf002",
+      "src_zone": "Guest",
+      "dst_zone": "LAN",
+      "action": "drop",
+      "match_all": true
+    },
+    {
+      "_id": "zbf003",
+      "src_zone": "IoT",
+      "dst_zone": "LAN",
+      "action": "accept",
+      "match_all": true
+    }
+  ],
+  "meta": { "rc": "ok" }
+}

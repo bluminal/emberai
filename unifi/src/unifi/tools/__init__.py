@@ -4,5 +4,7 @@
 # and register handlers when the server starts.
 import unifi.tools.clients as clients  # noqa: F401
 import unifi.tools.commands as commands  # noqa: F401
+import unifi.tools.config as config  # noqa: F401
 import unifi.tools.health as health  # noqa: F401
+import unifi.tools.security as security  # noqa: F401
 import unifi.tools.topology as topology  # noqa: F401
