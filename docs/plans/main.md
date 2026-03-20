@@ -221,11 +221,11 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 81 | Create `opnsense/src/api/opnsense_client.py`: async httpx client, Basic Auth (API key as username, secret as password), SSL verification toggle via `OPNSENSE_VERIFY_SSL` (D11), module/controller/command URL builder (`{host}/api/{module}/{controller}/{command}`). Error handling using error hierarchy (D14): 403->"Insufficient privileges for {resource}. Required privilege: {path}", 401->AuthenticationError, 5xx->APIError, timeout->NetworkError. Structured logging. | L | M2.3 | pending |
-| 82 | Implement reconfigure pattern: separate `_write()` and `_reconfigure()` methods. `_write()` saves config; `_reconfigure()` applies to live system. Reconfigure is never called without passing through write safety gate. Post-write cache flush for affected keys. | M | Task 81 | pending |
-| 83 | Implement response normalization: handle flat JSON and `{result, changed}` action responses. | M | Task 81 | pending |
-| 84 | Integrate TTL cache: interface/route list 5 min, firewall rules 2 min, DHCP leases 1 min. Post-write flush for affected cache keys. | M | Task 78, 81 | pending |
-| 85 | Write tests for OPNsense client: mock httpx, test Basic Auth header, URL construction, reconfigure pattern, cache behavior, error handling (401, 403 with privilege message, 500, timeout, self-signed cert with VERIFY_SSL toggle). Use fixtures from Task 80. | L | Tasks 81-84 | pending |
+| 81 | Create `opnsense/src/api/opnsense_client.py`: async httpx client, Basic Auth (API key as username, secret as password), SSL verification toggle via `OPNSENSE_VERIFY_SSL` (D11), module/controller/command URL builder (`{host}/api/{module}/{controller}/{command}`). Error handling using error hierarchy (D14): 403->"Insufficient privileges for {resource}. Required privilege: {path}", 401->AuthenticationError, 5xx->APIError, timeout->NetworkError. Structured logging. | L | M2.3 | done |
+| 82 | Implement reconfigure pattern: separate `_write()` and `_reconfigure()` methods. `_write()` saves config; `_reconfigure()` applies to live system. Reconfigure is never called without passing through write safety gate. Post-write cache flush for affected keys. | M | Task 81 | done |
+| 83 | Implement response normalization: handle flat JSON and `{result, changed}` action responses. | M | Task 81 | done |
+| 84 | Integrate TTL cache: interface/route list 5 min, firewall rules 2 min, DHCP leases 1 min. Post-write flush for affected cache keys. | M | Task 78, 81 | done |
+| 85 | Write tests for OPNsense client: mock httpx, test Basic Auth header, URL construction, reconfigure pattern, cache behavior, error handling (401, 403 with privilege message, 500, timeout, self-signed cert with VERIFY_SSL toggle). Use fixtures from Task 80. | L | Tasks 81-84 | done |
 
 **Parallelizable:** Task 81 first. Tasks 82, 83, 84 can run concurrently after 81. Task 85 after all.
 **Milestone Value:** Verified OPNsense API client with reconfigure pattern, auth, caching, and comprehensive error handling.
@@ -234,15 +234,15 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 86 | Implement interfaces skill read tools: `list_interfaces`, `list_vlan_interfaces`, `get_dhcp_leases`. Register via `@server.tool()`. | M | M3.1 | pending |
-| 87 | Implement `configure_vlan` write tool (atomic VLAN provisioning). **Design spec:** Step 1: POST VLAN interface (ID, description, parent interface). Step 2: POST IP assignment to new VLAN interface. Step 3: POST DHCP subnet (range, gateway, DNS). Step 4: Single `reconfigure` call. **Rollback on failure:** If step 3 fails, delete step 2 and step 1 artifacts. If step 2 fails, delete step 1 artifact. Rollback does NOT reconfigure (changes were never applied). **Write acceptance criteria:** env var + --apply + operator confirmation via three-phase model. | L | M3.1 | pending |
-| 88 | Implement remaining interfaces write tools: `add_vlan_interface`, `add_dhcp_reservation`, `add_dhcp_subnet`. All write-gated with reconfigure. Same write acceptance criteria. | M | M3.1 | pending |
-| 89 | Implement firewall skill read tools: `list_rules` (with interface filter), `get_rule`, `list_aliases`, `list_nat_rules`. | M | M3.1 | pending |
-| 90 | Implement firewall skill write tools: `add_rule` (with position support), `toggle_rule`, `add_alias`. All write-gated. `add_alias` must precede `add_rule` when rule references an alias. Same write acceptance criteria. | L | M3.1 | pending |
-| 91 | Implement routing skill: `list_routes`, `list_gateways`, `add_route` (write). Graceful degradation if Quagga not installed (Q6): detect via API probe, log warning, disable dynamic routing tools, keep static route tools available. | M | M3.1 | pending |
-| 92 | Implement `get_lldp_neighbors` tool in diagnostics skill: GET `/api/diagnostics/interface/getLldpNeighbors`. | M | M3.1 | pending |
-| 93 | Create agents: `interfaces_agent.py`, `firewall_agent.py`, `routing_agent.py`. All use OX formatters. | M | Tasks 86-91 | pending |
-| 94 | Write tests: all interfaces/firewall/routing tools, `configure_vlan` full workflow (success + each rollback scenario), write gate enforcement, Quagga detection and degradation. | L | Tasks 86-92 | pending |
+| 86 | Implement interfaces skill read tools: `list_interfaces`, `list_vlan_interfaces`, `get_dhcp_leases`. Register via `@server.tool()`. | M | M3.1 | done |
+| 87 | Implement `configure_vlan` write tool (atomic VLAN provisioning). **Design spec:** Step 1: POST VLAN interface (ID, description, parent interface). Step 2: POST IP assignment to new VLAN interface. Step 3: POST DHCP subnet (range, gateway, DNS). Step 4: Single `reconfigure` call. **Rollback on failure:** If step 3 fails, delete step 2 and step 1 artifacts. If step 2 fails, delete step 1 artifact. Rollback does NOT reconfigure (changes were never applied). **Write acceptance criteria:** env var + --apply + operator confirmation via three-phase model. | L | M3.1 | done |
+| 88 | Implement remaining interfaces write tools: `add_vlan_interface`, `add_dhcp_reservation`, `add_dhcp_subnet`. All write-gated with reconfigure. Same write acceptance criteria. | M | M3.1 | done |
+| 89 | Implement firewall skill read tools: `list_rules` (with interface filter), `get_rule`, `list_aliases`, `list_nat_rules`. | M | M3.1 | done |
+| 90 | Implement firewall skill write tools: `add_rule` (with position support), `toggle_rule`, `add_alias`. All write-gated. `add_alias` must precede `add_rule` when rule references an alias. Same write acceptance criteria. | L | M3.1 | done |
+| 91 | Implement routing skill: `list_routes`, `list_gateways`, `add_route` (write). Graceful degradation if Quagga not installed (Q6): detect via API probe, log warning, disable dynamic routing tools, keep static route tools available. | M | M3.1 | done |
+| 92 | Implement `get_lldp_neighbors` tool in diagnostics skill: GET `/api/diagnostics/interface/getLldpNeighbors`. | M | M3.1 | done |
+| 93 | Create agents: `interfaces_agent.py`, `firewall_agent.py`, `routing_agent.py`. All use OX formatters. | M | Tasks 86-91 | done |
+| 94 | Write tests: all interfaces/firewall/routing tools, `configure_vlan` full workflow (success + each rollback scenario), write gate enforcement, Quagga detection and degradation. | L | Tasks 86-92 | done |
 
 **Parallelizable:** Tasks 86-92 can all run concurrently (7 tasks). Task 93 depends on 86-91. Task 94 after all.
 **Milestone Value:** Core gateway operations work: list/create VLANs (atomic with rollback), manage firewall rules and aliases, view routing. Write operations gated and tested.
@@ -251,12 +251,12 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 95 | Implement VPN skill (4 tools): `list_ipsec_sessions`, `list_openvpn_instances`, `list_wireguard_peers`, `get_vpn_status`. Create vpn agent. | M | M3.1 | pending |
-| 96 | Implement security skill (4 tools): `get_ids_alerts`, `get_ids_rules`, `get_ids_policy`, `get_certificates`. Create security agent. | M | M3.1 | pending |
-| 97 | Implement services skill (6 tools): `get_dns_overrides`, `get_dns_forwarders`, `resolve_hostname`, `add_dns_override` (write, same acceptance criteria), `get_dhcp_leases4`, `get_traffic_shaper`. Create services agent. | L | M3.1 | pending |
-| 98 | Implement diagnostics skill (5 tools): `run_ping`, `run_traceroute`, `dns_lookup`, `get_lldp_neighbors` (reuse from Task 92 if already registered). Create diagnostics agent. `run_host_discovery` (async): **Polling strategy:** POST to start scan, poll GET status endpoint every 2s, timeout after 120s, return partial results on timeout with warning. Provide `--blocking` flag to wait synchronously (default) and `--background` to return immediately with a scan ID for later retrieval. | L | M3.1 | pending |
-| 99 | Implement firmware skill (2 tools): `get_status`, `list_packages`. Create firmware agent. | S | M3.1 | pending |
-| 100 | Write tests for all VPN/security/services/diagnostics/firmware tools. Test `run_host_discovery` polling (success, timeout with partial results, API error mid-poll). Test `add_dns_override` write gate. Per-skill-group test files. | L | Tasks 95-99 | pending |
+| 95 | Implement VPN skill (4 tools): `list_ipsec_sessions`, `list_openvpn_instances`, `list_wireguard_peers`, `get_vpn_status`. Create vpn agent. | M | M3.1 | done |
+| 96 | Implement security skill (4 tools): `get_ids_alerts`, `get_ids_rules`, `get_ids_policy`, `get_certificates`. Create security agent. | M | M3.1 | done |
+| 97 | Implement services skill (6 tools): `get_dns_overrides`, `get_dns_forwarders`, `resolve_hostname`, `add_dns_override` (write, same acceptance criteria), `get_dhcp_leases4`, `get_traffic_shaper`. Create services agent. | L | M3.1 | done |
+| 98 | Implement diagnostics skill (5 tools): `run_ping`, `run_traceroute`, `dns_lookup`, `get_lldp_neighbors` (reuse from Task 92 if already registered). Create diagnostics agent. `run_host_discovery` (async): **Polling strategy:** POST to start scan, poll GET status endpoint every 2s, timeout after 120s, return partial results on timeout with warning. Provide `--blocking` flag to wait synchronously (default) and `--background` to return immediately with a scan ID for later retrieval. | L | M3.1 | done |
+| 99 | Implement firmware skill (2 tools): `get_status`, `list_packages`. Create firmware agent. | S | M3.1 | done |
+| 100 | Write tests for all VPN/security/services/diagnostics/firmware tools. Test `run_host_discovery` polling (success, timeout with partial results, API error mid-poll). Test `add_dns_override` write gate. Per-skill-group test files. | L | Tasks 95-99 | done |
 
 **Parallelizable:** Tasks 95-99 can all run concurrently (5 tasks). Task 100 after all.
 **Milestone Value:** Full opnsense read capability across all 8 skill groups. VPN monitoring, IDS/IPS visibility, DNS management, live diagnostics, firmware tracking.
@@ -265,15 +265,15 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 101 | Implement `opnsense scan` command: interfaces, VLANs, routes, gateways, VPN status, firmware. Flag down interfaces and lossy gateways. Uses OX formatters. | M | M3.2, M3.3 | pending |
-| 102 | Implement `opnsense health` command: gateway latency/loss, IDS alerts (24h), firmware status, WAN reachability (ping 8.8.8.8), cert expiry check (30 days). | M | M3.2, M3.3 | pending |
-| 103 | Implement `opnsense diagnose` command: host mode (ping, traceroute, DNS, firewall path) and interface mode (interfaces, gateways, host discovery, DHCP leases). Uses AskUserQuestion for ambiguous targets. | L | M3.2, M3.3 | pending |
-| 104 | Implement `opnsense firewall` command: list rules/aliases/NAT. `--audit` adds shadow analysis, over-broad rule detection, disabled rule count. | L | M3.2 | pending |
-| 105 | Implement `opnsense firewall policy-from-matrix` command. **Split into sub-tasks:** (a) Parse YAML/CSV access matrix into internal representation. (b) `--audit` mode: compare matrix against existing rules, surface gaps. (c) `--apply` mode: derive minimum ruleset (create aliases first via `add_alias`, then rules in correct order via `add_rule`, single `reconfigure`). Write acceptance criteria apply to (c). | L | M3.2 | pending |
-| 106 | Implement `opnsense vlan` command: list VLANs. `--configure` uses atomic `configure_vlan` (Task 87). `--audit` checks VLAN-to-DHCP consistency (handles intentional range offsets). | M | M3.2 | pending |
-| 107 | Implement `opnsense dhcp reserve-batch` command: parse device spec (hostname:mac:ip), verify MACs via DHCP leases, batch `add_dhcp_reservation`, single reconfigure. Write acceptance criteria. | M | M3.2 | pending |
-| 108 | Implement `opnsense vpn`, `opnsense dns`, `opnsense secure`, `opnsense firmware` commands per PRD command definitions. | L | M3.3 | pending |
-| 109 | Write tests for all opnsense commands. Test `policy-from-matrix` with sample access matrices (valid, invalid, partial overlap). Test `dhcp reserve-batch` with multi-device spec. Per-command test files. | L | Tasks 101-108 | pending |
+| 101 | Implement `opnsense scan` command: interfaces, VLANs, routes, gateways, VPN status, firmware. Flag down interfaces and lossy gateways. Uses OX formatters. | M | M3.2, M3.3 | done |
+| 102 | Implement `opnsense health` command: gateway latency/loss, IDS alerts (24h), firmware status, WAN reachability (ping 8.8.8.8), cert expiry check (30 days). | M | M3.2, M3.3 | done |
+| 103 | Implement `opnsense diagnose` command: host mode (ping, traceroute, DNS, firewall path) and interface mode (interfaces, gateways, host discovery, DHCP leases). Uses AskUserQuestion for ambiguous targets. | L | M3.2, M3.3 | done |
+| 104 | Implement `opnsense firewall` command: list rules/aliases/NAT. `--audit` adds shadow analysis, over-broad rule detection, disabled rule count. | L | M3.2 | done |
+| 105 | Implement `opnsense firewall policy-from-matrix` command. **Split into sub-tasks:** (a) Parse YAML/CSV access matrix into internal representation. (b) `--audit` mode: compare matrix against existing rules, surface gaps. (c) `--apply` mode: derive minimum ruleset (create aliases first via `add_alias`, then rules in correct order via `add_rule`, single `reconfigure`). Write acceptance criteria apply to (c). | L | M3.2 | done |
+| 106 | Implement `opnsense vlan` command: list VLANs. `--configure` uses atomic `configure_vlan` (Task 87). `--audit` checks VLAN-to-DHCP consistency (handles intentional range offsets). | M | M3.2 | done |
+| 107 | Implement `opnsense dhcp reserve-batch` command: parse device spec (hostname:mac:ip), verify MACs via DHCP leases, batch `add_dhcp_reservation`, single reconfigure. Write acceptance criteria. | M | M3.2 | done |
+| 108 | Implement `opnsense vpn`, `opnsense dns`, `opnsense secure`, `opnsense firmware` commands per PRD command definitions. | L | M3.3 | done |
+| 109 | Write tests for all opnsense commands. Test `policy-from-matrix` with sample access matrices (valid, invalid, partial overlap). Test `dhcp reserve-batch` with multi-device spec. Per-command test files. | L | Tasks 101-108 | done |
 
 **Parallelizable:** Tasks 101-108 can all run concurrently (8 tasks). Task 109 after all.
 **Milestone Value:** Complete opnsense plugin with all commands from PRD Section 4. Operators can manage their OPNsense firewall end-to-end.
@@ -282,11 +282,11 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 110 | Create `docs/opnsense/overview.md`, `docs/opnsense/commands.md`, `docs/opnsense/skills.md`. | M | M3.4 | pending |
-| 111 | Write 5 basic opnsense workflow examples (PRD Section 9.5): first-time scan, review firewall, check VPN health, troubleshoot DNS, DHCP lease audit. Follow 7-section template. | L | M3.4 | pending |
-| 112 | Update `docs/getting-started/authentication.md` -- add OPNsense API key + secret setup alongside existing UniFi auth docs. | S | M3.4 | pending |
-| 113 | Set up mkdocstrings for auto-generated API reference from Python docstrings. Configure for both unifi and opnsense. | M | M3.4 | pending |
-| 114 | Create EmberAI marketplace packaging for opnsense plugin. | S | M3.4 | pending |
+| 110 | Create `docs/opnsense/overview.md`, `docs/opnsense/commands.md`, `docs/opnsense/skills.md`. | M | M3.4 | done |
+| 111 | Write 5 basic opnsense workflow examples (PRD Section 9.5): first-time scan, review firewall, check VPN health, troubleshoot DNS, DHCP lease audit. Follow 7-section template. | L | M3.4 | done |
+| 112 | Update `docs/getting-started/authentication.md` -- add OPNsense API key + secret setup alongside existing UniFi auth docs. | S | M3.4 | done |
+| 113 | Set up mkdocstrings for auto-generated API reference from Python docstrings. Configure for both unifi and opnsense. | M | M3.4 | done |
+| 114 | Create EmberAI marketplace packaging for opnsense plugin. | S | M3.4 | done |
 
 **Parallelizable:** Tasks 110-114 can all run concurrently (5 tasks).
 **Milestone Value:** opnsense plugin documented and published to EmberAI marketplace. Operators can install either or both plugins independently.
