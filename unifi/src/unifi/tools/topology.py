@@ -1,23 +1,27 @@
 # SPDX-License-Identifier: MIT
-"""Topology skill MCP tools -- device, VLAN, uplink, site, and host discovery.
+"""Topology skill MCP tools -- device, VLAN, uplink, site, host, and port assignment.
 
 Provides MCP tools for listing and inspecting UniFi network devices
 (switches, access points, gateways, consoles), VLANs, sites, and hosts
-via the Local Gateway API and Cloud V1 API.
+via the Local Gateway API and Cloud V1 API.  Also provides write-gated
+tools for assigning port profiles to switch ports.
 """
 
 from __future__ import annotations
 
+import copy
 import logging
 import os
 from typing import Any
 
 from unifi.api.cloud_v1_client import CloudV1Client
 from unifi.api.local_gateway_client import LocalGatewayClient
-from unifi.errors import APIError, AuthenticationError
+from unifi.api.response import normalize_response
+from unifi.errors import APIError, AuthenticationError, ValidationError
 from unifi.models.device import Device
 from unifi.models.site import Site
 from unifi.models.vlan import VLAN
+from unifi.safety import write_gate
 from unifi.server import mcp_server
 
 logger = logging.getLogger(__name__)
@@ -373,3 +377,155 @@ async def unifi__topology__list_hosts() -> list[dict[str, Any]]:
     )
 
     return hosts
+
+
+# ---------------------------------------------------------------------------
+# Write tool: Assign Port Profile
+# ---------------------------------------------------------------------------
+
+
+def _build_port_overrides(
+    existing_overrides: list[dict[str, Any]],
+    port_idx: int,
+    profile_id: str,
+) -> list[dict[str, Any]]:
+    """Build an updated port_overrides list with the new profile assignment.
+
+    If a port_override entry already exists for the given port_idx, it is
+    updated in place.  Otherwise, a new entry is appended.  The original
+    list is not mutated -- a deep copy is made first.
+
+    Args:
+        existing_overrides: Current port_overrides from the device.
+        port_idx: The 1-based port index to update.
+        profile_id: The portconf ID to assign.
+
+    Returns:
+        A new port_overrides list with the assignment applied.
+    """
+    overrides = copy.deepcopy(existing_overrides)
+
+    # Find existing override for this port
+    for override in overrides:
+        if override.get("port_idx") == port_idx:
+            override["portconf_id"] = profile_id
+            return overrides
+
+    # No existing override for this port -- add a new entry
+    overrides.append({
+        "port_idx": port_idx,
+        "portconf_id": profile_id,
+    })
+
+    return overrides
+
+
+@mcp_server.tool()
+@write_gate("UNIFI")
+async def unifi__topology__assign_port_profile(
+    device_id: str,
+    port_idx: int,
+    profile_name: str,
+    site_id: str = "default",
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Assign a port profile to a specific switch port.
+
+    Write-gated: requires UNIFI_WRITE_ENABLED=true and apply=True.
+
+    CAUTION: Never assign to the port connected to OPNsense until
+    all VLAN configuration on OPNsense is complete.
+
+    Fetches the current device configuration, looks up the port profile
+    by name, and applies it to the specified port via a port_overrides
+    update on the device.
+
+    Args:
+        device_id: The device ID (``_id`` field, not MAC address).
+        port_idx: The 1-based port index on the switch.
+        profile_name: Name of the port profile to assign.
+        site_id: UniFi site ID. Defaults to "default".
+        apply: Must be True to execute (write gate).
+    """
+    if port_idx < 1:
+        raise ValidationError(
+            f"Invalid port_idx: {port_idx}. Port indices are 1-based.",
+            details={"field": "port_idx", "value": port_idx},
+        )
+
+    if not profile_name or not profile_name.strip():
+        raise ValidationError(
+            "Profile name must not be empty.",
+            details={"field": "profile_name"},
+        )
+
+    client = _get_client()
+    try:
+        # Step 1: Fetch current device to get existing port_overrides
+        device_raw = await client.get_single(
+            f"/api/s/{site_id}/stat/device/{device_id}",
+        )
+
+        # Step 2: Look up the port profile by name
+        portconf_resp = await client.get_normalized(
+            f"/api/s/{site_id}/rest/portconf",
+        )
+
+        # Find the profile matching the requested name
+        profile_id = ""
+        for profile in portconf_resp.data:
+            if profile.get("name") == profile_name.strip():
+                profile_id = profile.get("_id", "")
+                break
+
+        if not profile_id:
+            available = [p.get("name", "") for p in portconf_resp.data]
+            raise ValidationError(
+                f"Port profile '{profile_name}' not found. "
+                f"Available profiles: {', '.join(available) or '(none)'}",
+                details={
+                    "field": "profile_name",
+                    "value": profile_name,
+                    "available": available,
+                },
+            )
+
+        # Step 3: Build updated port_overrides
+        existing_overrides = device_raw.get("port_overrides", [])
+        updated_overrides = _build_port_overrides(
+            existing_overrides, port_idx, profile_id,
+        )
+
+        # Step 4: PUT the updated device config
+        update_body: dict[str, Any] = {
+            "port_overrides": updated_overrides,
+        }
+
+        raw_response = await client.put(
+            f"/api/s/{site_id}/rest/device/{device_id}",
+            data=update_body,
+        )
+    finally:
+        await client.close()
+
+    # Parse response -- validate envelope (raises on API error)
+    normalize_response(raw_response)
+
+    logger.info(
+        "Assigned port profile '%s' (id=%s) to port %d on device %s (site '%s')",
+        profile_name,
+        profile_id,
+        port_idx,
+        device_id,
+        site_id,
+        extra={"component": "topology"},
+    )
+
+    return {
+        "device_id": device_id,
+        "port_idx": port_idx,
+        "profile_applied": profile_name.strip(),
+        "profile_id": profile_id,
+        "site_id": site_id,
+    }

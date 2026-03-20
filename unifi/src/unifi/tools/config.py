@@ -1,19 +1,24 @@
 # SPDX-License-Identifier: MIT
-"""Config skill MCP tools -- config snapshots, baseline diffs, backup state.
+"""Config skill MCP tools -- config snapshots, baseline diffs, backup state, write ops.
 
 Provides MCP tools for reviewing UniFi site configuration state including
 configuration snapshots, baseline comparison, and backup status via the
-Local Gateway API. All tools are read-only.
+Local Gateway API.  Also provides write-gated tools for saving baselines
+and creating port profiles.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from unifi.api.local_gateway_client import LocalGatewayClient
-from unifi.api.response import NormalizedResponse
+from unifi.api.response import normalize_response
+from unifi.errors import ValidationError
+from unifi.safety import write_gate
 from unifi.server import mcp_server
 
 logger = logging.getLogger(__name__)
@@ -72,8 +77,6 @@ async def unifi__config__get_config_snapshot(
         raw_config = await _fetch_config_data(client, site_id)
     finally:
         await client.close()
-
-    from datetime import UTC, datetime
 
     snapshot: dict[str, Any] = {
         "site_id": site_id,
@@ -255,8 +258,6 @@ async def unifi__config__get_backup_state(
     if isinstance(last_backup_time, (int, float)):
         if last_backup_time > 1e12:
             last_backup_time = last_backup_time / 1000
-        from datetime import UTC, datetime
-
         formatted_time = datetime.fromtimestamp(last_backup_time, tz=UTC).isoformat()
     elif isinstance(last_backup_time, str):
         formatted_time = last_backup_time
@@ -277,3 +278,176 @@ async def unifi__config__get_backup_state(
     )
 
     return backup_state
+
+
+# ---------------------------------------------------------------------------
+# Tool 4: Save Baseline (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+@write_gate("UNIFI")
+async def unifi__config__save_baseline(
+    site_id: str = "default",
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Save current config as a baseline for future drift detection.
+
+    Write-gated: requires UNIFI_WRITE_ENABLED=true and apply=True.
+
+    Takes a configuration snapshot of networks, WLANs, and firewall rules
+    and stores it as a named baseline.  The baseline can later be compared
+    against the live configuration using the diff_baseline tool.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+        apply: Must be True to execute (write gate).
+    """
+    client = _get_client()
+    try:
+        raw_config = await _fetch_config_data(client, site_id)
+    finally:
+        await client.close()
+
+    timestamp = datetime.now(tz=UTC).isoformat()
+    baseline_id = uuid.uuid4().hex[:12]
+
+    # Store under both the specific ID and "latest" alias
+    _baselines[f"{site_id}:{baseline_id}"] = raw_config
+    _baselines[f"{site_id}:latest"] = raw_config
+
+    logger.info(
+        "Saved baseline '%s' for site '%s': %d networks, %d WLANs, %d rules",
+        baseline_id,
+        site_id,
+        len(raw_config.get("networks", [])),
+        len(raw_config.get("wlans", [])),
+        len(raw_config.get("firewall_rules", [])),
+        extra={"component": "config"},
+    )
+
+    return {
+        "baseline_id": baseline_id,
+        "timestamp": timestamp,
+        "site_id": site_id,
+        "network_count": len(raw_config.get("networks", [])),
+        "wlan_count": len(raw_config.get("wlans", [])),
+        "rule_count": len(raw_config.get("firewall_rules", [])),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tool 5: Create Port Profile (write-gated)
+# ---------------------------------------------------------------------------
+
+
+def _parse_tagged_vlans(tagged_vlans: str) -> list[str]:
+    """Parse a comma-separated string of VLAN IDs into a list.
+
+    Strips whitespace and filters out empty strings.  Returns an empty
+    list when given an empty or whitespace-only string.
+    """
+    if not tagged_vlans or not tagged_vlans.strip():
+        return []
+    return [v.strip() for v in tagged_vlans.split(",") if v.strip()]
+
+
+def _validate_vlan_id(vlan_id: int, field_name: str = "native_vlan") -> None:
+    """Validate that a VLAN ID is within the allowed range (1-4094)."""
+    if not 1 <= vlan_id <= 4094:
+        raise ValidationError(
+            f"Invalid {field_name}: {vlan_id}. VLAN IDs must be between 1 and 4094.",
+            details={"field": field_name, "value": vlan_id},
+        )
+
+
+@mcp_server.tool()
+@write_gate("UNIFI")
+async def unifi__config__create_port_profile(
+    name: str,
+    native_vlan: int,
+    tagged_vlans: str = "",
+    poe: bool = False,
+    site_id: str = "default",
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Create a named switch port profile.
+
+    Write-gated: requires UNIFI_WRITE_ENABLED=true and apply=True.
+
+    Creates a port profile (portconf) on the UniFi controller that can
+    be assigned to individual switch ports.  The profile defines the
+    native (untagged) VLAN, optional tagged VLANs, and PoE mode.
+
+    Args:
+        name: Profile name (e.g., "Trunk-AP").
+        native_vlan: Native/untagged VLAN ID (1-4094).
+        tagged_vlans: Comma-separated tagged VLAN IDs (e.g., "30,50,60").
+        poe: Enable PoE on ports using this profile.
+        site_id: UniFi site ID. Defaults to "default".
+        apply: Must be True to execute (write gate).
+    """
+    # --- Input validation ---
+    if not name or not name.strip():
+        raise ValidationError(
+            "Profile name must not be empty.",
+            details={"field": "name"},
+        )
+
+    _validate_vlan_id(native_vlan, "native_vlan")
+
+    tagged_list = _parse_tagged_vlans(tagged_vlans)
+    for tag_str in tagged_list:
+        try:
+            tag_int = int(tag_str)
+        except ValueError as exc:
+            raise ValidationError(
+                f"Invalid tagged VLAN ID: '{tag_str}'. Must be an integer.",
+                details={"field": "tagged_vlans", "value": tag_str},
+            ) from exc
+        _validate_vlan_id(tag_int, "tagged_vlans")
+
+    # --- Build API payload ---
+    body: dict[str, Any] = {
+        "name": name.strip(),
+        "native_networkconf_id": str(native_vlan),
+        "tagged_networkconf_ids": tagged_list,
+        "poe_mode": "auto" if poe else "off",
+    }
+
+    endpoint = f"/api/s/{site_id}/rest/portconf"
+
+    client = _get_client()
+    try:
+        raw_response = await client.post(endpoint, data=body)
+    finally:
+        await client.close()
+
+    # Parse the response envelope to extract the created profile
+    normalized = normalize_response(raw_response)
+
+    profile_data = normalized.data[0] if normalized.data else {}
+    profile_id = profile_data.get("_id", "")
+
+    logger.info(
+        "Created port profile '%s' (id=%s) for site '%s': "
+        "native_vlan=%d, tagged=%s, poe=%s",
+        name,
+        profile_id,
+        site_id,
+        native_vlan,
+        tagged_vlans or "(none)",
+        poe,
+        extra={"component": "config"},
+    )
+
+    return {
+        "profile_id": profile_id,
+        "name": name.strip(),
+        "native_vlan": native_vlan,
+        "tagged_vlans": tagged_list,
+        "poe": poe,
+        "site_id": site_id,
+    }
