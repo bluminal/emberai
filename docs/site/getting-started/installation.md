@@ -1,28 +1,82 @@
 # Installation
 
-This guide covers installing the **unifi** plugin — the first plugin in the Netex suite. The OPNsense and Netex umbrella plugins will be available in later releases.
+This guide covers installing Netex suite plugins via the EmberAI marketplace in Claude Code.
 
 ## Prerequisites
 
-- **Python 3.12 or later** — check with `python3 --version`
-- **Claude Code** or **Claude CoWork** — Netex plugins run as MCP servers inside Claude's tool ecosystem
+- **Python 3.12 or later** -- check with `python3 --version`
+- **Claude Code** -- Netex plugins run as MCP servers inside Claude's plugin ecosystem
 
-## Install the UniFi Plugin
+## Add the EmberAI Marketplace
 
-### From PyPI
+Register the EmberAI marketplace so Claude Code can discover Netex plugins:
 
-```bash
-pip install unifi
+```
+/plugin marketplace add bluminal/emberai
 ```
 
-### From Source (Development)
+## Install Plugins
 
-Clone the repository and install in editable mode:
+Install the plugins you need. Each plugin is independent -- install only what matches your network equipment.
+
+### UniFi Plugin (edge layer)
+
+For UniFi switches, access points, and wireless management:
+
+```
+/plugin install unifi@emberai
+```
+
+### OPNsense Plugin (gateway layer)
+
+For OPNsense firewall, routing, VPN, DNS, DHCP, and IDS/IPS:
+
+```
+/plugin install opnsense@emberai
+```
+
+### Netex Umbrella Plugin (cross-vendor orchestration)
+
+For operations that span both UniFi and OPNsense (unified topology, VLAN provisioning, security audits):
+
+```
+/plugin install netex@emberai
+```
+
+!!! tip "Install order does not matter"
+    Each plugin manages its own virtual environment and dependencies. The netex umbrella
+    plugin discovers installed vendor plugins automatically at startup via the Plugin Registry.
+
+## What Happens on First Run
+
+When a plugin runs for the first time, it:
+
+1. Creates an isolated Python virtual environment
+2. Installs the plugin package and its dependencies
+3. Starts the MCP server
+
+Subsequent runs reuse the existing virtual environment and start immediately.
+
+## Verify Installation
+
+After configuring authentication (see next step), verify each installed plugin:
+
+```
+unifi-server --check
+opnsense-server --check
+netex-server --check
+```
+
+A successful check prints connection status and exits with code 0.
+
+## Alternative: Install from Source (Development)
+
+For contributors or local development, you can install plugins directly:
 
 ```bash
 git clone https://github.com/bluminal/emberai.git
 cd emberai
-pip install -e "./unifi"
+pip install -e "./unifi"       # and/or opnsense, netex
 ```
 
 For development dependencies (testing, linting, type checking):
@@ -31,50 +85,18 @@ For development dependencies (testing, linting, type checking):
 pip install -e "./unifi" --group dev
 ```
 
-## Configure as an MCP Server
-
-Add the unifi plugin to your Claude Code MCP settings. The configuration goes in your Claude Code settings file (typically `~/.claude/settings.json` or the project-level `.claude/settings.json`):
-
-```json
-{
-  "mcpServers": {
-    "unifi": {
-      "command": "unifi-server",
-      "args": ["--transport", "stdio"]
-    }
-  }
-}
-```
-
-## Verify the Installation
-
-Run the built-in health check to confirm the server starts and can reach your UniFi controller:
-
-```bash
-unifi-server --check
-```
-
-A successful check prints connection status and exits with code 0. If it fails, the output will indicate what went wrong — typically a missing environment variable or unreachable controller.
-
-!!! tip "Set up authentication first"
-    The health check requires API credentials. If you haven't configured them yet,
-    see [Authentication](authentication.md) for how to create and set your API keys.
-
 ## What's Installed
 
-The `unifi` package provides:
+Each plugin provides an MCP server with specialized network intelligence tools:
 
-| Component | Description |
-|-----------|-------------|
-| `unifi-server` | CLI entry point — starts the MCP server |
-| `unifi.server` | MCP server module with tool registration |
-| `unifi.tools` | MCP tool implementations (topology, health, clients, commands) |
-| `unifi.api` | Async HTTP client for UniFi Local Gateway, Cloud V1, and Site Manager APIs |
-| `unifi.models` | Pydantic data models (strict mode) |
-| `unifi.agents` | OutageRiskAgent and diagnostic agents |
+| Plugin | Scope | Key Capabilities |
+|--------|-------|------------------|
+| `unifi` | Edge layer | Topology discovery, health monitoring, WiFi analysis, client management, traffic inspection, security audit, multi-site operations |
+| `opnsense` | Gateway layer | Interface/VLAN management, firewall rules, routing, VPN tunnels, DNS, DHCP, IDS/IPS, diagnostics |
+| `netex` | Cross-vendor | Unified topology, cross-vendor health, VLAN provisioning, security audit, policy sync |
 
 ## Next Steps
 
-- [Authentication](authentication.md) — create API keys and configure environment variables
-- [Quick Start](quick-start.md) — run your first network scan
-- [Safety & Human Supervision](safety.md) — understand the human-in-the-loop model
+- [Authentication](authentication.md) -- create API keys and configure environment variables
+- [Quick Start](quick-start.md) -- run your first network scan
+- [Safety & Human Supervision](safety.md) -- understand the human-in-the-loop model

@@ -1,19 +1,19 @@
 # Quick Start
 
-This guide assumes you have [installed the unifi plugin](installation.md) and [configured authentication](authentication.md). Let's run your first commands.
+This guide assumes you have [installed the plugins](installation.md) and [configured authentication](authentication.md). Let's run your first commands.
 
 !!! info "Prerequisites"
-    - unifi plugin installed and configured as an MCP server
-    - `UNIFI_LOCAL_HOST` and `UNIFI_LOCAL_KEY` set
-    - `unifi-server --check` passes
+    - At least one plugin installed via `/plugin install unifi@emberai` (or opnsense, netex)
+    - Environment variables configured for the installed plugins
+    - Health check passes (e.g., `unifi-server --check`)
 
 ## Scan Your Network
 
-The first thing most operators want to do is discover what's on their UniFi network. In Claude, say:
+The first thing most operators want to do is discover what's on their network. In Claude, say:
 
 > **You:** Scan my UniFi network.
 
-Claude will call `unifi scan`, which discovers all devices, their roles, uplink relationships, firmware status, and client counts. The output is a structured topology — not a raw API dump.
+Claude will call `unifi scan`, which discovers all devices, their roles, uplink relationships, firmware status, and client counts. The output is a structured topology -- not a raw API dump.
 
 Example output:
 
@@ -35,7 +35,7 @@ Clients: 47 connected (32 wireless, 15 wired)
 
 > **You:** How's my network doing?
 
-Claude will call `unifi health`, which checks device uptime, firmware currency, ISP metrics, and event logs. It returns a severity-ranked summary — not just green/red status.
+Claude will call `unifi health`, which checks device uptime, firmware currency, ISP metrics, and event logs. It returns a severity-ranked summary -- not just green/red status.
 
 Example output:
 
@@ -55,14 +55,14 @@ Advisory:
 
 > **You:** Where is my Sonos speaker connected?
 
-Claude will search by hostname, IP, or MAC address and show you exactly where the client is connected — which AP, which VLAN, signal strength, and recent traffic.
+Claude will search by hostname, IP, or MAC address and show you exactly where the client is connected -- which AP, which VLAN, signal strength, and recent traffic.
 
 Example output:
 
 ```
 Client: Sonos-Living-Room
   MAC:    a4:5e:60:xx:xx:xx
-  IP:     192.168.30.42 (VLAN 30 — IoT)
+  IP:     192.168.30.42 (VLAN 30 -- IoT)
   AP:     U6-Pro (Living Room)
   Signal: -52 dBm (excellent)
   Channel: 5 GHz / 80 MHz / ch 36
@@ -73,8 +73,8 @@ Client: Sonos-Living-Room
 
 Now that you've run your first commands, explore the workflow examples for common operational tasks:
 
-- [First-Time Site Scan](../unifi/workflows/first-time-scan.md) — detailed walkthrough of the initial discovery process
-- [Daily Health Check](../unifi/workflows/daily-health-check.md) — what to check every morning
-- [Locate a Client](../unifi/workflows/locate-client.md) — find any device on your network
+- [First-Time Site Scan](../unifi/workflows/first-time-scan.md) -- detailed walkthrough of the initial discovery process
+- [Daily Health Check](../unifi/workflows/daily-health-check.md) -- what to check every morning
+- [Locate a Client](../unifi/workflows/locate-client.md) -- find any device on your network
 
 Before enabling write operations, read [Safety & Human Supervision](safety.md) to understand how Netex keeps you in control of every network change.

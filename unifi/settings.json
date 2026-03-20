@@ -1,0 +1,21 @@
+{
+  "env": {
+    "UNIFI_LOCAL_HOST": {
+      "description": "IP or hostname of UniFi local gateway (e.g., 192.168.1.1)",
+      "required": true
+    },
+    "UNIFI_LOCAL_KEY": {
+      "description": "API key for the UniFi Local Gateway API",
+      "required": true
+    },
+    "UNIFI_API_KEY": {
+      "description": "API key for Cloud V1 and Site Manager EA (optional, for multi-site)",
+      "required": false
+    },
+    "UNIFI_WRITE_ENABLED": {
+      "description": "Set to \"true\" to enable write operations (default: false)",
+      "required": false,
+      "default": "false"
+    }
+  }
+}

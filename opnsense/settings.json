@@ -1,0 +1,26 @@
+{
+  "env": {
+    "OPNSENSE_HOST": {
+      "description": "URL of the OPNsense instance (include https://)",
+      "required": true
+    },
+    "OPNSENSE_API_KEY": {
+      "description": "OPNsense API key (used as Basic Auth username)",
+      "required": true
+    },
+    "OPNSENSE_API_SECRET": {
+      "description": "OPNsense API secret (used as Basic Auth password)",
+      "required": true
+    },
+    "OPNSENSE_WRITE_ENABLED": {
+      "description": "Set to \"true\" to enable write operations (default: false)",
+      "required": false,
+      "default": "false"
+    },
+    "OPNSENSE_VERIFY_SSL": {
+      "description": "Set to \"false\" for self-signed certificates (default: true)",
+      "required": false,
+      "default": "true"
+    }
+  }
+}

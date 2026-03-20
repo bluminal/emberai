@@ -1,0 +1,24 @@
+{
+  "name": "emberai",
+  "owner": {
+    "name": "Bluminal Labs",
+    "url": "https://github.com/bluminal"
+  },
+  "plugins": [
+    {
+      "name": "unifi",
+      "source": "./unifi",
+      "description": "UniFi network intelligence — topology, health, WiFi, clients, security"
+    },
+    {
+      "name": "opnsense",
+      "source": "./opnsense",
+      "description": "OPNsense gateway intelligence — firewall, routing, VPN, DNS, IDS/IPS"
+    },
+    {
+      "name": "netex",
+      "source": "./netex",
+      "description": "Cross-vendor network orchestration — unified topology, VLAN provisioning, security audit"
+    }
+  ]
+}

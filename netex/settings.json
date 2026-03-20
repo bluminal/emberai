@@ -1,0 +1,14 @@
+{
+  "env": {
+    "NETEX_WRITE_ENABLED": {
+      "description": "Set to \"true\" to enable cross-vendor write operations (default: false)",
+      "required": false,
+      "default": "false"
+    },
+    "NETEX_CACHE_TTL": {
+      "description": "Cache TTL in seconds for all plugins (default: 300)",
+      "required": false,
+      "default": "300"
+    }
+  }
+}

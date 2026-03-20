@@ -12,6 +12,9 @@ build/
 .coverage
 .pytest_cache/
 
+# Plugin runtime data (created by run.sh on first run)
+.data/
+
 # MkDocs build output
 docs/site_build/
 .tool-versions

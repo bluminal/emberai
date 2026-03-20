@@ -1,0 +1,11 @@
+{
+  "name": "unifi",
+  "description": "UniFi network intelligence plugin for EmberAI — topology discovery, health monitoring, WiFi analysis, client management, traffic inspection, security audit, and multi-site operations",
+  "version": "0.1.0",
+  "author": {
+    "name": "Bluminal Labs"
+  },
+  "repository": "https://github.com/bluminal/emberai",
+  "license": "MIT",
+  "keywords": ["unifi", "network", "monitoring", "mcp", "emberai", "wifi", "topology"]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "netex",
+  "description": "Cross-vendor network orchestration umbrella for EmberAI — unified topology, health, VLAN provisioning, security audits, and policy synchronization across vendor plugins",
+  "version": "0.3.0",
+  "author": {
+    "name": "Bluminal Labs"
+  },
+  "repository": "https://github.com/bluminal/emberai",
+  "license": "MIT",
+  "keywords": ["netex", "network", "orchestration", "cross-vendor", "mcp", "emberai"]
+}

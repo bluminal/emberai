@@ -1,6 +1,6 @@
 # Connectivity Deployment Guide
 
-This guide covers how to connect the Netex MCP server to your OPNsense gateway and UniFi controller. The core challenge: the MCP server runs inside Claude (or another AI host), but your network devices are on your local network behind a firewall.
+This guide covers how to connect the Netex plugins to your OPNsense gateway and UniFi controller. The core challenge: the plugins run as MCP servers inside Claude Code, but your network devices are on your local network behind a firewall.
 
 ## Architecture
 
