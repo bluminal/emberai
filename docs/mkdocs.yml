@@ -94,6 +94,11 @@ nav:
           - Locate a Client: unifi/workflows/locate-client.md
           - Check WiFi Channels: unifi/workflows/check-wifi-channels.md
           - Firmware Update Status: unifi/workflows/firmware-update-status.md
+          - Diagnose Client Complaint: unifi/workflows/diagnose-client-complaint.md
+          - Optimize WiFi: unifi/workflows/optimize-wifi.md
+          - Firewall Posture Audit: unifi/workflows/firewall-posture-audit.md
+          - Config Drift Detection: unifi/workflows/config-drift-detection.md
+          - MSP Fleet Digest: unifi/workflows/msp-fleet-digest.md
   - OPNsense Plugin:
       - Overview: opnsense/overview.md
       - Commands: opnsense/commands.md
