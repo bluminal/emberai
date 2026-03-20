@@ -123,16 +123,16 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 31 | Implement `unifi__clients__list_clients(site_id, vlan_id?)` tool: call `/api/s/{site}/stat/sta`, optional VLAN filter, normalize to `Client` model. | M | M1.2 | pending |
-| 32 | Implement `unifi__clients__get_client(client_mac, site_id)` tool: detailed client info including AP, SSID, signal, traffic, first/last seen, OS detection. | M | M1.2 | pending |
-| 33 | Implement `unifi__clients__get_client_traffic(client_mac, site_id)` tool: tx/rx bytes, packets, DPI breakdown if available. | M | M1.2 | pending |
-| 34 | Implement `unifi__clients__search_clients(query, site_id?)` tool: search by MAC, hostname, IP, or alias with partial match (client-side filter). | M | M1.2 | pending |
-| 35 | Create clients agent (`unifi/src/agents/clients.py`): inventory with signal quality and traffic summary. Uses OX formatters. | M | Tasks 31-34 | pending |
-| 36 | Implement `unifi scan` command: wire topology agent to build full site map. **Phase 1 scope: single-site only.** Uses `UNIFI_LOCAL_HOST` to connect to one site. Multi-site selection (list sites, ask operator to choose) requires Cloud V1 `list_sites` tool, added in Phase 2 Task 50. | M | M1.3 | pending |
-| 37 | Implement `unifi health` command: wire health agent, output severity-tiered report via OX formatters. | M | M1.4 | pending |
-| 38 | Implement `unifi diagnose [target]` command: route to device or client diagnosis flow. **Phase 1 scope: correlate health events + client RF + traffic data only.** Security skill correlation added in Phase 2 when security tools are available. Uses AskUserQuestion patterns from Task 10 for ambiguous targets. | L | M1.3, M1.4, Tasks 31-34 | pending |
-| 39 | Implement `unifi clients [site?]` command: wire clients agent, support `--vlan` and `--ap` filters. | M | Tasks 31-35 | pending |
-| 40 | Write tests for clients tools and all 4 commands. Test command -> agent -> tool -> API flow. Break into sub-tasks per command if needed to stay under 80% coverage per test file. | L | Tasks 31-39 | pending |
+| 31 | Implement `unifi__clients__list_clients(site_id, vlan_id?)` tool: call `/api/s/{site}/stat/sta`, optional VLAN filter, normalize to `Client` model. | M | M1.2 | done |
+| 32 | Implement `unifi__clients__get_client(client_mac, site_id)` tool: detailed client info including AP, SSID, signal, traffic, first/last seen, OS detection. | M | M1.2 | done |
+| 33 | Implement `unifi__clients__get_client_traffic(client_mac, site_id)` tool: tx/rx bytes, packets, DPI breakdown if available. | M | M1.2 | done |
+| 34 | Implement `unifi__clients__search_clients(query, site_id?)` tool: search by MAC, hostname, IP, or alias with partial match (client-side filter). | M | M1.2 | done |
+| 35 | Create clients agent (`unifi/src/agents/clients.py`): inventory with signal quality and traffic summary. Uses OX formatters. | M | Tasks 31-34 | done |
+| 36 | Implement `unifi scan` command: wire topology agent to build full site map. **Phase 1 scope: single-site only.** Uses `UNIFI_LOCAL_HOST` to connect to one site. Multi-site selection (list sites, ask operator to choose) requires Cloud V1 `list_sites` tool, added in Phase 2 Task 50. | M | M1.3 | done |
+| 37 | Implement `unifi health` command: wire health agent, output severity-tiered report via OX formatters. | M | M1.4 | done |
+| 38 | Implement `unifi diagnose [target]` command: route to device or client diagnosis flow. **Phase 1 scope: correlate health events + client RF + traffic data only.** Security skill correlation added in Phase 2 when security tools are available. Uses AskUserQuestion patterns from Task 10 for ambiguous targets. | L | M1.3, M1.4, Tasks 31-34 | done |
+| 39 | Implement `unifi clients [site?]` command: wire clients agent, support `--vlan` and `--ap` filters. | M | Tasks 31-35 | done |
+| 40 | Write tests for clients tools and all 4 commands. Test command -> agent -> tool -> API flow. Break into sub-tasks per command if needed to stay under 80% coverage per test file. | L | Tasks 31-39 | done |
 
 **Parallelizable:** Tasks 31-34 can run concurrently. Tasks 36-39 can run concurrently (each depends on different milestones, all satisfied). Task 40 after all.
 **Milestone Value:** Four working commands (`scan`, `health`, `diagnose`, `clients`). The unifi plugin is usable for daily operations. This is the v0.1.0-plan feature set.
