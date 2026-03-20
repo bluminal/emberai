@@ -169,6 +169,34 @@ class LocalGatewayClient:
         """
         return await self._request("POST", endpoint, json_data=data)
 
+    async def put(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Make a PUT request to the local gateway API.
+
+        Parameters
+        ----------
+        endpoint:
+            API path relative to ``/proxy/network/``.
+        data:
+            Optional JSON body.
+
+        Returns
+        -------
+        dict
+            The raw JSON response (envelope included).
+
+        Raises
+        ------
+        AuthenticationError
+            On 401 or 403 responses.
+        RateLimitError
+            On 429 responses.
+        APIError
+            On other 4xx/5xx responses.
+        NetworkError
+            On connection failures, timeouts, or SSL errors.
+        """
+        return await self._request("PUT", endpoint, json_data=data)
+
     async def get_normalized(
         self,
         endpoint: str,
