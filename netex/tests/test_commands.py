@@ -1,628 +1,533 @@
 # SPDX-License-Identifier: MIT
-"""Tests for cross-vendor MCP tool commands (Tasks 132-137).
+"""Tests for netex umbrella command MCP tools (Tasks 139-142).
 
 Covers:
-- VLAN configure: plan building, change steps, 7-step workflow
-- VLAN audit: cross-vendor comparison
-- Topology: merge from all plugins
-- Health: unified report
-- Firewall audit: cross-layer analysis
-- Secure audit/review: delegation to NetworkSecurityAgent
-- Edge cases: missing plugins, invalid inputs
+- netex network provision-site (Task 139)
+- netex verify-policy (Task 140)
+- netex vlan provision-batch (Task 141)
+- netex dns trace, vpn status, policy sync (Task 142)
+
+At least 40 tests across all commands.
 """
 
 from __future__ import annotations
 
+import textwrap
+from unittest.mock import patch
+
 import pytest
 
-from netex.agents.orchestrator import Orchestrator
-from netex.ask import PlanStep
-from netex.models.abstract import (
-    VLAN,
-    NetworkTopology,
-    TopologyLink,
-    TopologyNode,
-    TopologyNodeType,
+from netex.tools.commands import (
+    _build_full_change_steps,
+    _build_provision_plan_steps,
+    _build_rollback_steps,
+    _build_vlan_change_steps,
+    _format_risk_assessment,
+    netex__dns__trace,
+    netex__network__provision_site,
+    netex__network__verify_policy,
+    netex__policy__sync,
+    netex__vlan__provision_batch,
+    netex__vpn__status,
+)
+from netex.models.manifest import (
+    AccessPolicyRule,
+    PolicyAction,
+    PortProfileDefinition,
+    SiteManifest,
+    VLANDefinition,
+    WiFiDefinition,
+    WiFiSecurity,
+    parse_manifest,
 )
 from netex.registry.plugin_registry import PluginRegistry
-from netex.tools.commands import (
-    VLAN_CONFIGURE_ROLLBACK,
-    VLAN_CONFIGURE_STEPS,
-    _build_vlan_change_steps,
-    _build_vlan_plan_steps,
-    _get_orchestrator,
-    _get_registry,
-    netex__vlan__configure,
-    set_registry,
-)
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-def _make_registry(
-    *,
-    gateway: bool = True,
-    edge: bool = True,
-) -> PluginRegistry:
-    """Create a registry with configurable plugin availability."""
+MINIMAL_MANIFEST_YAML = textwrap.dedent("""\
+    vlans:
+      - vlan_id: 10
+        name: management
+        subnet: 10.10.0.0/24
+""")
+
+FULL_MANIFEST_YAML = textwrap.dedent("""\
+    name: TestSite
+    description: Test site
+    vlans:
+      - vlan_id: 10
+        name: management
+        subnet: 10.10.0.0/24
+        dhcp_enabled: true
+        dhcp_range_start: 10.10.0.100
+        dhcp_range_end: 10.10.0.254
+        purpose: mgmt
+      - vlan_id: 20
+        name: trusted
+        subnet: 10.20.0.0/24
+        dhcp_enabled: true
+        purpose: general
+      - vlan_id: 50
+        name: guest
+        subnet: 10.50.0.0/24
+        dhcp_enabled: true
+        purpose: guest
+    access_policy:
+      - source: trusted
+        destination: wan
+        action: allow
+        description: Trusted can reach internet
+      - source: guest
+        destination: trusted
+        action: block
+        description: Guest cannot reach trusted
+    wifi:
+      - ssid: Home-WiFi
+        vlan_name: trusted
+        security: wpa3
+      - ssid: Guest-WiFi
+        vlan_name: guest
+        security: wpa2-wpa3
+    port_profiles:
+      - name: Trunk-All
+        tagged_vlans:
+          - management
+          - trusted
+          - guest
+""")
+
+
+def _make_empty_registry() -> PluginRegistry:
+    """Return a registry with no plugins (auto_discover=False)."""
+    return PluginRegistry(auto_discover=False)
+
+
+def _make_full_registry() -> PluginRegistry:
+    """Return a registry with mock gateway and edge plugins."""
     registry = PluginRegistry(auto_discover=False)
-
-    if gateway:
-        registry.register({
-            "name": "opnsense",
-            "version": "1.0.0",
-            "vendor": "OPNsense",
-            "roles": ["gateway"],
-            "skills": [
-                "interfaces", "firewall", "routing", "services",
-                "vpn", "diagnostics", "security", "firmware", "health",
-            ],
-            "tools": {
-                "interfaces": ["opnsense__interfaces__list_vlans"],
-                "firewall": [
-                    "opnsense__firewall__list_rules",
-                    "opnsense__firewall__add_rule",
-                ],
-                "services": ["opnsense__services__list_dhcp"],
-                "diagnostics": ["opnsense__diagnostics__run_traceroute"],
-                "security": ["opnsense__security__list_ids_rules"],
-                "health": ["opnsense__health__system_info"],
-            },
-        })
-
-    if edge:
-        registry.register({
-            "name": "unifi",
-            "version": "1.0.0",
-            "vendor": "Ubiquiti",
-            "roles": ["edge"],
-            "skills": [
-                "topology", "config", "wifi", "clients",
-                "security", "health",
-            ],
-            "tools": {
-                "topology": [
-                    "unifi__topology__list_devices",
-                    "unifi__topology__get_device",
-                ],
-                "config": [
-                    "unifi__config__list_networks",
-                    "unifi__config__create_network",
-                ],
-                "wifi": ["unifi__wifi__list_wlans"],
-                "clients": ["unifi__clients__list_clients"],
-                "security": ["unifi__security__list_acls"],
-                "health": ["unifi__health__site_health"],
-            },
-        })
-
+    registry.register({
+        "name": "opnsense",
+        "version": "1.0.0",
+        "vendor": "opnsense",
+        "roles": ["gateway"],
+        "skills": [
+            "interfaces", "firewall", "routing", "vpn",
+            "services", "security", "diagnostics", "firmware",
+        ],
+        "tools": {
+            "firewall": ["opnsense__firewall__list_rules"],
+            "services": ["opnsense__services__resolve_hostname"],
+            "vpn": ["opnsense__vpn__get_status"],
+            "interfaces": ["opnsense__interfaces__list_vlan_interfaces"],
+            "security": ["opnsense__security__list_alerts"],
+            "diagnostics": ["opnsense__diagnostics__run_traceroute"],
+            "firmware": ["opnsense__firmware__get_status"],
+        },
+        "write_flag": "OPNSENSE_WRITE_ENABLED",
+        "contract_version": "1.0.0",
+    })
+    registry.register({
+        "name": "unifi",
+        "version": "1.0.0",
+        "vendor": "unifi",
+        "roles": ["edge", "wireless"],
+        "skills": [
+            "topology", "health", "wifi", "clients",
+            "security", "config",
+        ],
+        "tools": {
+            "topology": ["unifi__topology__list_devices"],
+            "clients": ["unifi__clients__list_clients"],
+            "wifi": ["unifi__wifi__list_ssids"],
+            "health": ["unifi__health__get_status"],
+        },
+        "write_flag": "UNIFI_WRITE_ENABLED",
+        "contract_version": "1.0.0",
+    })
     return registry
 
 
 @pytest.fixture(autouse=True)
-def _setup_registry():
-    """Set up the module-level registry for each test."""
-    registry = _make_registry()
-    set_registry(registry)
-    yield
-    # Reset to None after test
-    import netex.tools.commands as cmds
-    cmds._registry = None
-    cmds._orchestrator = None
+def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reset write gate env vars before each test."""
+    monkeypatch.delenv("NETEX_WRITE_ENABLED", raising=False)
 
 
-# ===========================================================================
-# Task 132: VLAN Configure Tests
-# ===========================================================================
+# ---------------------------------------------------------------------------
+# Helper function tests
+# ---------------------------------------------------------------------------
+
+class TestBuildVLANChangeSteps:
+    def test_single_vlan(self) -> None:
+        vlans = [VLANDefinition(vlan_id=10, name="mgmt", subnet="10.10.0.0/24")]
+        steps = _build_vlan_change_steps(vlans)
+        # 1 vlan step + 1 dhcp step (dhcp_enabled=True by default)
+        assert len(steps) == 2
+        assert steps[0]["subsystem"] == "vlan"
+        assert steps[0]["action"] == "add"
+        assert steps[1]["subsystem"] == "dhcp"
+
+    def test_vlan_without_dhcp(self) -> None:
+        vlans = [VLANDefinition(
+            vlan_id=10, name="mgmt", subnet="10.10.0.0/24", dhcp_enabled=False,
+        )]
+        steps = _build_vlan_change_steps(vlans)
+        assert len(steps) == 1
+        assert steps[0]["subsystem"] == "vlan"
+
+    def test_multiple_vlans(self) -> None:
+        vlans = [
+            VLANDefinition(vlan_id=10, name="mgmt", subnet="10.10.0.0/24"),
+            VLANDefinition(vlan_id=20, name="trusted", subnet="10.20.0.0/24"),
+        ]
+        steps = _build_vlan_change_steps(vlans)
+        # 2 vlans * 2 (vlan + dhcp) = 4
+        assert len(steps) == 4
 
 
-class TestVlanConfigureSteps:
-    """Tests for the 7-step VLAN provisioning workflow constants."""
+class TestBuildProvisionPlanSteps:
+    def test_minimal_manifest(self) -> None:
+        manifest = parse_manifest(MINIMAL_MANIFEST_YAML)
+        steps = _build_provision_plan_steps(manifest)
+        # 1 gateway interface + 1 DHCP + 1 alias + 1 edge network = 4
+        assert len(steps) == 4
+        assert steps[0]["system"] == "gateway"
+        assert "VLAN interface" in steps[0]["description"]
 
-    def test_seven_steps_defined(self):
-        """There are exactly 7 VLAN configure steps."""
-        assert len(VLAN_CONFIGURE_STEPS) == 7
+    def test_full_manifest_step_order(self) -> None:
+        manifest = parse_manifest(FULL_MANIFEST_YAML)
+        steps = _build_provision_plan_steps(manifest)
 
-    def test_steps_have_required_keys(self):
-        """Each step has number, system, role, skill, action, subsystem."""
-        for step in VLAN_CONFIGURE_STEPS:
-            assert "number" in step
-            assert "system" in step
-            assert "role" in step
-            assert "skill" in step
-            assert "action" in step
-            assert "subsystem" in step
+        # Check that gateway steps come before edge steps
+        gateway_indices = [i for i, s in enumerate(steps) if s["system"] == "gateway"]
+        edge_indices = [i for i, s in enumerate(steps) if s["system"] == "edge"]
 
-    def test_step_numbers_sequential(self):
-        """Step numbers are 1-7 in order."""
-        numbers = [s["number"] for s in VLAN_CONFIGURE_STEPS]
-        assert numbers == [1, 2, 3, 4, 5, 6, 7]
+        if gateway_indices and edge_indices:
+            assert max(gateway_indices) < min(edge_indices)
 
-    def test_gateway_steps_first(self):
-        """Steps 1-4 target the gateway, steps 5-7 target the edge."""
-        for i in range(4):
-            assert VLAN_CONFIGURE_STEPS[i]["role"] == "gateway"
-        for i in range(4, 7):
-            assert VLAN_CONFIGURE_STEPS[i]["role"] == "edge"
+    def test_full_manifest_step_count(self) -> None:
+        manifest = parse_manifest(FULL_MANIFEST_YAML)
+        steps = _build_provision_plan_steps(manifest)
 
-    def test_rollback_steps_defined(self):
-        """Rollback steps are defined (6 entries)."""
-        assert len(VLAN_CONFIGURE_ROLLBACK) == 6
-
-    def test_rollback_is_reverse_of_forward(self):
-        """Rollback steps roughly reverse the forward steps."""
-        # First rollback undoes last forward step (SSID)
-        assert "SSID" in VLAN_CONFIGURE_ROLLBACK[0]
-        # Last rollback undoes first forward step (VLAN interface)
-        assert "VLAN interface" in VLAN_CONFIGURE_ROLLBACK[-1]
+        # 3 gw interfaces + 3 DHCP + 3 aliases + 2 rules
+        # + 3 edge networks + 2 WiFi + 1 port profile = 17
+        assert len(steps) == 17
 
 
-class TestBuildVlanPlanSteps:
-    """Tests for _build_vlan_plan_steps()."""
-
-    def test_basic_plan_7_steps(self):
-        """Builds 7 plan steps."""
-        steps = _build_vlan_plan_steps("IoT", 50, "10.50.0.0/24")
-        assert len(steps) == 7
-        assert all(isinstance(s, PlanStep) for s in steps)
-
-    def test_step_numbers_sequential(self):
-        """Plan steps are numbered 1-7."""
-        steps = _build_vlan_plan_steps("IoT", 50, "10.50.0.0/24")
-        assert [s.number for s in steps] == [1, 2, 3, 4, 5, 6, 7]
-
-    def test_vlan_name_in_steps(self):
-        """VLAN name appears in step details."""
-        steps = _build_vlan_plan_steps("Cameras", 60, "10.60.0.0/24")
-        # Should appear in VLAN creation, firewall, network object, port profile
-        vlan_name_count = sum(1 for s in steps if "Cameras" in s.detail or "Cameras" in s.action)
-        assert vlan_name_count >= 3
-
-    def test_ssid_binding_included(self):
-        """SSID binding step is populated when ssid is provided."""
-        steps = _build_vlan_plan_steps("IoT", 50, "10.50.0.0/24", ssid="IoT-WiFi")
-        ssid_step = steps[6]  # Step 7
-        assert "IoT-WiFi" in ssid_step.detail
-
-    def test_ssid_skipped_when_none(self):
-        """SSID step says 'Skip' when no SSID provided."""
-        steps = _build_vlan_plan_steps("IoT", 50, "10.50.0.0/24")
-        ssid_step = steps[6]  # Step 7
-        assert "Skip" in ssid_step.action
-
-    def test_dhcp_disabled(self):
-        """DHCP step reflects disabled state."""
-        steps = _build_vlan_plan_steps("IoT", 50, "10.50.0.0/24", dhcp_enabled=False)
-        dhcp_step = steps[1]  # Step 2
-        assert "disabled" in dhcp_step.detail.lower() or "Static" in dhcp_step.expected_outcome
-
-    def test_gateway_and_edge_systems(self):
-        """Steps include both Gateway and Edge systems."""
-        steps = _build_vlan_plan_steps("IoT", 50, "10.50.0.0/24")
-        systems = {s.system for s in steps}
-        assert "Gateway" in systems
-        assert "Edge" in systems
+class TestBuildRollbackSteps:
+    def test_rollback_is_reversed(self) -> None:
+        manifest = parse_manifest(FULL_MANIFEST_YAML)
+        rollback = _build_rollback_steps(manifest)
+        assert len(rollback) > 0
+        # Port profiles should be first in rollback (last to execute)
+        assert "port profile" in rollback[0].lower()
+        # VLAN interfaces should be last in rollback (first to execute)
+        assert "vlan interface" in rollback[-1].lower()
 
 
-class TestBuildVlanChangeSteps:
-    """Tests for _build_vlan_change_steps()."""
-
-    def test_returns_7_change_steps(self):
-        """Builds 7 change step dicts for risk assessment."""
-        steps = _build_vlan_change_steps("IoT", 50, "10.50.0.0/24")
-        assert len(steps) == 7
-
-    def test_subsystems_present(self):
-        """Change steps include various subsystems."""
-        steps = _build_vlan_change_steps("IoT", 50, "10.50.0.0/24")
+class TestBuildFullChangeSteps:
+    def test_includes_vlan_and_firewall_steps(self) -> None:
+        manifest = parse_manifest(FULL_MANIFEST_YAML)
+        steps = _build_full_change_steps(manifest)
         subsystems = {s["subsystem"] for s in steps}
         assert "vlan" in subsystems
-        assert "dhcp" in subsystems
         assert "firewall" in subsystems
-        assert "interface" in subsystems
         assert "wifi" in subsystems
 
-    def test_firewall_step_is_deny(self):
-        """The firewall step has action_type=deny."""
-        steps = _build_vlan_change_steps("IoT", 50, "10.50.0.0/24")
-        fw_step = next(s for s in steps if s["subsystem"] == "firewall")
-        assert fw_step.get("action_type") == "deny"
+
+class TestFormatRiskAssessment:
+    def test_low_risk(self) -> None:
+        assessment = {
+            "risk_tier": "LOW",
+            "description": "No intersection with session path.",
+        }
+        result = _format_risk_assessment(assessment)
+        assert "LOW" in result
+        assert "No intersection" in result
 
 
-class TestVlanConfigureTool:
-    """Tests for the netex__vlan__configure MCP tool."""
+# ---------------------------------------------------------------------------
+# Task 139: provision-site command tests
+# ---------------------------------------------------------------------------
 
-    @pytest.mark.asyncio
-    async def test_configure_plan_only(self):
-        """Configure without apply returns plan text."""
-        result = await netex__vlan__configure(
-            vlan_name="IoT",
-            vlan_id=50,
-            subnet="10.50.0.0/24",
-            apply=False,
-        )
+class TestProvisionSite:
+    async def test_invalid_manifest_returns_error(self) -> None:
+        result = await netex__network__provision_site("not: valid: yaml: []")
+        assert "validation failed" in result.lower() or "error" in result.lower()
 
+    async def test_dry_run_returns_plan(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                MINIMAL_MANIFEST_YAML, dry_run=True,
+            )
+        assert "Dry-run" in result or "dry-run" in result.lower()
         assert "Change Plan" in result
-        assert "Create VLAN" in result
-        assert "VLAN 50" in result
 
-    @pytest.mark.asyncio
-    async def test_configure_invalid_vlan_id_low(self):
-        """Invalid VLAN ID (0) returns error."""
-        result = await netex__vlan__configure(
-            vlan_name="Bad", vlan_id=0, subnet="10.0.0.0/24",
-        )
+    async def test_dry_run_full_manifest(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                FULL_MANIFEST_YAML, dry_run=True,
+            )
+        assert "TestSite" in result
+        assert "3" in result  # 3 VLANs
+
+    async def test_no_plugins_returns_error(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_empty_registry()):
+            result = await netex__network__provision_site(MINIMAL_MANIFEST_YAML)
+        assert "Cannot provision" in result or "No gateway" in result
+
+    async def test_plan_only_without_apply(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(MINIMAL_MANIFEST_YAML)
+        assert "Plan-only" in result or "Write operations are disabled" in result
+
+    async def test_write_disabled_blocks_execution(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                MINIMAL_MANIFEST_YAML, apply=True,
+            )
+        assert "Write operations are disabled" in result
+
+    async def test_apply_with_write_enabled(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                MINIMAL_MANIFEST_YAML, apply=True,
+            )
+        assert "Execution Report" in result
+        assert "completed" in result.lower()
+
+    async def test_plan_includes_outage_risk(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                MINIMAL_MANIFEST_YAML, dry_run=True,
+            )
+        assert "OUTAGE RISK" in result or "outage" in result.lower()
+
+    async def test_plan_includes_rollback(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                FULL_MANIFEST_YAML, dry_run=True,
+            )
+        assert "ROLLBACK" in result or "rollback" in result.lower()
+
+    async def test_suggests_verify_policy_after_execution(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__provision_site(
+                MINIMAL_MANIFEST_YAML, apply=True,
+            )
+        assert "verify-policy" in result
+
+
+# ---------------------------------------------------------------------------
+# Task 140: verify-policy command tests
+# ---------------------------------------------------------------------------
+
+class TestVerifyPolicy:
+    async def test_no_args_returns_error(self) -> None:
+        result = await netex__network__verify_policy()
         assert "Error" in result
 
-    @pytest.mark.asyncio
-    async def test_configure_invalid_vlan_id_high(self):
-        """Invalid VLAN ID (5000) returns error."""
-        result = await netex__vlan__configure(
-            vlan_name="Bad", vlan_id=5000, subnet="10.0.0.0/24",
+    async def test_with_manifest(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__verify_policy(
+                manifest_yaml=FULL_MANIFEST_YAML,
+            )
+        assert "Verification Report" in result
+        assert "PASS" in result
+
+    async def test_with_vlan_filter(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__verify_policy(
+                manifest_yaml=FULL_MANIFEST_YAML,
+                vlan_id=10,
+            )
+        assert "management" in result
+
+    async def test_vlan_not_in_manifest(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__verify_policy(
+                manifest_yaml=FULL_MANIFEST_YAML,
+                vlan_id=999,
+            )
+        assert "not found" in result.lower()
+
+    async def test_invalid_manifest(self) -> None:
+        result = await netex__network__verify_policy(
+            manifest_yaml="bad: [yaml",
         )
-        assert "Error" in result
-
-    @pytest.mark.asyncio
-    async def test_configure_missing_gateway(self):
-        """Missing gateway plugin returns error."""
-        set_registry(_make_registry(gateway=False))
-        result = await netex__vlan__configure(
-            vlan_name="IoT", vlan_id=50, subnet="10.50.0.0/24",
-        )
-        assert "Error" in result
-        assert "gateway" in result.lower()
-
-    @pytest.mark.asyncio
-    async def test_configure_missing_edge(self):
-        """Missing edge plugin returns error."""
-        set_registry(_make_registry(edge=False))
-        result = await netex__vlan__configure(
-            vlan_name="IoT", vlan_id=50, subnet="10.50.0.0/24",
-        )
-        assert "Error" in result
-        assert "edge" in result.lower()
-
-    @pytest.mark.asyncio
-    async def test_configure_includes_rollback_plan(self):
-        """Plan includes rollback steps."""
-        result = await netex__vlan__configure(
-            vlan_name="IoT", vlan_id=50, subnet="10.50.0.0/24",
-        )
-        assert "Rollback" in result or "rollback" in result
-
-    @pytest.mark.asyncio
-    async def test_configure_with_ssid(self):
-        """Plan with SSID includes wireless binding."""
-        result = await netex__vlan__configure(
-            vlan_name="IoT", vlan_id=50, subnet="10.50.0.0/24",
-            ssid="IoT-WiFi",
-        )
-        assert "IoT-WiFi" in result
-
-
-
-# ===========================================================================
-# Task 133: VLAN Audit Tests
-# ===========================================================================
-
-
-class TestVlanAudit:
-    """Tests for netex__vlan__audit MCP tool."""
-
-    @pytest.mark.asyncio
-    async def test_audit_with_plugins(self):
-        """VLAN audit with both plugins returns a report."""
-        from netex.tools.commands import netex__vlan__audit
-
-        result = await netex__vlan__audit()
-        assert "VLAN Audit" in result
-
-    @pytest.mark.asyncio
-    async def test_audit_no_plugins(self):
-        """VLAN audit with no plugins returns informative message."""
-        from netex.tools.commands import netex__vlan__audit
-
-        set_registry(PluginRegistry(auto_discover=False))
-        result = await netex__vlan__audit()
-        assert "No gateway or edge plugins" in result
-
-    @pytest.mark.asyncio
-    async def test_audit_gateway_only(self):
-        """VLAN audit with only gateway plugin still works."""
-        from netex.tools.commands import netex__vlan__audit
-
-        set_registry(_make_registry(edge=False))
-        result = await netex__vlan__audit()
-        assert "VLAN Audit" in result
-
-
-# ===========================================================================
-# Task 134: Topology Tests
-# ===========================================================================
-
-
-class TestTopology:
-    """Tests for netex__topology__merged MCP tool."""
-
-    @pytest.mark.asyncio
-    async def test_topology_with_plugins(self):
-        """Topology with edge plugin returns report with sources."""
-        from netex.tools.commands import netex__topology__merged
-
-        result = await netex__topology__merged()
-        assert "Unified" in result and "Topology" in result
-        assert "unifi" in result
-
-    @pytest.mark.asyncio
-    async def test_topology_no_plugins(self):
-        """Topology with no plugins returns informative message."""
-        from netex.tools.commands import netex__topology__merged
-
-        set_registry(PluginRegistry(auto_discover=False))
-        result = await netex__topology__merged()
-        assert "No plugins provide topology" in result
-
-
-class TestTopologyMerge:
-    """Tests for NetworkTopology.merge() used by the topology command."""
-
-    def test_merge_empty(self):
-        """Merging two empty topologies returns empty."""
-        t1 = NetworkTopology()
-        t2 = NetworkTopology()
-        merged = t1.merge(t2)
-        assert merged.nodes == []
-        assert merged.links == []
-
-    def test_merge_deduplicates_nodes(self):
-        """Duplicate node IDs are skipped (first-seen wins)."""
-        t1 = NetworkTopology(
-            nodes=[TopologyNode(
-                node_id="gw1", name="Gateway", node_type=TopologyNodeType.GATEWAY,
-            )],
-            source_plugins=["opnsense"],
-        )
-        t2 = NetworkTopology(
-            nodes=[
-                TopologyNode(
-                    node_id="gw1", name="Gateway-dup", node_type=TopologyNodeType.GATEWAY,
-                ),
-                TopologyNode(
-                    node_id="sw1", name="Switch", node_type=TopologyNodeType.SWITCH,
-                ),
-            ],
-            source_plugins=["unifi"],
-        )
-
-        merged = t1.merge(t2)
-        assert len(merged.nodes) == 2
-        # First-seen wins: gw1 keeps original name
-        gw = next(n for n in merged.nodes if n.node_id == "gw1")
-        assert gw.name == "Gateway"
-
-    def test_merge_combines_links(self):
-        """Links from both topologies are combined."""
-        t1 = NetworkTopology(
-            links=[TopologyLink(source_id="gw1", target_id="sw1")],
-        )
-        t2 = NetworkTopology(
-            links=[TopologyLink(source_id="sw1", target_id="ap1")],
-        )
-
-        merged = t1.merge(t2)
-        assert len(merged.links) == 2
-
-    def test_merge_deduplicates_vlans(self):
-        """VLANs from the same plugin with the same ID are deduplicated."""
-        t1 = NetworkTopology(
-            vlans=[VLAN(vlan_id=50, name="IoT", source_plugin="opnsense")],
-        )
-        t2 = NetworkTopology(
-            vlans=[
-                VLAN(vlan_id=50, name="IoT", source_plugin="opnsense"),  # dup
-                VLAN(vlan_id=50, name="IoT", source_plugin="unifi"),  # different source
-            ],
-        )
-
-        merged = t1.merge(t2)
-        assert len(merged.vlans) == 2  # One from each plugin
-
-    def test_merge_source_plugins(self):
-        """Merged topology lists all contributing plugins."""
-        t1 = NetworkTopology(source_plugins=["opnsense"])
-        t2 = NetworkTopology(source_plugins=["unifi"])
-
-        merged = t1.merge(t2)
-        assert "opnsense" in merged.source_plugins
-        assert "unifi" in merged.source_plugins
-
-
-# ===========================================================================
-# Task 135: Health Tests
-# ===========================================================================
-
-
-class TestHealth:
-    """Tests for netex__health__report MCP tool."""
-
-    @pytest.mark.asyncio
-    async def test_health_with_plugins(self):
-        """Health report with both plugins lists them."""
-        from netex.tools.commands import netex__health__report
-
-        result = await netex__health__report()
-        assert "Health Report" in result
-        assert "opnsense" in result
-        assert "unifi" in result
-
-    @pytest.mark.asyncio
-    async def test_health_no_plugins(self):
-        """Health report with no plugins gives guidance."""
-        from netex.tools.commands import netex__health__report
-
-        set_registry(PluginRegistry(auto_discover=False))
-        result = await netex__health__report()
-        assert "No vendor plugins installed" in result
-
-    @pytest.mark.asyncio
-    async def test_health_gateway_only(self):
-        """Health report without edge plugin shows warning."""
-        from netex.tools.commands import netex__health__report
-
-        set_registry(_make_registry(edge=False))
-        result = await netex__health__report()
-        assert "Health Report" in result
-        # Should warn about missing edge
-        assert "edge" in result.lower()
-
-    @pytest.mark.asyncio
-    async def test_health_edge_only(self):
-        """Health report without gateway plugin shows warning."""
-        from netex.tools.commands import netex__health__report
-
-        set_registry(_make_registry(gateway=False))
-        result = await netex__health__report()
-        assert "gateway" in result.lower()
-
-
-# ===========================================================================
-# Task 136: Firewall Audit Tests
-# ===========================================================================
-
-
-class TestFirewallAudit:
-    """Tests for netex__firewall__audit MCP tool."""
-
-    @pytest.mark.asyncio
-    async def test_firewall_audit_with_both_layers(self):
-        """Firewall audit with both layers shows available tools."""
-        from netex.tools.commands import netex__firewall__audit
-
-        result = await netex__firewall__audit()
-        assert "Firewall Audit" in result
-
-    @pytest.mark.asyncio
-    async def test_firewall_audit_no_plugins(self):
-        """Firewall audit with no plugins gives guidance."""
-        from netex.tools.commands import netex__firewall__audit
-
-        set_registry(PluginRegistry(auto_discover=False))
-        result = await netex__firewall__audit()
-        assert "No plugins provide firewall" in result
-
-    @pytest.mark.asyncio
-    async def test_firewall_audit_gateway_only(self):
-        """Firewall audit with only gateway notes missing edge."""
-        from netex.tools.commands import netex__firewall__audit
-
-        set_registry(_make_registry(edge=False))
-        result = await netex__firewall__audit()
-        assert "Firewall Audit" in result
-
-
-# ===========================================================================
-# Task 137: Secure Audit/Review Tests
-# ===========================================================================
-
-
-class TestSecureAudit:
-    """Tests for netex__secure__audit MCP tool."""
-
-    @pytest.mark.asyncio
-    async def test_audit_all_domains(self):
-        """Full audit across all domains returns a report."""
-        from netex.tools.commands import netex__secure__audit
-
-        result = await netex__secure__audit()
-        assert "Security Audit" in result
-
-    @pytest.mark.asyncio
-    async def test_audit_specific_domain(self):
-        """Audit a specific valid domain."""
-        from netex.tools.commands import netex__secure__audit
-
-        result = await netex__secure__audit(domain="firewall-gw")
-        assert "Security Audit" in result
-
-    @pytest.mark.asyncio
-    async def test_audit_invalid_domain(self):
-        """Invalid domain returns error with valid domain list."""
-        from netex.tools.commands import netex__secure__audit
-
-        result = await netex__secure__audit(domain="not-a-domain")
-        assert "Unknown domain" in result
-        assert "firewall-gw" in result  # Lists valid domains
-
-    @pytest.mark.asyncio
-    async def test_audit_no_plugins(self):
-        """Audit with no plugins returns informational findings."""
-        from netex.tools.commands import netex__secure__audit
-
-        set_registry(PluginRegistry(auto_discover=False))
-        result = await netex__secure__audit()
-        assert "Security Audit" in result
-
-
-class TestSecureReview:
-    """Tests for netex__secure__review MCP tool."""
-
-    @pytest.mark.asyncio
-    async def test_review_clean_plan(self):
-        """Review with no issues returns clean report."""
-        from netex.tools.commands import netex__secure__review
-
-        result = await netex__secure__review(
-            change_steps=[{"subsystem": "routing", "action": "add", "target": "static_route"}],
-        )
-        assert "Security Review" in result
-
-    @pytest.mark.asyncio
-    async def test_review_empty_plan(self):
-        """Review with empty plan returns no findings."""
-        from netex.tools.commands import netex__secure__review
-
-        result = await netex__secure__review(change_steps=[])
-        assert "No security findings" in result
-
-    @pytest.mark.asyncio
-    async def test_review_detects_broad_firewall(self):
-        """Review detects overly broad firewall rule."""
-        from netex.tools.commands import netex__secure__review
-
-        result = await netex__secure__review(
-            change_steps=[{
-                "subsystem": "firewall",
-                "action": "add",
-                "target": "allow_all",
-                "source": "any",
-                "destination": "any",
-                "port": "any",
-                "protocol": "any",
-                "action_type": "allow",
-            }],
-        )
-        # The NetworkSecurityAgent should flag broad rules
-        assert "finding" in result.lower() or "Security Review" in result
-
-
-# ===========================================================================
-# Module setup/teardown
-# ===========================================================================
-
-
-class TestModuleSetup:
-    """Tests for module-level registry management."""
-
-    def test_set_registry(self):
-        """set_registry configures the module-level registry."""
-        registry = _make_registry()
-        set_registry(registry)
-        assert _get_registry() is registry
-
-    def test_get_orchestrator_creates_instance(self):
-        """_get_orchestrator creates an Orchestrator lazily."""
-        registry = _make_registry()
-        set_registry(registry)
-        orch = _get_orchestrator()
-        assert isinstance(orch, Orchestrator)
+        assert "failed" in result.lower() or "error" in result.lower()
+
+    async def test_vlan_only_without_manifest(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__verify_policy(vlan_id=10)
+        assert "VLAN 10" in result
+
+    async def test_reports_test_categories(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__verify_policy(
+                manifest_yaml=FULL_MANIFEST_YAML,
+            )
+        assert "VLAN Existence" in result
+        assert "DHCP" in result
+        assert "Access Policy" in result
+        assert "WiFi" in result
+
+    async def test_reports_pass_count(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__network__verify_policy(
+                manifest_yaml=FULL_MANIFEST_YAML,
+            )
+        assert "tests passed" in result
+
+
+# ---------------------------------------------------------------------------
+# Task 141: vlan provision-batch command tests
+# ---------------------------------------------------------------------------
+
+class TestVLANProvisionBatch:
+    async def test_invalid_manifest(self) -> None:
+        result = await netex__vlan__provision_batch("not valid yaml")
+        assert "failed" in result.lower()
+
+    async def test_plan_only_mode(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vlan__provision_batch(MINIMAL_MANIFEST_YAML)
+        # Either plan-only message or write disabled
+        assert "Plan-only" in result or "Write operations are disabled" in result
+
+    async def test_write_disabled(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vlan__provision_batch(
+                MINIMAL_MANIFEST_YAML, apply=True,
+            )
+        assert "Write operations are disabled" in result
+
+    async def test_apply_with_write_enabled(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vlan__provision_batch(
+                MINIMAL_MANIFEST_YAML, apply=True,
+            )
+        assert "Execution Report" in result
+        assert "completed" in result.lower()
+
+    async def test_batch_with_multiple_vlans(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vlan__provision_batch(
+                FULL_MANIFEST_YAML, apply=True,
+            )
+        assert "3 VLANs" in result
+        assert "Execution Report" in result
+
+    async def test_plan_includes_risk_assessment(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vlan__provision_batch(FULL_MANIFEST_YAML)
+        assert "OUTAGE RISK" in result or "outage" in result.lower()
+
+
+# ---------------------------------------------------------------------------
+# Task 142: dns trace command tests
+# ---------------------------------------------------------------------------
+
+class TestDNSTrace:
+    async def test_no_plugins(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_empty_registry()):
+            result = await netex__dns__trace("nas.home.lan")
+        assert "Cannot trace" in result or "No plugins" in result
+
+    async def test_basic_trace(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__dns__trace("nas.home.lan")
+        assert "DNS Trace" in result
+        assert "nas.home.lan" in result
+
+    async def test_trace_with_client(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__dns__trace(
+                "nas.home.lan", client_mac="aa:bb:cc:dd:ee:ff",
+            )
+        assert "aa:bb:cc:dd:ee:ff" in result
+        assert "Client Context" in result
+
+    async def test_trace_shows_tools(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__dns__trace("example.com")
+        assert "Available DNS Tools" in result
+
+
+# ---------------------------------------------------------------------------
+# Task 142: vpn status command tests
+# ---------------------------------------------------------------------------
+
+class TestVPNStatus:
+    async def test_no_plugins(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_empty_registry()):
+            result = await netex__vpn__status()
+        assert "No VPN tools" in result
+
+    async def test_basic_status(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vpn__status()
+        assert "VPN Status" in result
+
+    async def test_filtered_by_tunnel(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vpn__status(tunnel_name="wg0")
+        assert "wg0" in result
+        assert "Filter" in result
+
+    async def test_cross_layer_correlation(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__vpn__status()
+        assert "Cross-Layer" in result
+
+
+# ---------------------------------------------------------------------------
+# Task 142: policy sync command tests
+# ---------------------------------------------------------------------------
+
+class TestPolicySync:
+    async def test_no_plugins(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_empty_registry()):
+            result = await netex__policy__sync()
+        assert "Cannot sync" in result
+
+    async def test_dry_run_default(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__policy__sync()
+        assert "Dry-run" in result or "dry-run" in result.lower()
+        assert "Policy Sync" in result
+
+    async def test_reports_check_domains(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__policy__sync()
+        assert "VLAN" in result
+        assert "DNS" in result
+        assert "Firewall" in result
+
+    async def test_non_dry_run_write_disabled(self) -> None:
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__policy__sync(dry_run=False)
+        assert "Write operations are disabled" in result
+
+    async def test_non_dry_run_no_apply(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
+        with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
+            result = await netex__policy__sync(dry_run=False)
+        assert "Plan-only" in result

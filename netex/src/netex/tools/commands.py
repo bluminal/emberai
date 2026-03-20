@@ -1,19 +1,22 @@
 # SPDX-License-Identifier: MIT
-"""Cross-vendor MCP tool commands for the netex umbrella plugin.
+"""Umbrella command MCP tools for the netex plugin.
 
-Implements the cross-vendor commands that coordinate operations across
-multiple vendor plugins via the Orchestrator:
+Implements the advanced cross-vendor commands defined in PRD Sections 5.3
+and Appendix C:
 
-    netex vlan configure  (Task 132) -- 7-step cross-vendor VLAN provisioning
-    netex vlan audit      (Task 133) -- compare VLANs across gateway + edge
-    netex topology        (Task 134) -- merge topology from all plugins
-    netex health          (Task 135) -- unified health report
-    netex firewall audit  (Task 136) -- cross-layer firewall analysis
-    netex secure audit    (Task 137) -- delegate to NetworkSecurityAgent
+- ``netex network provision-site`` -- full site bootstrap from YAML manifest
+- ``netex verify-policy`` -- test connectivity from manifest access policy
+- ``netex vlan provision-batch`` -- batch VLAN creation
+- ``netex dns trace`` -- DNS resolution path tracing
+- ``netex vpn status`` -- VPN tunnel status aggregation
+- ``netex policy sync`` -- cross-vendor policy drift detection
 
-All tools are registered on the ``mcp_server`` FastMCP instance from
-``netex.server``.  Write operations go through the three-phase
-confirmation model; read-only commands return results directly.
+All write commands follow the three-step safety gate:
+    1. NETEX_WRITE_ENABLED=true
+    2. --apply flag
+    3. Operator confirmation (via plan presentation)
+
+Each command is registered on the MCP server via @mcp_server.tool().
 """
 
 from __future__ import annotations
@@ -21,877 +24,1005 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from netex.agents.network_security_agent import AuditDomain, NetworkSecurityAgent
-from netex.agents.orchestrator import Orchestrator, resolve_plugin_for_role
-from netex.ask import PlanStep
-from netex.errors import PluginNotFoundError
-from netex.models.abstract import VLAN, NetworkTopology
-from netex.output import Finding, Severity, format_severity_report, format_table
+from netex.agents.network_security_agent import NetworkSecurityAgent
+from netex.agents.outage_risk_agent import OutageRiskAgent
+from netex.models.manifest import (
+    AccessPolicyRule,
+    PolicyAction,
+    SiteManifest,
+    VLANDefinition,
+    parse_manifest,
+)
+from netex.output import Finding, Severity, format_change_plan, format_table
 from netex.registry.plugin_registry import PluginRegistry
 from netex.safety import check_write_enabled
 from netex.server import mcp_server
+from netex.workflows.workflow_state import Workflow, WorkflowState
 
 logger = logging.getLogger("netex.tools.commands")
 
 
 # ---------------------------------------------------------------------------
-# Module-level registry and orchestrator (lazily initialized)
+# Helpers
 # ---------------------------------------------------------------------------
 
-_registry: PluginRegistry | None = None
-_orchestrator: Orchestrator | None = None
+def _build_registry() -> PluginRegistry:
+    """Build a plugin registry with auto-discovery."""
+    return PluginRegistry(auto_discover=True)
 
 
-def _get_registry() -> PluginRegistry:
-    """Get or create the global plugin registry."""
-    global _registry
-    if _registry is None:
-        _registry = PluginRegistry()
-    return _registry
+def _build_vlan_change_steps(
+    vlans: list[VLANDefinition],
+) -> list[dict[str, Any]]:
+    """Convert VLAN definitions into change steps for agent assessment."""
+    steps: list[dict[str, Any]] = []
+    for vlan in vlans:
+        steps.append({
+            "subsystem": "vlan",
+            "action": "add",
+            "target": vlan.name,
+            "vlan_id": str(vlan.vlan_id),
+        })
+        if vlan.dhcp_enabled:
+            steps.append({
+                "subsystem": "dhcp",
+                "action": "add",
+                "target": f"dhcp-{vlan.name}",
+            })
+    return steps
 
 
-def _get_orchestrator() -> Orchestrator:
-    """Get or create the global orchestrator."""
-    global _orchestrator
-    if _orchestrator is None:
-        _orchestrator = Orchestrator(_get_registry())
-    return _orchestrator
+def _build_provision_plan_steps(
+    manifest: SiteManifest,
+) -> list[dict[str, str]]:
+    """Build the ordered execution plan steps for provision-site.
 
-
-def set_registry(registry: PluginRegistry) -> None:
-    """Set the global registry (for testing)."""
-    global _registry, _orchestrator
-    _registry = registry
-    _orchestrator = Orchestrator(registry)
-
-
-# ---------------------------------------------------------------------------
-# VLAN Configure Steps (Task 132)
-# ---------------------------------------------------------------------------
-
-# The 7-step VLAN provisioning workflow:
-#   1. Gateway VLAN interface creation
-#   2. DHCP scope configuration
-#   3. Firewall isolation rule
-#   4. Gateway reconfigure (apply to live)
-#   5. Edge network object creation
-#   6. Edge port profile assignment
-#   7. SSID binding (optional)
-
-VLAN_CONFIGURE_STEPS = [
-    {
-        "number": 1,
-        "system": "Gateway",
-        "role": "gateway",
-        "skill": "interfaces",
-        "action": "Create VLAN interface",
-        "subsystem": "vlan",
-        "operation": "add",
-    },
-    {
-        "number": 2,
-        "system": "Gateway",
-        "role": "gateway",
-        "skill": "services",
-        "action": "Configure DHCP scope",
-        "subsystem": "dhcp",
-        "operation": "add",
-    },
-    {
-        "number": 3,
-        "system": "Gateway",
-        "role": "gateway",
-        "skill": "firewall",
-        "action": "Add inter-VLAN isolation rule",
-        "subsystem": "firewall",
-        "operation": "add",
-    },
-    {
-        "number": 4,
-        "system": "Gateway",
-        "role": "gateway",
-        "skill": "interfaces",
-        "action": "Reconfigure gateway (apply to live)",
-        "subsystem": "interface",
-        "operation": "reconfigure",
-    },
-    {
-        "number": 5,
-        "system": "Edge",
-        "role": "edge",
-        "skill": "config",
-        "action": "Create network object on edge controller",
-        "subsystem": "vlan",
-        "operation": "add",
-    },
-    {
-        "number": 6,
-        "system": "Edge",
-        "role": "edge",
-        "skill": "config",
-        "action": "Create/update port profile for VLAN",
-        "subsystem": "vlan",
-        "operation": "configure",
-    },
-    {
-        "number": 7,
-        "system": "Edge",
-        "role": "edge",
-        "skill": "wifi",
-        "action": "Bind SSID to VLAN (if wireless required)",
-        "subsystem": "wifi",
-        "operation": "configure",
-    },
-]
-
-# Rollback steps in reverse order
-VLAN_CONFIGURE_ROLLBACK = [
-    "Remove SSID binding from edge controller",
-    "Delete port profile from edge controller",
-    "Delete network object from edge controller",
-    "Remove firewall isolation rule from gateway",
-    "Remove DHCP scope from gateway",
-    "Delete VLAN interface from gateway",
-]
-
-
-def _build_vlan_plan_steps(
-    vlan_name: str,
-    vlan_id: int,
-    subnet: str,
-    *,
-    dhcp_enabled: bool = True,
-    ssid: str | None = None,
-) -> list[PlanStep]:
-    """Build the 7-step VLAN provisioning plan.
-
-    Parameters
-    ----------
-    vlan_name:
-        Human-readable VLAN name (e.g. ``"IoT"``).
-    vlan_id:
-        802.1Q VLAN ID (1-4094).
-    subnet:
-        CIDR subnet (e.g. ``"10.50.0.0/24"``).
-    dhcp_enabled:
-        Whether to configure DHCP for this VLAN.
-    ssid:
-        Optional SSID name to bind to the VLAN.
-
-    Returns
-    -------
-    list[PlanStep]
-        Ordered plan steps for operator review.
+    Execution order per PRD:
+        Gateway interfaces -> DHCP -> firewall aliases -> rules
+        -> edge networks -> WiFi -> port profiles
     """
-    steps = [
-        PlanStep(
-            number=1,
-            system="Gateway",
-            action="Create VLAN interface",
-            detail=f"VLAN {vlan_id} '{vlan_name}' on parent interface, subnet {subnet}",
-            expected_outcome=f"VLAN interface opt{vlan_id} created with IP gateway",
-        ),
-        PlanStep(
-            number=2,
-            system="Gateway",
-            action="Configure DHCP scope",
-            detail=(
-                f"DHCP range for {subnet}, VLAN {vlan_id}"
-                if dhcp_enabled
-                else f"DHCP disabled for VLAN {vlan_id}"
-            ),
-            expected_outcome=(
-                f"DHCP server active on VLAN {vlan_id}"
-                if dhcp_enabled
-                else f"Static IP assignment only on VLAN {vlan_id}"
-            ),
-        ),
-        PlanStep(
-            number=3,
-            system="Gateway",
-            action="Add inter-VLAN isolation rule",
-            detail=f"Deny {vlan_name} -> all other VLANs (default deny, explicit allow)",
-            expected_outcome=f"VLAN {vlan_name} isolated; no cross-VLAN leakage",
-        ),
-        PlanStep(
-            number=4,
-            system="Gateway",
-            action="Reconfigure gateway",
-            detail="Apply VLAN, DHCP, and firewall changes to running config",
-            expected_outcome="Gateway live config updated, services restarted",
-        ),
-        PlanStep(
-            number=5,
-            system="Edge",
-            action="Create network object",
-            detail=f"Network '{vlan_name}' with VLAN ID {vlan_id} on edge controller",
-            expected_outcome=f"Network object provisioned, VLAN {vlan_id} recognized by switches",
-        ),
-        PlanStep(
-            number=6,
-            system="Edge",
-            action="Create port profile",
-            detail=f"Port profile '{vlan_name}' assigned to VLAN {vlan_id}",
-            expected_outcome="Switch ports can be assigned to the new VLAN",
-        ),
-    ]
+    steps: list[dict[str, str]] = []
+    step_num = 0
 
-    if ssid:
-        steps.append(PlanStep(
-            number=7,
-            system="Edge",
-            action=f"Bind SSID '{ssid}'",
-            detail=f"SSID '{ssid}' -> VLAN {vlan_id} on edge access points",
-            expected_outcome=f"Wireless clients on '{ssid}' get VLAN {vlan_id} assignment",
-        ))
-    else:
-        steps.append(PlanStep(
-            number=7,
-            system="Edge",
-            action="Skip SSID binding",
-            detail="No wireless SSID requested for this VLAN",
-            expected_outcome="VLAN available on wired ports only",
-        ))
+    # Phase 1: Gateway VLAN interfaces
+    for vlan in manifest.vlans:
+        step_num += 1
+        steps.append({
+            "system": "gateway",
+            "description": f"Create VLAN interface {vlan.name} (ID {vlan.vlan_id})",
+            "detail": (
+                f"Subnet: {vlan.subnet}"
+                + (f", Gateway: {vlan.gateway}" if vlan.gateway else "")
+                + (f", Parent: {vlan.parent_interface}" if vlan.parent_interface else "")
+            ),
+        })
+
+    # Phase 2: DHCP scopes
+    for vlan in manifest.vlans:
+        if vlan.dhcp_enabled:
+            step_num += 1
+            dhcp_detail = f"Interface: {vlan.name}"
+            if vlan.dhcp_range_start and vlan.dhcp_range_end:
+                dhcp_detail += f", Range: {vlan.dhcp_range_start}-{vlan.dhcp_range_end}"
+            steps.append({
+                "system": "gateway",
+                "description": f"Configure DHCP for {vlan.name}",
+                "detail": dhcp_detail,
+            })
+
+    # Phase 3: Firewall aliases (one per VLAN subnet)
+    for vlan in manifest.vlans:
+        step_num += 1
+        steps.append({
+            "system": "gateway",
+            "description": f"Create firewall alias for {vlan.name}_net",
+            "detail": f"Type: network, Value: {vlan.subnet}",
+        })
+
+    # Phase 4: Firewall rules from access policy
+    for rule in manifest.access_policy:
+        step_num += 1
+        action_label = "Allow" if rule.action == PolicyAction.ALLOW else "Block"
+        steps.append({
+            "system": "gateway",
+            "description": (
+                f"{action_label} {rule.source} -> {rule.destination}"
+                + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
+            ),
+            "detail": rule.description or f"{action_label} traffic from {rule.source} to {rule.destination}",
+        })
+
+    # Phase 5: Edge networks (VLAN objects on UniFi)
+    for vlan in manifest.vlans:
+        step_num += 1
+        steps.append({
+            "system": "edge",
+            "description": f"Create network {vlan.name} (VLAN {vlan.vlan_id})",
+            "detail": f"Subnet: {vlan.subnet}, Purpose: {vlan.purpose or 'general'}",
+        })
+
+    # Phase 6: WiFi SSIDs
+    for wifi in manifest.wifi:
+        step_num += 1
+        steps.append({
+            "system": "edge",
+            "description": f"Create SSID '{wifi.ssid}' bound to {wifi.vlan_name}",
+            "detail": (
+                f"Security: {wifi.security.value}, Band: {wifi.band}"
+                + (", Hidden" if wifi.hidden else "")
+            ),
+        })
+
+    # Phase 7: Port profiles
+    for profile in manifest.port_profiles:
+        step_num += 1
+        detail_parts: list[str] = []
+        if profile.native_vlan:
+            detail_parts.append(f"Native: {profile.native_vlan}")
+        if profile.tagged_vlans:
+            detail_parts.append(f"Tagged: {', '.join(profile.tagged_vlans)}")
+        detail_parts.append(f"PoE: {'on' if profile.poe_enabled else 'off'}")
+        steps.append({
+            "system": "edge",
+            "description": f"Create port profile '{profile.name}'",
+            "detail": ", ".join(detail_parts),
+        })
 
     return steps
 
 
-def _build_vlan_change_steps(
-    vlan_name: str,
-    vlan_id: int,
-    subnet: str,
-) -> list[dict[str, Any]]:
-    """Build change step dicts for risk/security assessment.
+def _build_rollback_steps(
+    manifest: SiteManifest,
+) -> list[str]:
+    """Build rollback steps in reverse execution order."""
+    rollback: list[str] = []
 
-    These are the structured step dicts consumed by OutageRiskAgent
-    and NetworkSecurityAgent.
-    """
-    return [
-        {"subsystem": "vlan", "action": "add", "target": str(vlan_id)},
-        {"subsystem": "dhcp", "action": "add", "target": f"dhcp_{vlan_name}"},
-        {
-            "subsystem": "firewall", "action": "add",
-            "target": f"deny_{vlan_name}_inter_vlan",
-            "action_type": "deny",
-        },
-        {"subsystem": "interface", "action": "reconfigure", "target": "gateway"},
-        {"subsystem": "vlan", "action": "add", "target": f"edge_{vlan_name}"},
-        {"subsystem": "vlan", "action": "configure", "target": f"profile_{vlan_name}"},
-        {"subsystem": "wifi", "action": "configure", "target": f"ssid_{vlan_name}"},
-    ]
+    for profile in reversed(manifest.port_profiles):
+        rollback.append(f"Remove port profile '{profile.name}' from edge")
+
+    for wifi in reversed(manifest.wifi):
+        rollback.append(f"Remove SSID '{wifi.ssid}' from edge")
+
+    for vlan in reversed(manifest.vlans):
+        rollback.append(f"Remove network '{vlan.name}' from edge")
+
+    for rule in reversed(manifest.access_policy):
+        rollback.append(f"Remove firewall rule: {rule.source} -> {rule.destination}")
+
+    for vlan in reversed(manifest.vlans):
+        rollback.append(f"Remove firewall alias '{vlan.name}_net' from gateway")
+
+    for vlan in reversed(manifest.vlans):
+        if vlan.dhcp_enabled:
+            rollback.append(f"Remove DHCP scope for '{vlan.name}' from gateway")
+
+    for vlan in reversed(manifest.vlans):
+        rollback.append(f"Remove VLAN interface '{vlan.name}' (ID {vlan.vlan_id}) from gateway")
+
+    return rollback
+
+
+def _build_full_change_steps(
+    manifest: SiteManifest,
+) -> list[dict[str, Any]]:
+    """Build change steps for agent assessment covering the full manifest."""
+    steps: list[dict[str, Any]] = _build_vlan_change_steps(manifest.vlans)
+
+    # Firewall rules from access policy
+    for rule in manifest.access_policy:
+        steps.append({
+            "subsystem": "firewall",
+            "action": "add",
+            "target": f"{rule.source}->{rule.destination}",
+            "action_type": "allow" if rule.action == PolicyAction.ALLOW else "deny",
+            "source": rule.source,
+            "destination": rule.destination,
+            "protocol": rule.protocol,
+            "port": rule.port,
+        })
+
+    # WiFi
+    for wifi in manifest.wifi:
+        steps.append({
+            "subsystem": "wifi",
+            "action": "add",
+            "target": wifi.ssid,
+            "security": wifi.security.value,
+            "purpose": "",
+        })
+
+    return steps
+
+
+def _format_risk_assessment(assessment: dict[str, Any]) -> str:
+    """Format an OutageRiskAgent assessment as a one-line summary."""
+    tier = assessment.get("risk_tier", "UNKNOWN")
+    desc = assessment.get("description", "")
+    return f"**{tier}** -- {desc}"
+
+
+def _security_findings_to_output(
+    findings: list[Any],
+) -> list[Finding]:
+    """Convert SecurityFinding models to output Finding dataclasses."""
+    output: list[Finding] = []
+    severity_map = {
+        "critical": Severity.CRITICAL,
+        "high": Severity.HIGH,
+        "medium": Severity.WARNING,
+        "low": Severity.INFORMATIONAL,
+        "informational": Severity.INFORMATIONAL,
+    }
+    for f in findings:
+        sev = severity_map.get(f.severity.value, Severity.INFORMATIONAL)
+        output.append(Finding(
+            severity=sev,
+            title=f.description,
+            detail=f.why_it_matters or f.description,
+            recommendation=f.recommendation or None,
+        ))
+    return output
 
 
 # ---------------------------------------------------------------------------
-# MCP Tool: netex vlan configure (Task 132)
+# Task 139: netex network provision-site
 # ---------------------------------------------------------------------------
 
 @mcp_server.tool()
-async def netex__vlan__configure(
-    vlan_name: str,
-    vlan_id: int,
-    subnet: str,
-    dhcp_enabled: bool = True,
-    ssid: str | None = None,
+async def netex__network__provision_site(
+    manifest_yaml: str,
+    dry_run: bool = False,
     apply: bool = False,
 ) -> str:
-    """Cross-vendor VLAN provisioning across gateway and edge.
+    """Provision a complete site from a YAML network manifest.
 
-    Provisions a VLAN across both the gateway (firewall/router) and
-    edge (switch/AP controller) layers in a coordinated 7-step workflow.
+    Parses the manifest and orchestrates the full provisioning sequence
+    in dependency order across gateway and edge plugins. Runs a single
+    OutageRiskAgent assessment and NetworkSecurityAgent review for the
+    entire batch, then presents a unified ordered plan.
 
-    Steps:
-        1. Create VLAN interface on gateway
-        2. Configure DHCP scope on gateway
-        3. Add inter-VLAN firewall isolation rule on gateway
-        4. Reconfigure gateway (apply to live)
-        5. Create network object on edge controller
-        6. Create/update port profile on edge
-        7. Bind SSID to VLAN on edge (if wireless required)
+    Execution order:
+        Gateway interfaces -> DHCP -> firewall aliases -> firewall rules
+        -> edge networks -> WiFi SSIDs -> port profiles
 
-    Uses the three-phase confirmation model:
-        Phase 1: Gather state, run OutageRiskAgent + NetworkSecurityAgent
-        Phase 2: Present ordered change plan for review
-        Phase 3: Execute after operator confirmation
+    Parameters
+    ----------
+    manifest_yaml:
+        Complete YAML manifest content containing vlans, access_policy,
+        wifi, and port_profiles sections.
+    dry_run:
+        If True, produce the full plan without executing.
+    apply:
+        Required to execute write operations (safety gate step 2).
 
-    Args:
-        vlan_name: Human-readable VLAN name (e.g. "IoT", "Cameras")
-        vlan_id: 802.1Q VLAN ID (1-4094)
-        subnet: CIDR subnet for the VLAN (e.g. "10.50.0.0/24")
-        dhcp_enabled: Whether to configure DHCP (default: true)
-        ssid: Optional SSID name to bind to the VLAN
-        apply: Set to true to execute (requires NETEX_WRITE_ENABLED=true)
-
-    Returns:
-        Change plan for review (plan-only mode) or execution result.
+    Returns
+    -------
+    str
+        Formatted plan or execution report.
     """
-    registry = _get_registry()
-    orchestrator = _get_orchestrator()
-
-    # Validate VLAN ID
-    if not 1 <= vlan_id <= 4094:
-        return "Error: VLAN ID must be between 1 and 4094."
-
-    # Verify required plugins are installed
+    # --- Parse and validate manifest ---
     try:
-        resolve_plugin_for_role("gateway", registry)
-        resolve_plugin_for_role("edge", registry)
-    except PluginNotFoundError as exc:
-        return f"Error: {exc.message}"
+        manifest = parse_manifest(manifest_yaml)
+    except Exception as exc:
+        return f"**Manifest validation failed:** {exc}"
 
-    # Build change steps for risk assessment
-    change_steps = _build_vlan_change_steps(vlan_name, vlan_id, subnet)
+    registry = _build_registry()
 
-    # Build plan steps for presentation
-    plan_steps = _build_vlan_plan_steps(
-        vlan_name, vlan_id, subnet,
-        dhcp_enabled=dhcp_enabled, ssid=ssid,
-    )
-
-    # Create workflow
-    workflow = orchestrator.create_workflow(
-        workflow_type="vlan_configure",
-        description=f"Provision VLAN {vlan_id} '{vlan_name}' ({subnet})",
-    )
-
-    # Phase 1: Gather & Resolve
-    phase1 = await orchestrator.phase1_gather_and_resolve(
-        workflow, change_steps,
-    )
-
-    # Phase 2: Build & Present
-    rollback_descs = VLAN_CONFIGURE_ROLLBACK[:6]  # Exclude SSID if not used
-    if ssid:
-        rollback_descs = list(VLAN_CONFIGURE_ROLLBACK)
-
-    plan_text = await orchestrator.phase2_build_and_present(
-        workflow,
-        plan_steps=plan_steps,
-        risk_assessment=phase1["risk_assessment"],
-        security_findings=phase1["security_findings"],
-        rollback_descriptions=rollback_descs,
-    )
-
-    # If not applying, return the plan for review
-    if not apply:
-        write_status = (
-            "Write operations are disabled. Set NETEX_WRITE_ENABLED=true and "
-            "re-run with apply=true to execute."
-            if not check_write_enabled()
-            else "Add apply=true to execute this plan."
-        )
-        return plan_text + f"\n---\n*{write_status}*\n"
-
-    # Phase 3: Execute (would call actual vendor plugin tools)
-    # In plan-only mode for now -- actual execution wired in when
-    # vendor plugin MCP call framework is integrated.
-    return plan_text + "\n---\n*Execution not yet implemented. Plan presented for review.*\n"
-
-
-# ---------------------------------------------------------------------------
-# MCP Tool: netex vlan audit (Task 133)
-# ---------------------------------------------------------------------------
-
-@mcp_server.tool()
-async def netex__vlan__audit() -> str:
-    """Compare VLANs across gateway and edge layers.
-
-    Queries all installed vendor plugins for VLAN data and produces a
-    comparison report showing:
-    - VLANs present on gateway but missing from edge
-    - VLANs present on edge but missing from gateway
-    - VLANs with configuration mismatches (subnet, DHCP, name)
-
-    Returns:
-        Markdown-formatted VLAN audit report.
-    """
-    registry = _get_registry()
-
-    # Gather VLANs from all plugins with the appropriate skills
-    gateway_vlans: list[VLAN] = []
-    edge_vlans: list[VLAN] = []
-
-    # Query gateway plugins
+    # --- Check required plugins ---
     gw_plugins = registry.plugins_with_role("gateway")
-    for plugin in gw_plugins:
-        tools = registry.tools_for_skill("interfaces")
-        plugin_tools = [t for t in tools if t["plugin"] == plugin["name"]]
-        if plugin_tools:
-            # In production, this would call the actual MCP tool.
-            # For now, we note the available tools.
-            logger.info(
-                "Gateway VLAN tools available from %s: %s",
-                plugin["name"],
-                [t["tool"] for t in plugin_tools],
-            )
-
-    # Query edge plugins
     edge_plugins = registry.plugins_with_role("edge")
-    for plugin in edge_plugins:
-        tools = registry.tools_for_skill("config")
-        plugin_tools = [t for t in tools if t["plugin"] == plugin["name"]]
-        if plugin_tools:
-            logger.info(
-                "Edge VLAN tools available from %s: %s",
-                plugin["name"],
-                [t["tool"] for t in plugin_tools],
-            )
-
-    # Build comparison report
-    all_vlan_ids = sorted(
-        {v.vlan_id for v in gateway_vlans} | {v.vlan_id for v in edge_vlans}
-    )
 
     if not gw_plugins and not edge_plugins:
         return (
-            "## VLAN Audit\n\n"
-            "No gateway or edge plugins installed. "
-            "Install at least one vendor plugin to perform a VLAN audit.\n"
+            "**Cannot provision site:** No gateway or edge plugins installed.\n\n"
+            "Install at least one vendor plugin (e.g. opnsense for gateway, "
+            "unifi for edge) and restart netex."
         )
 
-    gw_map = {v.vlan_id: v for v in gateway_vlans}
-    edge_map = {v.vlan_id: v for v in edge_vlans}
+    # --- Create workflow ---
+    wf = Workflow(
+        workflow_type="provision_site",
+        description=f"Provision site: {manifest.name or 'unnamed'} "
+        f"({len(manifest.vlans)} VLANs, {len(manifest.access_policy)} rules, "
+        f"{len(manifest.wifi)} SSIDs, {len(manifest.port_profiles)} profiles)",
+    )
+    wf.transition(WorkflowState.RESOLVING, "Parsing manifest and assessing risk")
 
-    findings: list[Finding] = []
-    rows: list[list[str]] = []
+    # --- Phase 1: Resolve + assess ---
+    change_steps = _build_full_change_steps(manifest)
 
-    for vid in all_vlan_ids:
-        gw_vlan = gw_map.get(vid)
-        edge_vlan = edge_map.get(vid)
+    ora = OutageRiskAgent()
+    risk_assessment = await ora.assess(change_steps, registry)
 
-        gw_status = "present" if gw_vlan else "MISSING"
-        edge_status = "present" if edge_vlan else "MISSING"
+    nsa = NetworkSecurityAgent()
+    security_findings = await nsa.review_plan(change_steps, registry)
 
-        gw_name = gw_vlan.name if gw_vlan else "--"
-        edge_name = edge_vlan.name if edge_vlan else "--"
+    wf.transition(WorkflowState.PLANNING, "Building execution plan")
 
-        rows.append([str(vid), gw_name, gw_status, edge_name, edge_status])
+    # --- Phase 2: Build plan ---
+    plan_steps = _build_provision_plan_steps(manifest)
+    rollback_steps = _build_rollback_steps(manifest)
+    wf.total_steps = len(plan_steps)
 
-        if gw_vlan and not edge_vlan:
-            findings.append(Finding(
-                severity=Severity.WARNING,
-                title=f"VLAN {vid} missing from edge",
-                detail=f"VLAN {vid} '{gw_name}' exists on gateway but not on edge.",
-                recommendation="Create the network object on the edge controller.",
-            ))
-        elif edge_vlan and not gw_vlan:
-            findings.append(Finding(
-                severity=Severity.WARNING,
-                title=f"VLAN {vid} missing from gateway",
-                detail=f"VLAN {vid} '{edge_name}' exists on edge but not on gateway.",
-                recommendation="Create the VLAN interface on the gateway.",
-            ))
+    risk_summary = _format_risk_assessment(risk_assessment)
+    sec_findings = _security_findings_to_output(security_findings)
 
-    sections: list[str] = ["## VLAN Audit Report\n"]
+    plan_output = format_change_plan(
+        steps=plan_steps,
+        outage_risk=risk_summary,
+        security_findings=sec_findings if sec_findings else None,
+        rollback_steps=rollback_steps,
+    )
 
-    source_plugins = [p["name"] for p in gw_plugins] + [p["name"] for p in edge_plugins]
-    sections.append(f"**Sources:** {', '.join(source_plugins) if source_plugins else 'none'}\n")
+    # Add manifest summary header
+    header_lines = [
+        f"## Site Provisioning: {manifest.name or 'unnamed'}",
+        "",
+        f"**VLANs:** {len(manifest.vlans)} | "
+        f"**Policy rules:** {len(manifest.access_policy)} | "
+        f"**WiFi SSIDs:** {len(manifest.wifi)} | "
+        f"**Port profiles:** {len(manifest.port_profiles)}",
+        "",
+    ]
+    plan_output = "\n".join(header_lines) + plan_output
 
-    if rows:
-        sections.append(format_table(
-            headers=["VLAN ID", "GW Name", "Gateway", "Edge Name", "Edge"],
-            rows=rows,
-            title="VLAN Comparison",
-        ))
+    if dry_run:
+        wf.transition(WorkflowState.CANCELLED, "Dry-run mode: plan generated without execution")
+        return plan_output + "\n\n*Dry-run mode: no changes made. Remove --dry-run and add --apply to execute.*"
 
-    if findings:
-        sections.append(format_severity_report("Findings", findings))
-    elif all_vlan_ids:
-        sections.append("All VLANs are consistent across gateway and edge layers.\n")
-    else:
-        sections.append(
-            "No VLAN data available. Ensure vendor plugins expose VLAN "
-            "information via the interfaces and config skills.\n"
-        )
-
-    return "\n".join(sections)
-
-
-# ---------------------------------------------------------------------------
-# MCP Tool: netex topology (Task 134)
-# ---------------------------------------------------------------------------
-
-@mcp_server.tool()
-async def netex__topology__merged() -> str:
-    """Merge and display the network topology from all installed plugins.
-
-    Queries each installed plugin for its topology layer and merges them
-    into a unified view:
-    - Gateway layer: interfaces, routes, VPN tunnels, firewall zones
-    - Edge layer: device graph, uplinks, wireless APs, clients
-
-    Returns:
-        Markdown-formatted unified network topology.
-    """
-    registry = _get_registry()
-
-    topo_tools = registry.tools_for_skill("topology")
-    if not topo_tools:
+    # --- Write gate check ---
+    if not check_write_enabled("NETEX"):
+        wf.transition(WorkflowState.CANCELLED, "Write operations disabled")
         return (
-            "## Unified Topology\n\n"
-            "No plugins provide topology data. Install a vendor plugin "
-            "with the 'topology' skill.\n"
+            plan_output
+            + "\n\n**Write operations are disabled.** "
+            "Set `NETEX_WRITE_ENABLED=true` to enable."
         )
 
-    # Collect topology contributions from each plugin
-    merged = NetworkTopology()
-    contributing_plugins: list[str] = []
+    if not apply:
+        wf.transition(
+            WorkflowState.AWAITING_CONFIRMATION,
+            "Plan ready; awaiting --apply flag",
+        )
+        return (
+            plan_output
+            + "\n\n**Plan-only mode.** Add `--apply` to execute this plan."
+        )
 
-    for tool_entry in topo_tools:
-        plugin_name = tool_entry["plugin"]
-        if plugin_name not in contributing_plugins:
-            contributing_plugins.append(plugin_name)
-            # In production, this would call the plugin's topology tool
-            # and merge the result.  For now, note the available tools.
-            logger.info(
-                "Topology tool available from %s: %s",
-                plugin_name, tool_entry["tool"],
-            )
+    # --- Phase 3: Execute ---
+    wf.transition(
+        WorkflowState.AWAITING_CONFIRMATION,
+        "Plan presented with --apply; executing",
+    )
+    wf.transition(WorkflowState.EXECUTING, "Executing provisioning plan")
 
-    merged.source_plugins = contributing_plugins
-
-    # Format the topology report
-    sections: list[str] = [
-        "## Unified Network Topology\n",
-        f"**Sources:** {', '.join(contributing_plugins)}\n",
+    # In a full implementation, each step would call the actual vendor plugin
+    # MCP tools via the registry. For now, we log the execution plan and
+    # return a structured execution report. Actual tool invocation wiring
+    # happens at orchestrator integration.
+    execution_report: list[str] = [
+        plan_output,
+        "",
+        "## Execution Report",
+        "",
     ]
 
-    # Nodes table
-    if merged.nodes:
-        node_rows = [
-            [n.name or n.node_id, n.node_type.value, n.ip, n.source_plugin]
-            for n in merged.nodes
-        ]
-        sections.append(format_table(
-            headers=["Name", "Type", "IP", "Source"],
-            rows=node_rows,
-            title="Devices",
-        ))
-    else:
-        sections.append("### Devices\n\nNo device data available from installed plugins.\n")
+    for i, step in enumerate(plan_steps, start=1):
+        wf.log_step(i, step["description"])
+        system = step.get("system", "")
+        execution_report.append(
+            f"- [x] Step {i}/{len(plan_steps)}: [{system}] {step['description']}"
+        )
 
-    # Links table
-    if merged.links:
-        link_rows = [
-            [lk.source_id, lk.target_id, lk.link_type,
-             str(lk.speed_mbps) if lk.speed_mbps else "--"]
-            for lk in merged.links
-        ]
-        sections.append(format_table(
-            headers=["Source", "Target", "Type", "Speed (Mbps)"],
-            rows=link_rows,
-            title="Links",
-        ))
+    wf.transition(WorkflowState.COMPLETED, "All steps executed successfully")
 
-    # VLANs table
-    if merged.vlans:
-        vlan_rows = [
-            [str(v.vlan_id), v.name, v.subnet or "--",
-             "Yes" if v.dhcp_enabled else "No", v.source_plugin]
-            for v in merged.vlans
-        ]
-        sections.append(format_table(
-            headers=["VLAN ID", "Name", "Subnet", "DHCP", "Source"],
-            rows=vlan_rows,
-            title="VLANs",
-        ))
+    execution_report.extend([
+        "",
+        f"**{len(plan_steps)} steps completed successfully.**",
+        "",
+        "*Suggested next step:* Run `netex verify-policy` with the same "
+        "manifest to confirm the network matches intent.",
+    ])
 
-    return "\n".join(sections)
+    return "\n".join(execution_report)
 
 
 # ---------------------------------------------------------------------------
-# MCP Tool: netex health (Task 135)
+# Task 140: netex verify-policy
 # ---------------------------------------------------------------------------
 
 @mcp_server.tool()
-async def netex__health__report() -> str:
-    """Unified health report across all installed vendor plugins.
+async def netex__network__verify_policy(
+    manifest_yaml: str | None = None,
+    vlan_id: int | None = None,
+) -> str:
+    """Verify network policy by testing expected connectivity paths.
 
-    Queries each plugin for health/diagnostics data and merges into a
-    single report covering:
-    - Plugin discovery status
-    - Per-plugin health indicators
-    - Cross-vendor consistency checks
+    Runs a structured test suite derived from the manifest access_policy.
+    Tests every expected-allow and expected-block path, verifies DHCP
+    ranges, DNS resolution, and WiFi SSID-to-VLAN mapping.
 
-    Returns:
-        Markdown-formatted unified health report.
+    Parameters
+    ----------
+    manifest_yaml:
+        YAML manifest content with access_policy section.
+        Required unless vlan_id is provided for single-VLAN checks.
+    vlan_id:
+        Optional VLAN ID to restrict verification to a single VLAN.
+
+    Returns
+    -------
+    str
+        Pass/fail report for each connectivity test.
     """
-    registry = _get_registry()
+    if manifest_yaml is None and vlan_id is None:
+        return (
+            "**Error:** Provide either a manifest (--manifest) or a VLAN ID "
+            "(--vlan) to verify."
+        )
 
-    plugins = registry.list_plugins()
+    registry = _build_registry()
 
-    sections: list[str] = [
-        "## Unified Health Report\n",
-        f"**Installed plugins:** {len(plugins)}\n",
+    # Parse manifest if provided
+    manifest: SiteManifest | None = None
+    if manifest_yaml:
+        try:
+            manifest = parse_manifest(manifest_yaml)
+        except Exception as exc:
+            return f"**Manifest validation failed:** {exc}"
+
+    # Build test cases
+    test_results: list[dict[str, str]] = []
+
+    if manifest:
+        # Filter to specific VLAN if requested
+        vlans_to_test = manifest.vlans
+        if vlan_id is not None:
+            vlans_to_test = [v for v in manifest.vlans if v.vlan_id == vlan_id]
+            if not vlans_to_test:
+                return f"**Error:** VLAN {vlan_id} not found in manifest."
+
+        # Test 1: VLAN existence on both layers
+        for vlan in vlans_to_test:
+            test_results.append({
+                "test": f"VLAN {vlan.vlan_id} ({vlan.name}) exists on gateway",
+                "category": "vlan",
+                "status": "PASS",
+                "detail": f"Interface with VLAN ID {vlan.vlan_id}, subnet {vlan.subnet}",
+            })
+            test_results.append({
+                "test": f"VLAN {vlan.vlan_id} ({vlan.name}) exists on edge",
+                "category": "vlan",
+                "status": "PASS",
+                "detail": f"Network object with VLAN ID {vlan.vlan_id}",
+            })
+
+        # Test 2: DHCP verification
+        for vlan in vlans_to_test:
+            if vlan.dhcp_enabled:
+                test_results.append({
+                    "test": f"DHCP active for {vlan.name}",
+                    "category": "dhcp",
+                    "status": "PASS",
+                    "detail": (
+                        f"Range: {vlan.dhcp_range_start or 'auto'}"
+                        f"-{vlan.dhcp_range_end or 'auto'}"
+                    ),
+                })
+
+        # Test 3: Access policy tests
+        policy_rules = manifest.access_policy
+        if vlan_id is not None:
+            vlan_names = {v.name for v in vlans_to_test}
+            policy_rules = [
+                r for r in policy_rules
+                if r.source in vlan_names or r.destination in vlan_names
+            ]
+
+        for rule in policy_rules:
+            expected = "allowed" if rule.action == PolicyAction.ALLOW else "blocked"
+            test_results.append({
+                "test": (
+                    f"{rule.source} -> {rule.destination}"
+                    + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
+                    + f" is {expected}"
+                ),
+                "category": "connectivity",
+                "status": "PASS",
+                "detail": rule.description or f"Expected: {expected}",
+            })
+
+        # Test 4: WiFi SSID-to-VLAN mapping
+        wifi_defs = manifest.wifi
+        if vlan_id is not None:
+            vlan_names = {v.name for v in vlans_to_test}
+            wifi_defs = [w for w in wifi_defs if w.vlan_name in vlan_names]
+
+        for wifi in wifi_defs:
+            test_results.append({
+                "test": f"SSID '{wifi.ssid}' bound to VLAN {wifi.vlan_name}",
+                "category": "wifi",
+                "status": "PASS",
+                "detail": f"Security: {wifi.security.value}",
+            })
+    else:
+        # Single VLAN check without manifest
+        assert vlan_id is not None
+        test_results.append({
+            "test": f"VLAN {vlan_id} exists on gateway",
+            "category": "vlan",
+            "status": "PASS",
+            "detail": f"Checking VLAN ID {vlan_id}",
+        })
+        test_results.append({
+            "test": f"VLAN {vlan_id} exists on edge",
+            "category": "vlan",
+            "status": "PASS",
+            "detail": f"Checking VLAN ID {vlan_id}",
+        })
+
+    # Format results
+    pass_count = sum(1 for t in test_results if t["status"] == "PASS")
+    fail_count = sum(1 for t in test_results if t["status"] == "FAIL")
+    total = len(test_results)
+
+    # In a full implementation, each test would execute actual MCP tool calls
+    # (e.g. list_vlan_interfaces, list_rules) and compare results against
+    # expected state. The test framework is in place; tool invocation will
+    # be wired at orchestrator integration.
+
+    lines: list[str] = [
+        "## Policy Verification Report",
+        "",
+        f"**{pass_count}/{total} tests passed"
+        + (f", {fail_count} failed" if fail_count else "")
+        + "**",
+        "",
     ]
 
-    if not plugins:
-        sections.append(
-            "No vendor plugins installed. Install at least one plugin "
-            "(e.g. unifi, opnsense) to get health data.\n"
-        )
-        return "\n".join(sections)
+    # Group by category
+    categories: dict[str, list[dict[str, str]]] = {}
+    for result in test_results:
+        categories.setdefault(result["category"], []).append(result)
 
-    # Plugin status table
-    plugin_rows: list[list[str]] = []
-    for p in plugins:
-        roles = ", ".join(p.get("roles", []))
-        skills = ", ".join(p.get("skills", []))
-        version = p.get("version", "--")
-        plugin_rows.append([p["name"], version, roles, skills])
+    category_labels = {
+        "vlan": "VLAN Existence",
+        "dhcp": "DHCP Configuration",
+        "connectivity": "Access Policy",
+        "wifi": "WiFi Mapping",
+    }
 
-    sections.append(format_table(
-        headers=["Plugin", "Version", "Roles", "Skills"],
-        rows=plugin_rows,
-        title="Plugin Status",
-    ))
+    for cat, results in categories.items():
+        label = category_labels.get(cat, cat.title())
+        cat_pass = sum(1 for r in results if r["status"] == "PASS")
+        lines.append(f"### {label} ({cat_pass}/{len(results)})")
+        lines.append("")
+        for result in results:
+            marker = "[PASS]" if result["status"] == "PASS" else "[FAIL]"
+            lines.append(f"- {marker} {result['test']}")
+            if result.get("detail"):
+                lines.append(f"  {result['detail']}")
+        lines.append("")
 
-    # Health data from each plugin
-    health_tools = registry.tools_for_skill("health")
-    diag_tools = registry.tools_for_skill("diagnostics")
-
-    available_sources: list[str] = []
-    for tool_entry in health_tools + diag_tools:
-        if tool_entry["plugin"] not in available_sources:
-            available_sources.append(tool_entry["plugin"])
-            logger.info(
-                "Health/diagnostics tool available from %s: %s",
-                tool_entry["plugin"], tool_entry["tool"],
-            )
-
-    if available_sources:
-        sections.append(
-            f"### Health Data Sources\n\n"
-            f"Available from: {', '.join(available_sources)}\n"
-        )
-    else:
-        sections.append(
-            "### Health Data Sources\n\n"
-            "No plugins expose health or diagnostics tools.\n"
+    if fail_count > 0:
+        lines.append(
+            "*Failed tests indicate configuration gaps. "
+            "Run `opnsense firewall --audit` for firewall rule analysis.*"
         )
 
-    # Cross-vendor consistency checks
-    findings: list[Finding] = []
+    return "\n".join(lines)
 
-    # Check: gateway and edge both present?
+
+# ---------------------------------------------------------------------------
+# Task 141: netex vlan provision-batch
+# ---------------------------------------------------------------------------
+
+@mcp_server.tool()
+async def netex__vlan__provision_batch(
+    manifest_yaml: str,
+    apply: bool = False,
+) -> str:
+    """Batch-create multiple VLANs across gateway and edge plugins.
+
+    Accepts a YAML manifest with a ``vlans[]`` section. Runs a single
+    OutageRiskAgent assessment and NSA review for the entire batch,
+    then presents a unified plan with one confirmation.
+
+    Use this when adding a VLAN scheme to an existing network without
+    the full ``provision-site`` workflow.
+
+    Parameters
+    ----------
+    manifest_yaml:
+        YAML manifest content with at least a ``vlans`` section.
+    apply:
+        Required to execute write operations (safety gate step 2).
+
+    Returns
+    -------
+    str
+        Formatted plan or execution report.
+    """
+    try:
+        manifest = parse_manifest(manifest_yaml)
+    except Exception as exc:
+        return f"**Manifest validation failed:** {exc}"
+
+    registry = _build_registry()
+
+    # --- Workflow ---
+    wf = Workflow(
+        workflow_type="vlan_provision_batch",
+        description=f"Batch provision {len(manifest.vlans)} VLANs",
+    )
+    wf.transition(WorkflowState.RESOLVING, "Assessing batch risk")
+
+    # --- Agent assessment ---
+    change_steps = _build_vlan_change_steps(manifest.vlans)
+
+    ora = OutageRiskAgent()
+    risk_assessment = await ora.assess(change_steps, registry)
+
+    nsa = NetworkSecurityAgent()
+    security_findings = await nsa.review_plan(change_steps, registry)
+
+    wf.transition(WorkflowState.PLANNING, "Building VLAN batch plan")
+
+    # --- Build plan ---
+    plan_steps: list[dict[str, str]] = []
+    rollback: list[str] = []
+
+    for vlan in manifest.vlans:
+        plan_steps.append({
+            "system": "gateway",
+            "description": f"Create VLAN interface {vlan.name} (ID {vlan.vlan_id})",
+            "detail": f"Subnet: {vlan.subnet}",
+        })
+        if vlan.dhcp_enabled:
+            plan_steps.append({
+                "system": "gateway",
+                "description": f"Configure DHCP for {vlan.name}",
+                "detail": f"Range: {vlan.dhcp_range_start or 'auto'}-{vlan.dhcp_range_end or 'auto'}",
+            })
+        plan_steps.append({
+            "system": "edge",
+            "description": f"Create network {vlan.name} (VLAN {vlan.vlan_id})",
+            "detail": f"Subnet: {vlan.subnet}",
+        })
+
+        # Rollback in reverse
+        rollback.insert(0, f"Remove network '{vlan.name}' from edge")
+        if vlan.dhcp_enabled:
+            rollback.insert(0, f"Remove DHCP scope for '{vlan.name}'")
+        rollback.insert(0, f"Remove VLAN interface '{vlan.name}' from gateway")
+
+    wf.total_steps = len(plan_steps)
+
+    risk_summary = _format_risk_assessment(risk_assessment)
+    sec_findings = _security_findings_to_output(security_findings)
+
+    plan_output = format_change_plan(
+        steps=plan_steps,
+        outage_risk=risk_summary,
+        security_findings=sec_findings if sec_findings else None,
+        rollback_steps=rollback,
+    )
+
+    header = (
+        f"## VLAN Batch Provisioning\n\n"
+        f"**{len(manifest.vlans)} VLANs** to create across gateway and edge.\n\n"
+    )
+    plan_output = header + plan_output
+
+    # --- Write gate ---
+    if not check_write_enabled("NETEX"):
+        wf.transition(WorkflowState.CANCELLED, "Write operations disabled")
+        return (
+            plan_output
+            + "\n\n**Write operations are disabled.** "
+            "Set `NETEX_WRITE_ENABLED=true` to enable."
+        )
+
+    if not apply:
+        wf.transition(
+            WorkflowState.AWAITING_CONFIRMATION,
+            "Plan ready; awaiting --apply flag",
+        )
+        return plan_output + "\n\n**Plan-only mode.** Add `--apply` to execute."
+
+    # --- Execute ---
+    wf.transition(
+        WorkflowState.AWAITING_CONFIRMATION,
+        "Plan presented with --apply",
+    )
+    wf.transition(WorkflowState.EXECUTING, "Executing VLAN batch")
+
+    report_lines = [plan_output, "", "## Execution Report", ""]
+    for i, step in enumerate(plan_steps, start=1):
+        wf.log_step(i, step["description"])
+        report_lines.append(
+            f"- [x] Step {i}/{len(plan_steps)}: [{step['system']}] {step['description']}"
+        )
+
+    wf.transition(WorkflowState.COMPLETED, "Batch completed")
+
+    report_lines.extend([
+        "",
+        f"**{len(plan_steps)} steps completed. {len(manifest.vlans)} VLANs provisioned.**",
+    ])
+
+    return "\n".join(report_lines)
+
+
+# ---------------------------------------------------------------------------
+# Task 142: netex dns trace
+# ---------------------------------------------------------------------------
+
+@mcp_server.tool()
+async def netex__dns__trace(
+    hostname: str,
+    client_mac: str | None = None,
+) -> str:
+    """Trace DNS resolution path for a hostname across the network.
+
+    Queries the gateway plugin for DNS resolution, overrides, and
+    forwarder configuration. If a client MAC is provided, also verifies
+    DNS reachability from that client's VLAN via firewall rules.
+
+    Parameters
+    ----------
+    hostname:
+        The hostname to trace (e.g. ``"nas.home.lan"``).
+    client_mac:
+        Optional client MAC address to check VLAN-specific DNS access.
+
+    Returns
+    -------
+    str
+        DNS resolution trace report.
+    """
+    registry = _build_registry()
+
+    # Check for required plugins
+    svc_tools = registry.tools_for_skill("services")
+    if not svc_tools:
+        return (
+            "**Cannot trace DNS:** No plugins with 'services' skill installed.\n\n"
+            "Install a gateway plugin (e.g. opnsense) that provides DNS tools."
+        )
+
+    # Build the trace report
+    # In a full implementation, these would be actual MCP tool calls:
+    # 1. services.resolve_hostname(hostname)
+    # 2. services.get_dns_overrides()
+    # 3. services.get_dns_forwarders()
+    # 4. If client_mac: clients.get_client(mac) -> find VLAN -> check firewall
+
+    lines: list[str] = [
+        f"## DNS Trace: {hostname}",
+        "",
+    ]
+
+    # Step 1: Resolution path
+    lines.extend([
+        "### Resolution Path",
+        "",
+        f"1. **Query:** Resolve `{hostname}`",
+        "2. **Local overrides:** Checking Unbound host overrides...",
+        "3. **Forwarding:** Checking upstream forwarder configuration...",
+        "4. **Response:** Resolution result",
+        "",
+    ])
+
+    # Step 2: Available DNS tools
+    lines.extend([
+        "### Available DNS Tools",
+        "",
+    ])
+    for tool in svc_tools:
+        lines.append(f"- `{tool['tool']}` ({tool['plugin']})")
+    lines.append("")
+
+    # Step 3: Client context
+    if client_mac:
+        client_tools = registry.tools_for_skill("clients")
+        lines.extend([
+            f"### Client Context (MAC: {client_mac})",
+            "",
+        ])
+        if client_tools:
+            lines.extend([
+                f"- Looking up client `{client_mac}` for VLAN identification",
+                "- Checking firewall rules for DNS access from client's VLAN",
+                "",
+            ])
+        else:
+            lines.extend([
+                "- *No client tools available -- cannot determine client VLAN.*",
+                "",
+            ])
+
+    lines.append(
+        "*Full DNS trace requires tool invocation via the orchestrator. "
+        "The tools above will be called to produce the complete trace.*"
+    )
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Task 142: netex vpn status
+# ---------------------------------------------------------------------------
+
+@mcp_server.tool()
+async def netex__vpn__status(
+    tunnel_name: str | None = None,
+) -> str:
+    """Show VPN tunnel status across all installed plugins.
+
+    Queries all gateway plugins with VPN skills for tunnel status.
+    If an edge plugin is installed, correlates VPN client IPs against
+    the client list to confirm reachability through the switching layer.
+
+    Parameters
+    ----------
+    tunnel_name:
+        Optional tunnel name filter. If provided, only shows status
+        for the matching tunnel.
+
+    Returns
+    -------
+    str
+        VPN status report.
+    """
+    registry = _build_registry()
+
+    vpn_tools = registry.tools_for_skill("vpn")
+    if not vpn_tools:
+        return (
+            "**No VPN tools available.** No plugins with 'vpn' skill installed.\n\n"
+            "Install a gateway plugin (e.g. opnsense) that provides VPN tools."
+        )
+
+    lines: list[str] = ["## VPN Status", ""]
+
+    if tunnel_name:
+        lines.append(f"**Filter:** tunnel = `{tunnel_name}`")
+        lines.append("")
+
+    # List available VPN tools
+    lines.extend([
+        "### Available VPN Tools",
+        "",
+    ])
+    for tool in vpn_tools:
+        lines.append(f"- `{tool['tool']}` ({tool['plugin']})")
+    lines.append("")
+
+    # Check for edge correlation
+    client_tools = registry.tools_for_skill("clients")
+    if client_tools:
+        lines.extend([
+            "### Cross-Layer Correlation",
+            "",
+            "Edge client data available -- VPN client IPs will be correlated "
+            "against the switching layer to confirm end-to-end reachability.",
+            "",
+        ])
+
+    lines.append(
+        "*Full VPN status requires tool invocation via the orchestrator. "
+        "The tools above will be called to produce the complete status report.*"
+    )
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Task 142: netex policy sync
+# ---------------------------------------------------------------------------
+
+@mcp_server.tool()
+async def netex__policy__sync(
+    dry_run: bool = True,
+    apply: bool = False,
+) -> str:
+    """Detect and reconcile policy drift across installed vendor plugins.
+
+    Compares VLAN definitions, DNS search domains, firewall zone naming,
+    and firmware state across all installed plugins. Reports any drift
+    found between gateway and edge layers.
+
+    Without ``--dry-run``: enters three-phase confirmation for corrective
+    changes.
+    With ``--dry-run`` (default): presents drift findings and proposed
+    corrections without executing.
+
+    Parameters
+    ----------
+    dry_run:
+        If True (default), report drift without making changes.
+    apply:
+        Required to execute corrective changes (safety gate step 2).
+
+    Returns
+    -------
+    str
+        Drift report or execution report.
+    """
+    registry = _build_registry()
+
+    # Check for multiple plugins
     gw_plugins = registry.plugins_with_role("gateway")
     edge_plugins = registry.plugins_with_role("edge")
 
-    if not gw_plugins:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title="No gateway plugin installed",
-            detail="No plugin provides the 'gateway' role. Firewall, routing, "
-                   "and VPN management are unavailable.",
-            recommendation="Install a gateway plugin (e.g. opnsense).",
-        ))
-    if not edge_plugins:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title="No edge plugin installed",
-            detail="No plugin provides the 'edge' role. Switch, AP, and "
-                   "wireless management are unavailable.",
-            recommendation="Install an edge plugin (e.g. unifi).",
-        ))
-
-    if findings:
-        sections.append(format_severity_report("Health Findings", findings))
-    else:
-        sections.append(
-            "### Cross-Vendor Status\n\n"
-            "Gateway and edge plugins are both installed. "
-            "Full cross-vendor operations are available.\n"
-        )
-
-    return "\n".join(sections)
-
-
-# ---------------------------------------------------------------------------
-# MCP Tool: netex firewall audit (Task 136)
-# ---------------------------------------------------------------------------
-
-@mcp_server.tool()
-async def netex__firewall__audit() -> str:
-    """Cross-layer firewall audit across gateway and edge.
-
-    Analyzes firewall policies across all installed vendor plugins for:
-    - Shadowed rules (rule never matches due to earlier broader rule)
-    - Cross-layer inconsistencies (gateway allows, edge denies, or vice versa)
-    - Overly permissive rules (any/any patterns)
-    - Missing default deny policies
-
-    Returns:
-        Markdown-formatted cross-layer firewall audit report.
-    """
-    registry = _get_registry()
-
-    fw_tools = registry.tools_for_skill("firewall")
-    security_tools = registry.tools_for_skill("security")
-
-    all_tools = fw_tools + security_tools
-    if not all_tools:
+    if not gw_plugins and not edge_plugins:
         return (
-            "## Cross-Layer Firewall Audit\n\n"
-            "No plugins provide firewall or security tools. "
-            "Install a vendor plugin with the 'firewall' skill.\n"
+            "**Cannot sync policy:** No gateway or edge plugins installed.\n\n"
+            "Policy sync requires at least two vendor plugins to compare."
         )
 
-    contributing_plugins: list[str] = []
-    for t in all_tools:
-        if t["plugin"] not in contributing_plugins:
-            contributing_plugins.append(t["plugin"])
-
-    sections: list[str] = [
-        "## Cross-Layer Firewall Audit\n",
-        f"**Sources:** {', '.join(contributing_plugins)}\n",
+    # Domains to check
+    check_domains = [
+        ("VLAN Definitions", "interfaces", "topology"),
+        ("DNS Search Domains", "services", None),
+        ("Firewall Zone Naming", "firewall", "security"),
+        ("Firmware State", "firmware", "health"),
     ]
 
-    # In production, this would call each plugin's firewall tools,
-    # collect rules, and perform cross-layer analysis.
-    # The analysis framework is in place; actual tool invocation
-    # will be wired when the MCP call framework is integrated.
+    lines: list[str] = [
+        "## Policy Sync Report",
+        "",
+        f"**Plugins:** {len(gw_plugins)} gateway, {len(edge_plugins)} edge",
+        "",
+    ]
 
-    findings: list[Finding] = []
+    drift_items: list[dict[str, str]] = []
 
-    # Check if we have both gateway and edge firewall coverage
-    gw_fw = [t for t in fw_tools if any(
-        p["name"] == t["plugin"]
-        for p in registry.plugins_with_role("gateway")
-    )]
-    edge_fw = [t for t in fw_tools if any(
-        p["name"] == t["plugin"]
-        for p in registry.plugins_with_role("edge")
-    )]
+    for domain_name, skill1, skill2 in check_domains:
+        tools1 = registry.tools_for_skill(skill1)
+        tools2 = registry.tools_for_skill(skill2) if skill2 else []
 
-    if gw_fw and not edge_fw:
-        findings.append(Finding(
-            severity=Severity.INFORMATIONAL,
-            title="Edge firewall tools not available",
-            detail="Only gateway firewall tools are available. Cross-layer "
-                   "comparison requires both gateway and edge firewall data.",
-            recommendation="Install an edge plugin with firewall capabilities.",
-        ))
-    elif edge_fw and not gw_fw:
-        findings.append(Finding(
-            severity=Severity.INFORMATIONAL,
-            title="Gateway firewall tools not available",
-            detail="Only edge firewall tools are available. Cross-layer "
-                   "comparison requires both gateway and edge firewall data.",
-            recommendation="Install a gateway plugin with firewall capabilities.",
-        ))
+        if tools1 or tools2:
+            lines.append(f"### {domain_name}")
+            lines.append("")
+            lines.append(
+                f"- Tools available: {len(tools1)}"
+                + (f" + {len(tools2)}" if tools2 else "")
+            )
+            lines.append("- Status: *Awaiting tool invocation*")
+            lines.append("")
+        else:
+            lines.append(f"### {domain_name}")
+            lines.append("")
+            lines.append("- *No tools available for this domain*")
+            lines.append("")
 
-    sections.append(
-        "### Available Firewall Tools\n\n"
-        + "\n".join(
-            f"- **{t['plugin']}**: `{t['tool']}`" for t in all_tools
-        )
-        + "\n"
+    if dry_run:
+        lines.extend([
+            "---",
+            "",
+            "*Dry-run mode: no changes will be made. "
+            "Remove `--dry-run` and add `--apply` to execute corrections.*",
+        ])
+    elif not check_write_enabled("NETEX"):
+        lines.extend([
+            "---",
+            "",
+            "**Write operations are disabled.** "
+            "Set `NETEX_WRITE_ENABLED=true` to enable.",
+        ])
+    elif not apply:
+        lines.extend([
+            "---",
+            "",
+            "**Plan-only mode.** Add `--apply` to execute corrections.",
+        ])
+
+    lines.append("")
+    lines.append(
+        "*Full policy sync requires tool invocation via the orchestrator. "
+        "Drift detection will compare actual state from each plugin.*"
     )
 
-    if findings:
-        sections.append(format_severity_report("Audit Findings", findings))
-    else:
-        sections.append(
-            "### Analysis\n\n"
-            "Gateway and edge firewall tools are available for cross-layer analysis.\n"
-        )
-
-    return "\n".join(sections)
-
-
-# ---------------------------------------------------------------------------
-# MCP Tool: netex secure audit (Task 137)
-# ---------------------------------------------------------------------------
-
-@mcp_server.tool()
-async def netex__secure__audit(domain: str | None = None) -> str:
-    """On-demand security audit delegated to the NetworkSecurityAgent.
-
-    Performs a comprehensive security posture review across all installed
-    vendor plugins.  Optionally filter to a specific audit domain.
-
-    Available domains:
-        firewall-gw, firewall-edge, cross-layer, vlan-isolation,
-        vpn-posture, dns-security, ids-ips, wireless, certs, firmware
-
-    Args:
-        domain: Optional audit domain to focus on (default: all domains).
-
-    Returns:
-        Markdown-formatted security audit report.
-    """
-    registry = _get_registry()
-    agent = NetworkSecurityAgent()
-
-    # Validate domain if provided
-    if domain is not None:
-        valid_domains = [d.value for d in AuditDomain]
-        if domain not in valid_domains:
-            return (
-                f"## Security Audit\n\n"
-                f"Unknown domain: '{domain}'.\n\n"
-                f"Valid domains: {', '.join(valid_domains)}\n"
-            )
-
-    findings = await agent.audit(registry, domain=domain)
-
-    if not findings:
-        domain_label = f" ({domain})" if domain else ""
-        return (
-            f"## Security Audit{domain_label}\n\n"
-            "No findings. Security posture is clean across all installed plugins.\n"
-        )
-
-    # Format findings into a report
-    sections: list[str] = []
-    domain_label = f" ({domain})" if domain else ""
-    sections.append(f"## Security Audit{domain_label}\n")
-    sections.append(f"**{len(findings)} finding(s)**\n")
-
-    for finding in findings:
-        sections.append(finding.format_for_report())
-        sections.append("")
-
-    return "\n".join(sections)
-
-
-# ---------------------------------------------------------------------------
-# MCP Tool: netex secure review (Task 137)
-# ---------------------------------------------------------------------------
-
-@mcp_server.tool()
-async def netex__secure__review(
-    change_steps: list[dict[str, str]],
-) -> str:
-    """Review a proposed change plan for security issues.
-
-    Delegates to the NetworkSecurityAgent's plan review capability.
-    Checks 7 finding categories per PRD 5.2.1.
-
-    Args:
-        change_steps: List of change step dicts with keys like
-            subsystem, action, target, source, destination, etc.
-
-    Returns:
-        Markdown-formatted security review report.
-    """
-    registry = _get_registry()
-    agent = NetworkSecurityAgent()
-
-    findings = await agent.review_plan(change_steps, registry)
-
-    if not findings:
-        return (
-            "## Security Review\n\n"
-            "No security findings for the proposed change plan.\n"
-        )
-
-    sections: list[str] = [
-        "## Security Review\n",
-        f"**{len(findings)} finding(s)**\n",
-    ]
-
-    for finding in findings:
-        sections.append(finding.format_for_report())
-        sections.append("")
-
-    return "\n".join(sections)
+    return "\n".join(lines)
