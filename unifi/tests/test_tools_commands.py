@@ -1,4 +1,4 @@
-"""Tests for the command-level MCP tools (unifi_scan, unifi_health).
+"""Tests for the command-level MCP tools (unifi_scan, unifi_health, unifi_clients, unifi_diagnose).
 
 These tools are thin wrappers that delegate to agent orchestrators.
 Tests verify delegation, argument passthrough, error propagation,
@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from unifi.tools.commands import unifi_health, unifi_scan
+from unifi.tools.commands import unifi_clients, unifi_diagnose, unifi_health, unifi_scan
 
 # ---------------------------------------------------------------------------
 # unifi_scan tests
@@ -180,3 +180,196 @@ class TestToolRegistration:
         health_tool = tools["unifi_health"]
         schema = health_tool.parameters
         assert "site_id" in schema.get("properties", {})
+
+    def test_unifi_clients_registered(self) -> None:
+        """unifi_clients is registered as an MCP tool on the server."""
+        from unifi.server import mcp_server
+
+        tool_names = [t.name for t in mcp_server._tool_manager._tools.values()]
+        assert "unifi_clients" in tool_names
+
+    def test_unifi_diagnose_registered(self) -> None:
+        """unifi_diagnose is registered as an MCP tool on the server."""
+        from unifi.server import mcp_server
+
+        tool_names = [t.name for t in mcp_server._tool_manager._tools.values()]
+        assert "unifi_diagnose" in tool_names
+
+    def test_clients_tool_has_site_id_parameter(self) -> None:
+        """unifi_clients tool accepts a site_id parameter."""
+        from unifi.server import mcp_server
+
+        tools = {t.name: t for t in mcp_server._tool_manager._tools.values()}
+        clients_tool = tools["unifi_clients"]
+        schema = clients_tool.parameters
+        assert "site_id" in schema.get("properties", {})
+
+    def test_clients_tool_has_vlan_id_parameter(self) -> None:
+        """unifi_clients tool accepts a vlan_id parameter."""
+        from unifi.server import mcp_server
+
+        tools = {t.name: t for t in mcp_server._tool_manager._tools.values()}
+        clients_tool = tools["unifi_clients"]
+        schema = clients_tool.parameters
+        assert "vlan_id" in schema.get("properties", {})
+
+    def test_clients_tool_has_ap_id_parameter(self) -> None:
+        """unifi_clients tool accepts an ap_id parameter."""
+        from unifi.server import mcp_server
+
+        tools = {t.name: t for t in mcp_server._tool_manager._tools.values()}
+        clients_tool = tools["unifi_clients"]
+        schema = clients_tool.parameters
+        assert "ap_id" in schema.get("properties", {})
+
+    def test_diagnose_tool_has_target_parameter(self) -> None:
+        """unifi_diagnose tool accepts a target parameter."""
+        from unifi.server import mcp_server
+
+        tools = {t.name: t for t in mcp_server._tool_manager._tools.values()}
+        diagnose_tool = tools["unifi_diagnose"]
+        schema = diagnose_tool.parameters
+        assert "target" in schema.get("properties", {})
+
+    def test_diagnose_tool_has_site_id_parameter(self) -> None:
+        """unifi_diagnose tool accepts a site_id parameter."""
+        from unifi.server import mcp_server
+
+        tools = {t.name: t for t in mcp_server._tool_manager._tools.values()}
+        diagnose_tool = tools["unifi_diagnose"]
+        schema = diagnose_tool.parameters
+        assert "site_id" in schema.get("properties", {})
+
+
+# ---------------------------------------------------------------------------
+# unifi_clients tests
+# ---------------------------------------------------------------------------
+
+
+class TestUnifiClients:
+    """Tests for the unifi_clients command tool."""
+
+    async def test_clients_delegates_to_clients_agent(self) -> None:
+        """unifi_clients delegates to list_clients_report and returns its result."""
+        mock_report = AsyncMock(return_value="## Client Inventory\nmock report")
+
+        with patch("unifi.agents.clients.list_clients_report", mock_report):
+            result = await unifi_clients()
+
+        assert result == "## Client Inventory\nmock report"
+
+    async def test_clients_default_parameters(self) -> None:
+        """unifi_clients passes default parameters."""
+        mock_report = AsyncMock(return_value="report")
+
+        with patch("unifi.agents.clients.list_clients_report", mock_report):
+            await unifi_clients()
+
+        mock_report.assert_called_once_with("default", vlan_id=None, ap_id=None)
+
+    async def test_clients_custom_site_id(self) -> None:
+        """unifi_clients passes through a custom site_id."""
+        mock_report = AsyncMock(return_value="report")
+
+        with patch("unifi.agents.clients.list_clients_report", mock_report):
+            await unifi_clients(site_id="branch")
+
+        mock_report.assert_called_once_with("branch", vlan_id=None, ap_id=None)
+
+    async def test_clients_with_vlan_filter(self) -> None:
+        """unifi_clients passes through vlan_id filter."""
+        mock_report = AsyncMock(return_value="report")
+
+        with patch("unifi.agents.clients.list_clients_report", mock_report):
+            await unifi_clients(vlan_id="vlan-123")
+
+        mock_report.assert_called_once_with("default", vlan_id="vlan-123", ap_id=None)
+
+    async def test_clients_with_ap_filter(self) -> None:
+        """unifi_clients passes through ap_id filter."""
+        mock_report = AsyncMock(return_value="report")
+
+        with patch("unifi.agents.clients.list_clients_report", mock_report):
+            await unifi_clients(ap_id="aa:bb:cc:dd:ee:ff")
+
+        mock_report.assert_called_once_with(
+            "default", vlan_id=None, ap_id="aa:bb:cc:dd:ee:ff",
+        )
+
+    async def test_clients_error_propagation(self) -> None:
+        """Errors from the clients agent propagate through unifi_clients."""
+        mock_report = AsyncMock(side_effect=RuntimeError("API error"))
+
+        with (
+            patch("unifi.agents.clients.list_clients_report", mock_report),
+            pytest.raises(RuntimeError, match="API error"),
+        ):
+            await unifi_clients()
+
+    async def test_clients_returns_string(self) -> None:
+        """unifi_clients returns a string."""
+        mock_report = AsyncMock(return_value="## Client Inventory\n**Total:** 5")
+
+        with patch("unifi.agents.clients.list_clients_report", mock_report):
+            result = await unifi_clients()
+
+        assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# unifi_diagnose tests
+# ---------------------------------------------------------------------------
+
+
+class TestUnifiDiagnose:
+    """Tests for the unifi_diagnose command tool."""
+
+    async def test_diagnose_delegates_to_diagnose_agent(self) -> None:
+        """unifi_diagnose delegates to diagnose_target and returns its result."""
+        mock_diagnose = AsyncMock(return_value="## Diagnosis: device-1\nmock report")
+
+        with patch("unifi.agents.diagnose.diagnose_target", mock_diagnose):
+            result = await unifi_diagnose(target="device-1")
+
+        assert result == "## Diagnosis: device-1\nmock report"
+
+    async def test_diagnose_default_site_id(self) -> None:
+        """unifi_diagnose passes 'default' site_id when none specified."""
+        mock_diagnose = AsyncMock(return_value="report")
+
+        with patch("unifi.agents.diagnose.diagnose_target", mock_diagnose):
+            await unifi_diagnose(target="aa:bb:cc:dd:ee:ff")
+
+        mock_diagnose.assert_called_once_with(
+            "aa:bb:cc:dd:ee:ff", site_id="default",
+        )
+
+    async def test_diagnose_custom_site_id(self) -> None:
+        """unifi_diagnose passes through a custom site_id."""
+        mock_diagnose = AsyncMock(return_value="report")
+
+        with patch("unifi.agents.diagnose.diagnose_target", mock_diagnose):
+            await unifi_diagnose(target="aa:bb:cc:dd:ee:ff", site_id="branch")
+
+        mock_diagnose.assert_called_once_with(
+            "aa:bb:cc:dd:ee:ff", site_id="branch",
+        )
+
+    async def test_diagnose_error_propagation(self) -> None:
+        """Errors from the diagnose agent propagate through unifi_diagnose."""
+        mock_diagnose = AsyncMock(side_effect=RuntimeError("Lookup failed"))
+
+        with (
+            patch("unifi.agents.diagnose.diagnose_target", mock_diagnose),
+            pytest.raises(RuntimeError, match="Lookup failed"),
+        ):
+            await unifi_diagnose(target="nonexistent")
+
+    async def test_diagnose_returns_string(self) -> None:
+        """unifi_diagnose returns a string."""
+        mock_diagnose = AsyncMock(return_value="## Diagnosis: AP-1\nAll healthy")
+
+        with patch("unifi.agents.diagnose.diagnose_target", mock_diagnose):
+            result = await unifi_diagnose(target="AP-1")
+
+        assert isinstance(result, str)
