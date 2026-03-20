@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "uuid": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d01",
+      "name": "rfc1918_nets",
+      "type": "network",
+      "description": "All RFC 1918 private address ranges",
+      "content": "10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16"
+    },
+    {
+      "uuid": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d02",
+      "name": "trusted_hosts",
+      "type": "host",
+      "description": "Trusted management hosts",
+      "content": "192.168.1.50\n192.168.1.101"
+    },
+    {
+      "uuid": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d03",
+      "name": "dns_servers",
+      "type": "host",
+      "description": "Upstream DNS resolvers",
+      "content": "1.1.1.1\n8.8.8.8"
+    }
+  ],
+  "rowCount": 3,
+  "total": 3,
+  "current": 1
+}

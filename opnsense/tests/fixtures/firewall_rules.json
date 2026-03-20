@@ -1,0 +1,72 @@
+{
+  "rows": [
+    {
+      "uuid": "f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b01",
+      "description": "Allow LAN to WAN",
+      "action": "pass",
+      "enabled": "1",
+      "direction": "in",
+      "ipprotocol": "inet",
+      "source_net": "192.168.1.0/24",
+      "destination_net": "any",
+      "log": "0",
+      "sequence": 1,
+      "interface": "lan"
+    },
+    {
+      "uuid": "f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b02",
+      "description": "Block IoT to LAN",
+      "action": "block",
+      "enabled": "1",
+      "direction": "in",
+      "ipprotocol": "inet",
+      "source_net": "192.168.30.0/24",
+      "destination_net": "192.168.1.0/24",
+      "log": "1",
+      "sequence": 2,
+      "interface": "opt2"
+    },
+    {
+      "uuid": "f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b03",
+      "description": "Allow IoT to Internet",
+      "action": "pass",
+      "enabled": "1",
+      "direction": "in",
+      "ipprotocol": "inet",
+      "source_net": "192.168.30.0/24",
+      "destination_net": "any",
+      "log": "0",
+      "sequence": 3,
+      "interface": "opt2"
+    },
+    {
+      "uuid": "f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b04",
+      "description": "Allow Guest DNS",
+      "action": "pass",
+      "enabled": "1",
+      "direction": "in",
+      "ipprotocol": "inet",
+      "source_net": "192.168.10.0/24",
+      "destination_net": "192.168.10.1",
+      "log": "0",
+      "sequence": 1,
+      "interface": "opt1"
+    },
+    {
+      "uuid": "f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b05",
+      "description": "Block Guest to all RFC1918",
+      "action": "block",
+      "enabled": "1",
+      "direction": "in",
+      "ipprotocol": "inet",
+      "source_net": "192.168.10.0/24",
+      "destination_net": "rfc1918_nets",
+      "log": "1",
+      "sequence": 2,
+      "interface": "opt1"
+    }
+  ],
+  "rowCount": 5,
+  "total": 5,
+  "current": 1
+}

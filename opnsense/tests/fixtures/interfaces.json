@@ -1,0 +1,56 @@
+{
+  "rows": [
+    {
+      "name": "igb0",
+      "description": "WAN",
+      "addr4": "203.0.113.42",
+      "subnet4": "24",
+      "type": "ethernet",
+      "status": "up",
+      "vlan_tag": null,
+      "macaddr": "00:1a:2b:3c:4d:01",
+      "mtu": 1500,
+      "media": "1000baseT <full-duplex>",
+      "gateway": "203.0.113.1"
+    },
+    {
+      "name": "igb1",
+      "description": "LAN",
+      "addr4": "192.168.1.1",
+      "subnet4": "24",
+      "type": "ethernet",
+      "status": "up",
+      "vlan_tag": null,
+      "macaddr": "00:1a:2b:3c:4d:02",
+      "mtu": 1500,
+      "media": "1000baseT <full-duplex>",
+      "gateway": null
+    },
+    {
+      "name": "igb1_vlan10",
+      "description": "Guest",
+      "addr4": "192.168.10.1",
+      "subnet4": "24",
+      "type": "vlan",
+      "status": "up",
+      "vlan_tag": 10,
+      "macaddr": "00:1a:2b:3c:4d:02",
+      "mtu": 1500,
+      "media": null,
+      "gateway": null
+    },
+    {
+      "name": "igb1_vlan30",
+      "description": "IoT",
+      "addr4": "192.168.30.1",
+      "subnet4": "24",
+      "type": "vlan",
+      "status": "up",
+      "vlan_tag": 30,
+      "macaddr": "00:1a:2b:3c:4d:02",
+      "mtu": 1500,
+      "media": null,
+      "gateway": null
+    }
+  ]
+}

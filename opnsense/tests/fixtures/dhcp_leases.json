@@ -1,0 +1,47 @@
+{
+  "rows": [
+    {
+      "hw_address": "a4:83:e7:11:22:33",
+      "address": "192.168.1.101",
+      "hostname": "macbook-pro-jdoe",
+      "expire": "2026-03-19T18:30:00Z",
+      "state": "active",
+      "interface": "igb1"
+    },
+    {
+      "hw_address": "dc:a6:32:66:77:88",
+      "address": "192.168.30.25",
+      "hostname": "ring-doorbell",
+      "expire": "2026-03-19T20:15:00Z",
+      "state": "active",
+      "interface": "igb1_vlan30"
+    },
+    {
+      "hw_address": "5c:e9:1e:44:55:66",
+      "address": "192.168.10.102",
+      "hostname": "",
+      "expire": "2026-03-19T16:45:00Z",
+      "state": "active",
+      "interface": "igb1_vlan10"
+    },
+    {
+      "hw_address": "b8:27:eb:aa:bb:cc",
+      "address": "192.168.30.50",
+      "hostname": "homeassistant",
+      "expire": "2026-03-19T22:00:00Z",
+      "state": "active",
+      "interface": "igb1_vlan30"
+    },
+    {
+      "hw_address": "00:11:22:33:44:55",
+      "address": "192.168.1.200",
+      "hostname": "old-printer",
+      "expire": "2026-03-18T08:00:00Z",
+      "state": "expired",
+      "interface": "igb1"
+    }
+  ],
+  "rowCount": 5,
+  "total": 5,
+  "current": 1
+}

@@ -1,0 +1,31 @@
+{
+  "rows": [
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c01",
+      "tag": 10,
+      "if": "igb1_vlan10",
+      "descr": "Guest",
+      "vlanif": "igb1",
+      "pcp": null
+    },
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
+      "tag": 30,
+      "if": "igb1_vlan30",
+      "descr": "IoT",
+      "vlanif": "igb1",
+      "pcp": null
+    },
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c03",
+      "tag": 99,
+      "if": "igb1_vlan99",
+      "descr": "Management",
+      "vlanif": "igb1",
+      "pcp": 6
+    }
+  ],
+  "rowCount": 3,
+  "total": 3,
+  "current": 1
+}

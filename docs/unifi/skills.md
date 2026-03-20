@@ -371,14 +371,575 @@ Search connected clients by partial match on MAC, hostname, IP, or name (alias).
 
 ---
 
-## Phase 2+ Skills (Not Yet Implemented)
+## wifi
 
-The following skill groups are defined in the plugin manifest but not yet implemented:
+Wireless RF environment analysis. Six tools covering SSIDs, AP radio configuration, channel utilization, RF scanning, roaming events, and per-client RF metrics.
+
+### `unifi__wifi__get_wlans`
+
+List all wireless networks (SSIDs) configured for a site.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- SSID inventory
+
+Each SSID includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ssid_id` | string | Internal SSID ID |
+| `name` | string | SSID name (broadcast name) |
+| `enabled` | bool | Whether the SSID is enabled |
+| `security` | string | Security mode (e.g., `wpa2`, `wpa3`, `open`) |
+| `vlan_id` | int or None | VLAN assignment for this SSID |
+| `band_steering` | string | Band steering mode (`prefer_5g`, `balanced`, `off`) |
+| `hide_ssid` | bool | Whether the SSID is hidden |
+| `guest_policy` | bool | Whether guest portal is enabled |
+
+**API:** `GET {local}/api/s/{site}/rest/wlanconf`
+
+---
+
+### `unifi__wifi__get_aps`
+
+List all access points with radio configuration for each band.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- AP inventory with radio details
+
+Each AP includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ap_id` | string | AP device ID |
+| `name` | string | AP name |
+| `mac` | string | MAC address |
+| `model` | string | Hardware model |
+| `status` | string | Connection state |
+| `radios` | list | Radio configuration per band |
+
+Each radio entry:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `band` | string | Radio band (`2.4GHz`, `5GHz`, `6GHz`) |
+| `channel` | int | Current channel |
+| `channel_width` | string | Channel width (e.g., `HT20`, `VHT80`) |
+| `tx_power` | int | Transmit power in dBm |
+| `min_rssi` | int or None | Minimum RSSI threshold (if set) |
+
+**API:** `GET {local}/api/s/{site}/stat/device` (AP devices only)
+
+---
+
+### `unifi__wifi__get_channel_utilization`
+
+Get channel utilization percentages for all APs.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- per-AP per-band utilization
+
+Each entry includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ap_name` | string | AP name |
+| `ap_mac` | string | AP MAC address |
+| `band` | string | Radio band |
+| `channel` | int | Current channel |
+| `utilization_pct` | float | Total channel utilization percentage |
+| `self_tx_pct` | float | Self-transmit utilization |
+| `self_rx_pct` | float | Self-receive utilization |
+| `interference_pct` | float | External interference percentage |
+| `client_count` | int | Number of clients on this radio |
+| `satisfaction` | int or None | Client satisfaction score (0-100) |
+
+**API:** `GET {local}/api/s/{site}/stat/device` (radio_table_stats)
+
+---
+
+### `unifi__wifi__get_rf_scan`
+
+Get cached RF scan results showing neighboring SSIDs detected by each AP.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `ap_mac` | string | `null` | Filter to a specific AP (default: all APs) |
+
+**Returns:** `list[dict]` -- neighboring SSIDs
+
+Each entry includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ap_name` | string | Detecting AP name |
+| `ssid` | string | Neighboring SSID name |
+| `bssid` | string | Neighboring BSSID |
+| `channel` | int | Neighboring channel |
+| `band` | string | Radio band |
+| `rssi` | int | Signal strength of neighbor (dBm) |
+| `security` | string | Security mode |
+| `last_seen` | string | Timestamp of last detection |
+
+**API:** `GET {local}/api/s/{site}/stat/device` (scan_table)
+
+---
+
+### `unifi__wifi__get_roaming_events`
+
+Get client roaming events over a time window.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `hours` | int | `24` | Number of hours to look back |
+
+**Returns:** `dict` -- roaming analysis summary
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_roams` | int | Total roaming attempts |
+| `successful` | int | Successful roams |
+| `failed` | int | Failed roams (client fell back to original AP) |
+| `avg_roam_time_ms` | float | Average time to complete a roam |
+| `sticky_clients` | int | Clients that never roamed despite low signal |
+| `events` | list | Individual roaming events |
+
+Each event:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `client_mac` | string | Roaming client MAC |
+| `from_ap` | string | Source AP name |
+| `to_ap` | string | Destination AP name |
+| `success` | bool | Whether the roam completed |
+| `roam_time_ms` | int | Time to complete the roam |
+| `timestamp` | string | Event timestamp |
+
+**API:** `GET {local}/api/s/{site}/stat/event` (EVT_WU_Roam events)
+
+---
+
+### `unifi__wifi__get_client_rf`
+
+Get detailed RF metrics for a specific wireless client.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `client_mac` | string | *required* | Client MAC address |
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `dict` -- client RF details
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `client_mac` | string | Client MAC address |
+| `rssi` | int | Current RSSI |
+| `noise_floor` | int | Noise floor (dBm) |
+| `snr` | int | Signal-to-noise ratio |
+| `tx_rate` | int | Current transmit rate (Mbps) |
+| `rx_rate` | int | Current receive rate (Mbps) |
+| `channel` | int | Channel the client is on |
+| `band` | string | Connected band |
+| `tx_retries_pct` | float | Transmit retry percentage |
+| `satisfaction` | int or None | Client satisfaction score |
+
+**API:** `GET {local}/api/s/{site}/stat/sta/{mac}` (RF fields)
+
+---
+
+## traffic
+
+Network traffic analysis. Four tools covering bandwidth, deep packet inspection, per-port statistics, and WAN usage.
+
+### `unifi__traffic__get_bandwidth`
+
+Get aggregate bandwidth statistics for a site over a time window.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `hours` | int | `24` | Number of hours to look back |
+| `resolution` | string | `"hourly"` | Data resolution: `"5min"`, `"hourly"`, `"daily"` |
+
+**Returns:** `dict` -- bandwidth time series
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_tx_bytes` | int | Total transmitted bytes |
+| `total_rx_bytes` | int | Total received bytes |
+| `peak_tx_bps` | int | Peak transmit rate (bits/sec) |
+| `peak_rx_bps` | int | Peak receive rate (bits/sec) |
+| `time_series` | list | Data points at the specified resolution |
+
+**API:** `GET {local}/api/s/{site}/stat/report/hourly.site`
+
+---
+
+### `unifi__traffic__get_dpi_stats`
+
+Get Deep Packet Inspection (DPI) statistics showing traffic by application category.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- traffic by application category
+
+Each entry includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `category` | string | Application category (e.g., `"Streaming"`, `"Social Media"`) |
+| `app_name` | string | Application name (e.g., `"YouTube"`, `"Netflix"`) |
+| `tx_bytes` | int | Transmitted bytes for this category |
+| `rx_bytes` | int | Received bytes for this category |
+| `client_count` | int | Number of clients using this category |
+
+**API:** `GET {local}/api/s/{site}/stat/sitedpi`
+
+---
+
+### `unifi__traffic__get_port_stats`
+
+Get per-port traffic statistics for a specific switch.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `device_id` | string | *required* | Switch device MAC or ID |
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- per-port statistics
+
+Each entry includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `port_idx` | int | Port number |
+| `name` | string | Port name/label |
+| `speed` | int | Negotiated link speed (Mbps) |
+| `tx_bytes` | int | Transmitted bytes |
+| `rx_bytes` | int | Received bytes |
+| `tx_packets` | int | Transmitted packets |
+| `rx_packets` | int | Received packets |
+| `poe_power_w` | float or None | PoE power draw (watts) |
+| `profile` | string | Assigned port profile name |
+
+**API:** `GET {local}/api/s/{site}/stat/device/{mac}` (port_table)
+
+---
+
+### `unifi__traffic__get_wan_usage`
+
+Get WAN interface traffic statistics and ISP usage.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `hours` | int | `24` | Number of hours to look back |
+
+**Returns:** `dict` -- WAN usage summary
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_tx_bytes` | int | Total WAN transmitted bytes |
+| `total_rx_bytes` | int | Total WAN received bytes |
+| `current_tx_bps` | int | Current transmit rate (bits/sec) |
+| `current_rx_bps` | int | Current receive rate (bits/sec) |
+| `wan_ip` | string | Current WAN IP address |
+| `isp_name` | string | ISP name |
+
+**API:** `GET {local}/api/s/{site}/stat/health` (WAN subsystem)
+
+---
+
+## security
+
+Security posture analysis. Five tools covering firewall rules, zone-based firewall policies, access control lists, port forwarding, and IDS/IPS alerts.
+
+### `unifi__security__get_firewall_rules`
+
+List all firewall filter rules for a site.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- firewall rules
+
+Each rule includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rule_id` | string | Rule identifier |
+| `name` | string | Rule name/description |
+| `action` | string | `pass`, `block`, or `reject` |
+| `enabled` | bool | Whether the rule is enabled |
+| `source` | string | Source address or group |
+| `destination` | string | Destination address or group |
+| `protocol` | string | Protocol (`TCP`, `UDP`, `ICMP`, `any`) |
+| `port` | string or None | Port number or range |
+| `direction` | string | `in` or `out` |
+| `interface` | string | Applied interface |
+
+**API:** `GET {local}/api/s/{site}/rest/firewallrule`
+
+---
+
+### `unifi__security__get_zbf_policies`
+
+List all zone-based firewall policies.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- ZBF policies
+
+Each policy includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `policy_id` | string | Policy identifier |
+| `source_zone` | string | Source zone name |
+| `destination_zone` | string | Destination zone name |
+| `action` | string | `allow` or `block` |
+| `description` | string | Policy description |
+| `enabled` | bool | Whether the policy is enabled |
+
+**API:** `GET {local}/api/s/{site}/rest/firewallgroup` + zone configuration
+
+---
+
+### `unifi__security__get_acls`
+
+List all access control list rules.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- ACL rules
+
+Each ACL entry includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `acl_id` | string | ACL identifier |
+| `action` | string | `pass` or `block` |
+| `source` | string | Source network or address |
+| `destination` | string | Destination network or address |
+| `protocol` | string | Protocol |
+| `port` | string or None | Port or range |
+| `enabled` | bool | Whether the ACL is enabled |
+| `log` | bool | Whether matches are logged |
+| `position` | int | ACL evaluation order |
+
+**API:** `GET {local}/api/s/{site}/rest/firewallrule` (ACL-type rules)
+
+---
+
+### `unifi__security__get_port_forwards`
+
+List all port forwarding (DNAT) rules.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `list[dict]` -- port forwarding rules
+
+Each rule includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `forward_id` | string | Forward rule identifier |
+| `name` | string | Rule description |
+| `enabled` | bool | Whether the forward is enabled |
+| `external_port` | int | External (WAN-facing) port |
+| `internal_ip` | string | Internal destination IP |
+| `internal_port` | int | Internal destination port |
+| `protocol` | string | Protocol (`TCP`, `UDP`, `TCP/UDP`) |
+| `source` | string | Source restriction (default: `any`) |
+
+**API:** `GET {local}/api/s/{site}/rest/portforward`
+
+---
+
+### `unifi__security__get_ids_alerts`
+
+Get IDS/IPS alerts from the UniFi Intrusion Detection System.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `hours` | int | `24` | Number of hours to look back |
+| `severity` | string | `"all"` | Filter: `"high"`, `"medium"`, `"low"`, or `"all"` |
+
+**Returns:** `list[dict]` -- IDS alerts
+
+Each alert includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `alert_id` | string | Alert identifier |
+| `timestamp` | string | Alert timestamp |
+| `signature` | string | IDS rule signature |
+| `category` | string | Alert category |
+| `severity` | string | Severity level |
+| `src_ip` | string | Source IP |
+| `dst_ip` | string | Destination IP |
+| `protocol` | string | Network protocol |
+| `action` | string | Action taken (`alert`, `drop`) |
+
+**API:** `GET {local}/api/s/{site}/stat/ips/event`
+
+---
+
+## config
+
+Configuration management. Three read tools and two write tools covering snapshots, drift detection, backup state, baseline saving, and port profile creation.
+
+### `unifi__config__get_config_snapshot`
+
+Capture a read-only snapshot of the current site configuration.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `dict` -- configuration snapshot
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | string | Snapshot timestamp |
+| `devices` | list | Device configurations |
+| `vlans` | list | VLAN/network configurations |
+| `firewall_rules` | list | Firewall rule set |
+| `port_profiles` | list | Port profile definitions |
+| `wireless` | list | SSID configurations |
+| `settings` | dict | Site-level settings |
+
+**API:** Multiple endpoints aggregated
+
+---
+
+### `unifi__config__diff_baseline`
+
+Compare current configuration against a stored baseline.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `baseline_id` | string | `null` | Baseline to compare against (default: most recent) |
+
+**Returns:** `dict` -- drift report
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `baseline_id` | string | The baseline compared against |
+| `baseline_timestamp` | string | When the baseline was saved |
+| `total_changes` | int | Total number of drift items |
+| `changes` | list | Individual change entries |
+
+Each change entry:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `category` | string | Config category (e.g., `"devices"`, `"vlans"`) |
+| `change_type` | string | `"added"`, `"removed"`, or `"modified"` |
+| `item_name` | string | Name of the changed item |
+| `field` | string or None | Specific field that changed (for modifications) |
+| `old_value` | any | Previous value (modifications and removals) |
+| `new_value` | any | Current value (modifications and additions) |
+
+**API:** Computed from snapshot comparison
+
+---
+
+### `unifi__config__get_backup_state`
+
+Get the current backup/restore state for the site.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+**Returns:** `dict` -- backup state
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `auto_backup_enabled` | bool | Whether automatic backups are enabled |
+| `last_backup_time` | string or None | Timestamp of the last backup |
+| `backup_count` | int | Number of stored backups |
+| `cloud_backup` | bool | Whether cloud backup is enabled |
+
+**API:** `GET {local}/api/s/{site}/stat/backup`
+
+---
+
+### `unifi__config__save_baseline` (write)
+
+Save the current configuration as a named baseline snapshot.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `apply` | bool | `false` | Must be `true` to execute (write gate) |
+
+**Write safety:** Requires `UNIFI_WRITE_ENABLED=true` and `apply=True`. This stores a snapshot locally -- it does not modify the network.
+
+**Returns:** `dict` -- saved baseline metadata
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `baseline_id` | string | Generated baseline identifier |
+| `timestamp` | string | Save timestamp |
+| `item_count` | int | Number of config objects captured |
+
+---
+
+### `unifi__config__create_port_profile` (write)
+
+Create a named switch port profile.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | string | *required* | Profile name |
+| `native_vlan` | int | `null` | Native VLAN ID |
+| `tagged_vlans` | list[int] | `[]` | Tagged VLAN IDs |
+| `poe` | bool | `true` | Enable PoE |
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `apply` | bool | `false` | Must be `true` to execute (write gate) |
+
+**Write safety:** Requires `UNIFI_WRITE_ENABLED=true` and `apply=True`.
+
+**Returns:** `dict` -- created profile details
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `profile_id` | string | Created profile identifier |
+| `name` | string | Profile name |
+| `native_vlan` | int or None | Native VLAN |
+| `tagged_vlans` | list[int] | Tagged VLANs |
+
+**API:** `POST {local}/api/s/{site}/rest/portconf`
+
+---
+
+## Phase 3+ Skills (Not Yet Implemented)
+
+The following skill group is defined in the plugin manifest but not yet implemented:
 
 | Skill Group | Tools | Phase |
 |-------------|-------|-------|
-| wifi | `get_wlans`, `get_aps`, `get_channel_utilization`, `get_rf_scan`, `get_roaming_events`, `get_client_rf` | Phase 2 |
-| traffic | `get_bandwidth`, `get_dpi_stats`, `get_port_stats`, `get_wan_usage` | Phase 2 |
-| security | `get_firewall_rules`, `get_zbf_policies`, `get_acls`, `get_port_forwards`, `get_ids_alerts` | Phase 2 |
-| config | `get_config_snapshot`, `diff_baseline`, `get_backup_state`, `save_baseline`, `create_port_profile` | Phase 2 |
-| multisite | `list_all_sites`, `get_site_health`, `compare_sites`, `search_across_sites`, `get_vantage_points` | Phase 2 |
+| multisite | `list_all_sites`, `get_site_health`, `compare_sites`, `search_across_sites`, `get_vantage_points` | Phase 3 |

@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "name": "WAN_GW",
+      "address": "203.0.113.1",
+      "interface": "igb0",
+      "monitor": "8.8.8.8",
+      "status": "online",
+      "priority": 255,
+      "delay": 4.2,
+      "stddev": 0.8,
+      "loss": "0.0 %",
+      "status_translated": "Online"
+    },
+    {
+      "name": "VPN_GW",
+      "address": "10.10.0.1",
+      "interface": "wg0",
+      "monitor": "10.10.0.1",
+      "status": "online",
+      "priority": 255,
+      "delay": 12.7,
+      "stddev": 2.1,
+      "loss": "0.0 %",
+      "status_translated": "Online"
+    }
+  ]
+}

@@ -339,16 +339,390 @@ Filters: VLAN: 5f9a8b7c6d5e4f3a2b1c0003
 
 ---
 
-## Phase 2+ Commands (Not Yet Implemented)
+## `unifi wifi`
 
-The following commands are planned for future releases. They are documented here for reference.
+Analyze the wireless RF environment: channels, interference, roaming, and band steering.
+
+### What It Does
+
+Gathers data from all access points and presents a comprehensive wireless environment analysis:
+
+1. Lists all APs with channel assignments, transmit power, and bandwidth settings per band
+2. Reports channel utilization and interference percentages per AP per band
+3. Performs an RF scan showing neighboring SSIDs with channel, RSSI, and security
+4. Analyzes roaming events over the last 24 hours -- success rate, average roam time, sticky clients
+5. Reports per-AP client satisfaction scores
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `ssid` | string | `null` | Filter analysis to a specific SSID |
+
+### Example
+
+```
+You: Check my WiFi environment
+
+EmberAI:
+
+## WiFi Environment Analysis
+
+### 2.4 GHz Band
+| AP               | Channel | Width | Tx Power | Utilization | Interference | Clients | Satisfaction |
+|------------------|---------|-------|----------|-------------|--------------|---------|--------------|
+| Office-AP-Main   | 6       | HT20  | 17 dBm   | 32%         | 12%          | 18      | 92           |
+| Office-AP-Upstrs | 1       | HT20  | 23 dBm   | 15%         | 5%           | 8       | 97           |
+
+### 5 GHz Band
+| AP               | Channel | Width | Tx Power | Utilization | Interference | Clients | Satisfaction |
+|------------------|---------|-------|----------|-------------|--------------|---------|--------------|
+| Office-AP-Main   | 44      | VHT80 | 20 dBm   | 18%         | 3%           | 17      | 98           |
+| Office-AP-Upstrs | 149     | VHT80 | 23 dBm   | 12%         | 2%           | 12      | 99           |
+
+### Neighboring SSIDs (from RF scan)
+| SSID             | Channel | Band  | RSSI | Security |
+|------------------|---------|-------|------|----------|
+| Neighbor-Net     | 6       | 2.4   | -72  | WPA3     |
+| DIRECT-printer   | 6       | 2.4   | -68  | WPA2     |
+
+### Roaming Analysis (last 24 hours)
+| Metric                    | Value |
+|---------------------------|-------|
+| Total roaming events      | 23    |
+| Successful roams          | 21    |
+| Failed roams (fallback)   | 2     |
+| Avg roam time             | 210ms |
+| Sticky clients (no roam)  | 3     |
+```
+
+### Tools Called
+
+- `unifi__wifi__get_wlans` -- SSID configuration
+- `unifi__wifi__get_aps` -- AP list with radio configuration
+- `unifi__wifi__get_channel_utilization` -- per-AP channel utilization
+- `unifi__wifi__get_rf_scan` -- neighboring SSID scan results
+- `unifi__wifi__get_roaming_events` -- roaming event history
+- `unifi__wifi__get_client_rf` -- per-client RF metrics (when SSID filter is used)
+
+---
+
+## `unifi optimize`
+
+Generate prioritized improvement recommendations for the wireless environment. With `--apply`, queue confirmed changes.
+
+### What It Does
+
+Analyzes the WiFi environment (using all `wifi` skill tools) plus traffic patterns, security configuration, and config state to produce a prioritized list of recommendations:
+
+1. Channel optimization (separate co-channel APs, avoid congested channels)
+2. Transmit power adjustments (balance cell coverage, reduce overlap)
+3. Minimum RSSI thresholds (disconnect sticky clients)
+4. Band steering recommendations (push dual-band clients to 5 GHz)
+5. SSID consolidation suggestions
+
+Without `--apply`, the command produces the recommendation plan only. With `--apply`, each recommendation is presented individually for operator confirmation before execution.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `apply` | bool | `false` | Execute confirmed changes (requires `UNIFI_WRITE_ENABLED=true`) |
+
+### Write Safety
+
+This command can modify AP settings when `--apply` is used:
+
+- **Env var gate:** `UNIFI_WRITE_ENABLED` must be set to `"true"`
+- **Apply flag gate:** `--apply` must be present
+- **Operator confirmation:** Each change is presented for individual confirmation
+- **OutageRiskAgent:** Assesses the outage risk of each proposed change before confirmation
+
+### Example
+
+```
+You: Generate WiFi optimization recommendations
+
+EmberAI:
+
+## Optimization Recommendations
+
+### 1. Separate 2.4 GHz channels (High Impact)
+| AP               | Current | Recommended | Reason                    |
+|------------------|---------|-------------|---------------------------|
+| Office-AP-Upstrs | 6       | 11          | Co-channel with Main AP   |
+
+### 2. Set minimum RSSI threshold (Low Impact)
+| AP               | Current | Recommended | Reason                    |
+|------------------|---------|-------------|---------------------------|
+| Office-AP-Main   | None    | -75 dBm     | 3 sticky clients detected |
+
+To apply: run `unifi optimize --apply` with UNIFI_WRITE_ENABLED=true.
+```
+
+### Tools Called
+
+- All `wifi` skill tools (see `unifi wifi` above)
+- `unifi__traffic__get_bandwidth` -- traffic patterns
+- `unifi__security__get_firewall_rules` -- security context
+- `unifi__config__get_config_snapshot` -- current config state
+
+---
+
+## `unifi secure`
+
+Security posture audit: firewall rules, zone-based firewall policies, ACLs, port forwarding, and IDS/IPS trend.
+
+### What It Does
+
+Enumerates all security configuration and produces a risk-ranked findings report:
+
+1. Lists all zone-based firewall (ZBF) policies with source/destination zones and actions
+2. Lists all access control list (ACL) rules with source, destination, protocol, and port
+3. Lists all port forwarding rules with external/internal mappings
+4. Summarizes IDS/IPS alerts from the last 24 hours by severity
+5. Performs shadow analysis to detect rules that never match due to ordering
+6. Flags overly permissive rules and exposed IoT devices
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+
+### Example
+
+```
+You: Audit our firewall posture
+
+EmberAI:
+
+## Security Posture Audit
+
+### Summary
+| Metric            | Value |
+|-------------------|-------|
+| ZBF Policies      | 6     |
+| ACL Rules         | 4     |
+| Port Forwards     | 2     |
+| IDS Alerts (24h)  | 7     |
+
+### Findings
+
+#### Warning
+- **Port forward to IoT VLAN**: Port 32400 is forwarded to 192.168.30.60
+  (IoT VLAN). IoT devices are less hardened than LAN devices.
+  Recommendation: Move the service to LAN or add IDS monitoring.
+
+#### Informational
+- **2 port forwards active**: External ports 443 and 32400 are exposed.
+  Recommendation: Verify each forward is still needed.
+```
+
+### Tools Called
+
+- `unifi__security__get_firewall_rules` -- firewall filter rules
+- `unifi__security__get_zbf_policies` -- zone-based firewall policies
+- `unifi__security__get_acls` -- access control lists
+- `unifi__security__get_port_forwards` -- port forwarding rules
+- `unifi__security__get_ids_alerts` -- IDS/IPS alert summary
+- `unifi__wifi__get_rf_scan` -- rogue AP detection
+
+---
+
+## `unifi config`
+
+Review configuration state and detect drift against stored baselines.
+
+### What It Does
+
+Captures a snapshot of the current configuration (devices, VLANs, firewall rules, port profiles, wireless settings) and optionally compares it against a previously saved baseline:
+
+1. Without `--drift`: Shows the current configuration state and backup status
+2. With `--drift`: Diffs the current state against the most recent baseline and highlights additions, removals, and modifications
+3. With `--save --apply`: Saves the current state as a new baseline snapshot
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `site_id` | string | `"default"` | The UniFi site ID |
+| `drift` | bool | `false` | Compare against baseline |
+| `baseline` | string | `null` | Specific baseline ID to compare against (default: most recent) |
+| `save` | bool | `false` | Save current state as a new baseline (requires write gate) |
+| `apply` | bool | `false` | Required with `--save` to execute the save (requires `UNIFI_WRITE_ENABLED=true`) |
+
+### Write Safety
+
+The `--save` flag stores a configuration snapshot locally. It does not modify the network.
+
+- **Env var gate:** `UNIFI_WRITE_ENABLED` must be set to `"true"`
+- **Apply flag gate:** `--apply` must be present
+- **Outage risk:** None -- this is a read-and-store operation
+
+### Example
+
+```
+You: Check for configuration drift
+
+EmberAI:
+
+## Configuration Drift Report
+
+Comparing against baseline-20260315-091200 (4 days ago)
+
+### Summary
+| Category       | Changed | Added | Removed |
+|----------------|---------|-------|---------|
+| Devices        | 1       | 0     | 0       |
+| VLANs          | 0       | 1     | 0       |
+| Firewall rules | 0       | 1     | 0       |
+
+Total drift: 3 changes detected.
+
+### Changes
+
+#### VLAN Added: Cameras (VLAN 40)
+- Subnet: 192.168.40.0/24
+- DHCP: Yes
+
+#### Device Changed: Office-Switch-16
+- Firmware: 7.0.50.15116 -> 7.0.72.15290
+```
+
+### Tools Called
+
+- `unifi__config__get_config_snapshot` -- current configuration state
+- `unifi__config__diff_baseline` -- drift comparison (when `--drift` is used)
+- `unifi__config__get_backup_state` -- backup status
+- `unifi__config__save_baseline` -- save snapshot (when `--save --apply` is used)
+
+---
+
+## `unifi port-profile create`
+
+Create a named switch port profile in UniFi.
+
+### What It Does
+
+Creates a port profile that defines VLAN assignment for switch ports:
+
+1. Verifies that referenced VLANs exist on the site
+2. Creates the profile with the specified native VLAN and tagged VLANs
+3. Presents the change plan for operator confirmation before execution
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Profile name (e.g., `"Trunk-AP"`, `"Cameras-Only"`) |
+| `native_vlan` | int | No | Native (untagged) VLAN ID |
+| `tagged_vlans` | list[int] | No | Tagged VLAN IDs to include on the trunk |
+| `poe` | bool | No | Enable PoE on ports using this profile |
+| `site_id` | string | No (default: `"default"`) | The UniFi site ID |
+| `apply` | bool | No (default: `false`) | Execute the create (requires `UNIFI_WRITE_ENABLED=true`) |
+
+### Write Safety
+
+- **Env var gate:** `UNIFI_WRITE_ENABLED` must be set to `"true"`
+- **Apply flag gate:** `--apply` must be present
+- **Operator confirmation:** The change plan is presented before execution
+
+### Example
+
+```
+You: Create a port profile called Trunk-AP with native VLAN 10 and tagged VLANs 30, 50, 60
+
+EmberAI:
+
+## Port Profile Create Plan
+
+| Setting      | Value            |
+|--------------|------------------|
+| Name         | Trunk-AP         |
+| Native VLAN  | 10 (Guest)       |
+| Tagged VLANs | 30 (IoT), 50 (Cameras), 60 (Servers) |
+| PoE          | Enabled          |
+
+All referenced VLANs exist on this site.
+
+Apply this profile? Requires --apply and UNIFI_WRITE_ENABLED=true.
+```
+
+### Tools Called
+
+- `unifi__topology__get_vlans` -- verify VLANs exist
+- `unifi__config__create_port_profile` -- create the profile
+
+---
+
+## `unifi port-profile assign`
+
+Assign a named port profile to a specific port on a UniFi switch.
+
+### What It Does
+
+1. Identifies the target switch and port (by port number or description)
+2. Runs the OutageRiskAgent to assess whether the port carries the operator's management session or critical infrastructure traffic
+3. Shows the current profile vs. proposed profile for the port
+4. Applies the change after operator confirmation
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `switch` | string | Yes | Switch name, MAC, or IP |
+| `port` | int | Yes | Port number on the switch |
+| `profile` | string | Yes | Name of the port profile to assign |
+| `site_id` | string | No (default: `"default"`) | The UniFi site ID |
+| `apply` | bool | No (default: `false`) | Execute the assignment (requires `UNIFI_WRITE_ENABLED=true`) |
+
+### Write Safety
+
+- **Env var gate:** `UNIFI_WRITE_ENABLED` must be set to `"true"`
+- **Apply flag gate:** `--apply` must be present
+- **OutageRiskAgent:** Assesses whether the port change could disconnect the operator. Ports connected to the gateway or carrying the management VLAN are flagged as high-risk.
+- **CAUTION:** Never assign a profile to the port connected to OPNsense until all VLAN configuration on OPNsense is complete and verified.
+
+### Example
+
+```
+You: Assign Trunk-AP profile to port 8 on Office-Switch-16
+
+EmberAI:
+
+## Port Profile Assignment Plan
+
+| Field           | Value              |
+|-----------------|--------------------|
+| Switch          | Office-Switch-16   |
+| Port            | 8                  |
+| Current profile | Default            |
+| New profile     | Trunk-AP           |
+
+### OutageRiskAgent Assessment
+| Risk   | Notes                                        |
+|--------|----------------------------------------------|
+| Low    | Port 8 is not the uplink port. No management |
+|        | sessions transit this port.                   |
+
+Apply this change? Requires --apply and UNIFI_WRITE_ENABLED=true.
+```
+
+### Tools Called
+
+- `unifi__topology__get_device` -- identify the switch and port
+- OutageRiskAgent -- assess management session risk
+- `unifi__topology__assign_port_profile` -- apply the profile
+
+---
+
+## Phase 3+ Commands (Not Yet Implemented)
+
+The following commands are planned for future releases.
 
 | Command | Intent | Phase |
 |---------|--------|-------|
-| `unifi wifi` | Analyze the wireless RF environment: channels, interference, roaming | Phase 2 |
-| `unifi optimize` | Generate prioritized improvement recommendations | Phase 2 |
-| `unifi secure` | Security posture audit (firewall rules, ACLs, port forwarding, IDS) | Phase 2 |
-| `unifi compare` | Side-by-side comparison of two sites | Phase 2 |
-| `unifi config` | Review config state and detect drift against baselines | Phase 2 |
-| `unifi port-profile create` | Create a named switch port profile | Phase 2 |
-| `unifi port-profile assign` | Assign a port profile to a switch port | Phase 2 |
+| `unifi compare` | Side-by-side comparison of two sites | Phase 3 |

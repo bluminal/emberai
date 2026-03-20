@@ -1,0 +1,37 @@
+{
+  "rows": [
+    {
+      "uuid": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f01",
+      "name": "mobile-laptop",
+      "pubkey": "xTIB+aR2WyIMAoPXhGfmPmU7cHNMf7j+9h7Kpvsgv2o=",
+      "endpoint": "198.51.100.88:51820",
+      "tunneladdress": "10.99.0.2/32",
+      "lasthandshake": "2026-03-19T14:32:10Z",
+      "transferrx": 45678912,
+      "transfertx": 12345678
+    },
+    {
+      "uuid": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f02",
+      "name": "remote-office",
+      "pubkey": "kR9nL+tE2WyIMAoPXhGfmPmU7cHNMf7j+9h7Kpvsgv0=",
+      "endpoint": null,
+      "tunneladdress": "10.99.0.3/32",
+      "lasthandshake": null,
+      "transferrx": 0,
+      "transfertx": 0
+    },
+    {
+      "uuid": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f03",
+      "name": "phone-admin",
+      "pubkey": "pQ8mK+bS3XzJNBqQYiHgePnV8dIONg8k+0i8Lrvthw4=",
+      "endpoint": "198.51.100.120:51820",
+      "tunneladdress": "10.99.0.4/32",
+      "lasthandshake": "2026-03-19T14:28:55Z",
+      "transferrx": 8901234,
+      "transfertx": 3456789
+    }
+  ],
+  "rowCount": 3,
+  "total": 3,
+  "current": 1
+}

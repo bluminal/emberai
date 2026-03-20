@@ -1,0 +1,45 @@
+{
+  "rows": [
+    {
+      "id": "con-branch01",
+      "description": "Branch Office VPN",
+      "connected": "connected",
+      "local-ts": "192.168.1.0/24",
+      "remote-ts": "10.10.0.0/24",
+      "bytes-in": 154832640,
+      "bytes-out": 87293440,
+      "established": "2026-03-18T06:12:34Z",
+      "remote-host": "198.51.100.22",
+      "local-host": "203.0.113.42",
+      "version": 2,
+      "reauth-time": 84600,
+      "child-sas": {
+        "child-1": {
+          "protocol": "ESP",
+          "encr-alg": "AES_CBC-256",
+          "integ-alg": "HMAC_SHA2_256_128",
+          "dh-group": "MODP_2048",
+          "state": "INSTALLED"
+        }
+      }
+    },
+    {
+      "id": "con-datacenter",
+      "description": "Datacenter Backup Link",
+      "connected": "disconnected",
+      "local-ts": "192.168.1.0/24",
+      "remote-ts": "10.20.0.0/16",
+      "bytes-in": 0,
+      "bytes-out": 0,
+      "established": null,
+      "remote-host": "198.51.100.55",
+      "local-host": "203.0.113.42",
+      "version": 2,
+      "reauth-time": 84600,
+      "child-sas": {}
+    }
+  ],
+  "rowCount": 2,
+  "total": 2,
+  "current": 1
+}

@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "uuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e01",
+      "network": "10.10.0.0/16",
+      "gateway": "WAN_GW",
+      "descr": "Site-to-site VPN route to branch office",
+      "disabled": "0"
+    },
+    {
+      "uuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e02",
+      "network": "172.16.50.0/24",
+      "gateway": "VPN_GW",
+      "descr": "Remote management network via WireGuard",
+      "disabled": "0"
+    },
+    {
+      "uuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e03",
+      "network": "192.168.200.0/24",
+      "gateway": "WAN_GW",
+      "descr": "Legacy subnet - disabled after migration",
+      "disabled": "1"
+    }
+  ],
+  "rowCount": 3,
+  "total": 3,
+  "current": 1
+}

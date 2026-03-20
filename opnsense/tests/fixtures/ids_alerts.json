@@ -1,0 +1,67 @@
+{
+  "rows": [
+    {
+      "timestamp": "2026-03-19T13:45:22.417Z",
+      "alert": "ET SCAN Potential SSH Scan",
+      "alert_cat": "Attempted Information Leak",
+      "alert_sev": 2,
+      "src_ip": "198.51.100.200",
+      "dest_ip": "203.0.113.42",
+      "proto": "TCP",
+      "action": "alert",
+      "src_port": 44821,
+      "dest_port": 22,
+      "sid": 2001219,
+      "gid": 1,
+      "in_iface": "igb0"
+    },
+    {
+      "timestamp": "2026-03-19T13:42:11.892Z",
+      "alert": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+      "alert_cat": "Not Suspicious Traffic",
+      "alert_sev": 3,
+      "src_ip": "192.168.1.50",
+      "dest_ip": "91.189.91.39",
+      "proto": "TCP",
+      "action": "alert",
+      "src_port": 52341,
+      "dest_port": 443,
+      "sid": 2013504,
+      "gid": 1,
+      "in_iface": "igb1"
+    },
+    {
+      "timestamp": "2026-03-19T12:18:05.334Z",
+      "alert": "ET DROP Spamhaus DROP Listed Traffic Inbound",
+      "alert_cat": "Misc Attack",
+      "alert_sev": 1,
+      "src_ip": "45.95.169.22",
+      "dest_ip": "203.0.113.42",
+      "proto": "TCP",
+      "action": "drop",
+      "src_port": 39182,
+      "dest_port": 443,
+      "sid": 2400000,
+      "gid": 1,
+      "in_iface": "igb0"
+    },
+    {
+      "timestamp": "2026-03-19T11:55:44.102Z",
+      "alert": "SURICATA TLS invalid handshake message",
+      "alert_cat": "Generic Protocol Command Decode",
+      "alert_sev": 3,
+      "src_ip": "192.168.30.25",
+      "dest_ip": "104.18.32.7",
+      "proto": "TCP",
+      "action": "alert",
+      "src_port": 49200,
+      "dest_port": 443,
+      "sid": 2230010,
+      "gid": 1,
+      "in_iface": "igb1_vlan30"
+    }
+  ],
+  "rowCount": 4,
+  "total": 4,
+  "current": 1
+}
