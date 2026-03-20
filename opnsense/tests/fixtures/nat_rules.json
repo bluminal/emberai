@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "uuid": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f01",
+      "description": "Port forward HTTP to web server",
+      "interface": "wan",
+      "ipprotocol": "TCP",
+      "source_net": "any",
+      "destination_net": "203.0.113.42",
+      "target": "192.168.1.50",
+      "target_port": "80",
+      "enabled": true
+    },
+    {
+      "uuid": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f02",
+      "description": "Port forward SSH to jump host",
+      "interface": "wan",
+      "ipprotocol": "TCP",
+      "source_net": "any",
+      "destination_net": "203.0.113.42",
+      "target": "192.168.1.101",
+      "target_port": "22",
+      "enabled": true
+    }
+  ],
+  "rowCount": 2,
+  "total": 2,
+  "current": 1
+}

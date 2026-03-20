@@ -72,3 +72,15 @@ def ids_alerts_data() -> dict[str, Any]:
 def dhcp_leases_data() -> dict[str, Any]:
     """Load the DHCP leases fixture (``/api/kea/leases4/search``)."""
     return load_fixture("dhcp_leases.json")
+
+
+@pytest.fixture()
+def nat_rules_data() -> dict[str, Any]:
+    """Load the NAT rules fixture (``/api/firewall/source_nat/searchRule``)."""
+    return load_fixture("nat_rules.json")
+
+
+@pytest.fixture()
+def lldp_neighbors_data() -> dict[str, Any]:
+    """Load the LLDP neighbors fixture (``/api/diagnostics/interface/getLldpNeighbors``)."""
+    return load_fixture("lldp_neighbors.json")

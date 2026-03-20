@@ -1,0 +1,38 @@
+{
+  "lldp": {
+    "interface": [
+      {
+        "name": "igb0",
+        "chassis": [
+          {
+            "name": [{"value": "ISP-Router"}],
+            "id": [{"value": "00:11:22:33:44:55"}],
+            "descr": [{"value": "ISP Edge Router"}]
+          }
+        ],
+        "port": [
+          {
+            "id": [{"value": "ge-0/0/1"}],
+            "descr": [{"value": "Customer handoff port"}]
+          }
+        ]
+      },
+      {
+        "name": "igb1",
+        "chassis": [
+          {
+            "name": [{"value": "Core-Switch"}],
+            "id": [{"value": "aa:bb:cc:dd:ee:ff"}],
+            "descr": [{"value": "US-48-Enterprise"}]
+          }
+        ],
+        "port": [
+          {
+            "id": [{"value": "Port 1"}],
+            "descr": [{"value": "Uplink to OPNsense"}]
+          }
+        ]
+      }
+    ]
+  }
+}
