@@ -2,7 +2,8 @@
 """Command-level MCP tools -- thin wrappers that delegate to agent orchestrators.
 
 These tools represent the user-facing ``unifi scan``, ``unifi health``,
-``unifi clients``, and ``unifi diagnose`` commands.  Each is a minimal
+``unifi clients``, ``unifi diagnose``, ``unifi wifi``, ``unifi optimize``,
+``unifi secure``, and ``unifi config`` commands.  Each is a minimal
 shim that forwards to the corresponding agent function, keeping the tool
 surface lean and the business logic testable independently.
 """
@@ -85,3 +86,77 @@ async def unifi_diagnose(target: str, site_id: str = "default") -> str:
     from unifi.agents.diagnose import diagnose_target
 
     return await diagnose_target(target, site_id=site_id)
+
+
+@mcp_server.tool()
+async def unifi_wifi(site_id: str = "default") -> str:
+    """Analyze the wireless RF environment.
+
+    Channel utilization, neighboring SSIDs, roaming stats, and
+    per-AP RF scan results. Returns severity-tiered findings for
+    issues like high channel utilization or dense neighbor environments.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+    """
+    from unifi.agents.wifi import analyze_wifi
+
+    return await analyze_wifi(site_id)
+
+
+@mcp_server.tool()
+async def unifi_optimize(site_id: str = "default", apply: bool = False) -> str:
+    """Generate prioritized improvement recommendations.
+
+    Aggregates data from WiFi, traffic, security, and config agents to
+    produce actionable optimization recommendations ranked by impact.
+
+    Without ``apply``: read-only recommendations only (plan-only mode).
+    With ``apply=True``: presents a full change plan for operator
+    confirmation before executing. Requires ``UNIFI_WRITE_ENABLED=true``.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+        apply: If True, present a change plan for confirmation and
+            execute approved recommendations. Requires UNIFI_WRITE_ENABLED=true.
+    """
+    from unifi.agents.optimize import apply_optimizations, generate_recommendations
+
+    if not apply:
+        return await generate_recommendations(site_id)
+    return await apply_optimizations(site_id, apply=apply)
+
+
+@mcp_server.tool()
+async def unifi_secure(site_id: str = "default") -> str:
+    """Security posture audit. Read-only.
+
+    Analyzes firewall rules, zone-based firewall policies, ACLs,
+    port forwards, and IDS/IPS alerts. Returns a risk-ranked report
+    with severity-tiered findings (Critical > High > Warning > Informational).
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+    """
+    from unifi.agents.security import security_audit
+
+    return await security_audit(site_id)
+
+
+@mcp_server.tool()
+async def unifi_config(site_id: str = "default", drift: bool = False) -> str:
+    """Config state review.
+
+    Reviews current configuration state including network count, WLAN count,
+    firewall rule count, and backup status.
+
+    With ``drift=True``, diffs the current configuration against a stored
+    baseline and reports any added, removed, or modified items.
+
+    Args:
+        site_id: The UniFi site ID. Defaults to "default".
+        drift: If True, diff against stored baseline. Defaults to False.
+    """
+    from unifi.agents.config import config_review
+
+    return await config_review(site_id, drift=drift)

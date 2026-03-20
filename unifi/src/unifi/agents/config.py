@@ -193,18 +193,23 @@ def _classify_diff(diff: dict[str, Any]) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
-async def config_review(site_id: str = "default") -> str:
+async def config_review(site_id: str = "default", drift: bool = False) -> str:
     """Run a configuration review and produce a formatted report.
 
     Calls config tools and classifies findings by severity:
     - WARNING: Missing configs, no backup, configuration drift
     - INFORMATIONAL: Config summaries, backup status
 
+    When ``drift`` is ``True``, diffs the current configuration against
+    a stored baseline and includes any added, removed, or modified items
+    in the findings.  When ``False``, the baseline diff is skipped.
+
     Returns a formatted report using OX formatters.
     This is the backend for the ``unifi config`` command.
 
     Args:
         site_id: The UniFi site ID. Defaults to ``"default"``.
+        drift: If ``True``, diff against stored baseline. Defaults to ``False``.
 
     Returns:
         A formatted markdown report containing configuration findings
@@ -213,7 +218,7 @@ async def config_review(site_id: str = "default") -> str:
     # Gather data from config tools.
     snapshot = await unifi__config__get_config_snapshot(site_id)
     backup = await unifi__config__get_backup_state(site_id)
-    diff = await unifi__config__diff_baseline(site_id)
+    diff = await unifi__config__diff_baseline(site_id) if drift else None
 
     logger.info(
         "Config review data gathered for site '%s': "
@@ -229,7 +234,8 @@ async def config_review(site_id: str = "default") -> str:
     findings: list[Finding] = []
     findings.extend(_classify_snapshot(snapshot))
     findings.extend(_classify_backup(backup))
-    findings.extend(_classify_diff(diff))
+    if diff is not None:
+        findings.extend(_classify_diff(diff))
 
     # Build report sections.
     sections: list[str] = []
