@@ -14,3 +14,5 @@ build/
 
 # MkDocs build output
 docs/site_build/
+.tool-versions
+docs/site_build/
