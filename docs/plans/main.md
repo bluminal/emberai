@@ -347,17 +347,17 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 139 | Implement `netex network provision-site` command: parse YAML manifest (vlans, access_policy, wifi, port_profiles), single OutageRiskAgent + NSA pass for entire batch, dependency-ordered execution (gateway interfaces -> DHCP -> aliases -> rules -> edge networks -> WiFi -> port profiles), single confirmation. Uses workflow state machine for full-batch rollback. | L | M4.3 | pending |
-| 140 | Implement `netex verify-policy` command: run expected-allow and expected-block tests from manifest access_policy. Verify DHCP, DNS, WiFi SSID-to-VLAN mapping. Pass/fail per test. | L | Task 139 | pending |
-| 141 | Implement `netex vlan provision-batch` command: create multiple VLANs from manifest vlans[] in one confirmed workflow. Single OutageRiskAgent pass. | M | M4.3 | pending |
-| 142 | Implement `netex dns trace`, `netex vpn status`, `netex policy sync` commands per PRD definitions. | L | M4.3 | pending |
-| 143 | Write 5 advanced opnsense workflow examples (PRD Section 9.5): routing black hole, full firewall audit, WireGuard peer, traffic shaping, IDS triage. Follow 7-section template. | L | Plan Phase 3 | pending |
-| 144 | Write 3 basic + 5 advanced netex workflow examples (PRD Sections 9.6): unified health, VLAN audit, topology, Neffroad provision, guest WiFi isolation, cross-VLAN troubleshooting, post-change policy sync, new site onboarding. Follow 7-section template. | L | Tasks 139-142 | pending |
-| 145 | Create `docs/netex/overview.md`, `docs/netex/abstract-model.md`, `docs/netex/commands.md`. | M | Tasks 139-142 | pending |
-| 146 | Create `docs/getting-started/connectivity.md` -- deployment guide for remote MCP server connectivity (VPN, reverse proxy, Site Magic). Resolves Q3. | M | None | pending |
-| 147 | Create "Netex vs. Autonomous Network Automation" explainer page (PRD 10.5). Add safety warning banner to docs home page. | M | None | pending |
-| 148 | Create EmberAI marketplace packaging for netex umbrella plugin. | S | Tasks 139-142 | pending |
-| 149 | Write tests for `provision-site`, `verify-policy`, `provision-batch`, `dns trace`, `vpn status`, `policy sync`. Test `provision-site` with Neffroad 7-VLAN manifest. | L | Tasks 139-142 | pending |
+| 139 | Implement `netex network provision-site` command: parse YAML manifest (vlans, access_policy, wifi, port_profiles), single OutageRiskAgent + NSA pass for entire batch, dependency-ordered execution (gateway interfaces -> DHCP -> aliases -> rules -> edge networks -> WiFi -> port profiles), single confirmation. Uses workflow state machine for full-batch rollback. | L | M4.3 | done |
+| 140 | Implement `netex verify-policy` command: run expected-allow and expected-block tests from manifest access_policy. Verify DHCP, DNS, WiFi SSID-to-VLAN mapping. Pass/fail per test. | L | Task 139 | done |
+| 141 | Implement `netex vlan provision-batch` command: create multiple VLANs from manifest vlans[] in one confirmed workflow. Single OutageRiskAgent pass. | M | M4.3 | done |
+| 142 | Implement `netex dns trace`, `netex vpn status`, `netex policy sync` commands per PRD definitions. | L | M4.3 | done |
+| 143 | Write 5 advanced opnsense workflow examples (PRD Section 9.5): routing black hole, full firewall audit, WireGuard peer, traffic shaping, IDS triage. Follow 7-section template. | L | Plan Phase 3 | done |
+| 144 | Write 3 basic + 5 advanced netex workflow examples (PRD Sections 9.6): unified health, VLAN audit, topology, Neffroad provision, guest WiFi isolation, cross-VLAN troubleshooting, post-change policy sync, new site onboarding. Follow 7-section template. | L | Tasks 139-142 | done |
+| 145 | Create `docs/netex/overview.md`, `docs/netex/abstract-model.md`, `docs/netex/commands.md`. | M | Tasks 139-142 | done |
+| 146 | Create `docs/getting-started/connectivity.md` -- deployment guide for remote MCP server connectivity (VPN, reverse proxy, Site Magic). Resolves Q3. | M | None | done |
+| 147 | Create "Netex vs. Autonomous Network Automation" explainer page (PRD 10.5). Add safety warning banner to docs home page. | M | None | done |
+| 148 | Create EmberAI marketplace packaging for netex umbrella plugin. | S | Tasks 139-142 | done |
+| 149 | Write tests for `provision-site`, `verify-policy`, `provision-batch`, `dns trace`, `vpn status`, `policy sync`. Test `provision-site` with Neffroad 7-VLAN manifest. | L | Tasks 139-142 | done |
 
 **Parallelizable:** Tasks 139, 141-143, 146-147 can run concurrently (6 tasks). Task 140 depends on 139. Tasks 144-145, 148-149 depend on 139-142. Max 8 concurrent.
 **Milestone Value:** Complete netex umbrella with all PRD Section 5 commands. Full documentation suite. All three plugins published to EmberAI marketplace.
