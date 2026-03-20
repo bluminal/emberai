@@ -141,13 +141,13 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 41 | Scaffold MkDocs Material site: `docs/mkdocs.yml`, theme config, nav structure per PRD Section 9.2. Create `docs/index.md` (landing page with safety banner per PRD 10.5), `docs/getting-started/` stubs. | M | None | pending |
-| 42 | Create `docs/getting-started/installation.md`, `authentication.md` (UniFi API key setup), `quick-start.md`. | M | Task 41 | pending |
-| 43 | Create `docs/unifi/overview.md`, `docs/unifi/commands.md`, `docs/unifi/skills.md` -- reference docs for Phase 1 commands and skills. | M | M1.5 | pending |
-| 44 | Write 5 basic workflow examples (PRD Section 9.4): first-time site scan, daily health check, locate a client, check WiFi channel utilization, firmware update status. Follow 7-section template (PRD 9.3). Include "Working Safely" section in each. | L | M1.5 | pending |
-| 45 | Create `docs/reference/environment-variables.md`, `docs/reference/write-safety.md`. Create `docs/getting-started/safety.md` ("Safety & Human Supervision" page per PRD 10.5). Link from every workflow example's Prerequisites. | M | None | pending |
-| 46 | Set up GitHub Actions workflow for MkDocs build + deploy to GitHub Pages on push to main. | M | Task 41 | pending |
-| 47 | Create EmberAI marketplace packaging: ensure `unifi/pyproject.toml` has correct metadata, entry points, and README for marketplace listing. | S | M1.5 | pending |
+| 41 | Scaffold MkDocs Material site: `docs/mkdocs.yml`, theme config, nav structure per PRD Section 9.2. Create `docs/index.md` (landing page with safety banner per PRD 10.5), `docs/getting-started/` stubs. | M | None | done |
+| 42 | Create `docs/getting-started/installation.md`, `authentication.md` (UniFi API key setup), `quick-start.md`. | M | Task 41 | done |
+| 43 | Create `docs/unifi/overview.md`, `docs/unifi/commands.md`, `docs/unifi/skills.md` -- reference docs for Phase 1 commands and skills. | M | M1.5 | done |
+| 44 | Write 5 basic workflow examples (PRD Section 9.4): first-time site scan, daily health check, locate a client, check WiFi channel utilization, firmware update status. Follow 7-section template (PRD 9.3). Include "Working Safely" section in each. | L | M1.5 | done |
+| 45 | Create `docs/reference/environment-variables.md`, `docs/reference/write-safety.md`. Create `docs/getting-started/safety.md` ("Safety & Human Supervision" page per PRD 10.5). Link from every workflow example's Prerequisites. | M | None | done |
+| 46 | Set up GitHub Actions workflow for MkDocs build + deploy to GitHub Pages on push to main. | M | Task 41 | done |
+| 47 | Create EmberAI marketplace packaging: ensure `unifi/pyproject.toml` has correct metadata, entry points, and README for marketplace listing. | S | M1.5 | done |
 
 **Parallelizable:** Tasks 41, 45 can start immediately. Tasks 42, 46 depend on 41. Tasks 43-44 depend on M1.5. Task 47 depends on M1.5. Max 4 concurrent.
 **Milestone Value:** Live documentation site at `bluminal.github.io/emberai`. Plugin packaged for EmberAI marketplace. Operators can install, configure, and follow workflow examples.
