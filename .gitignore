@@ -11,3 +11,6 @@ build/
 .venv/
 .coverage
 .pytest_cache/
+
+# MkDocs build output
+docs/site_build/
