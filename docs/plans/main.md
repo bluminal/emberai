@@ -182,15 +182,15 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 62 | Implement `unifi wifi` command: channel utilization summary, RF scan results, roaming stats per PRD command definition. | M | Task 53 | pending |
-| 63 | Implement `unifi optimize` command: read phase calls wifi, traffic, security, config skills. Generates prioritized recommendations. Write gate enforces `--apply` + confirmation. **Write acceptance criteria:** (1) `UNIFI_WRITE_ENABLED` must be `true` or command returns write-blocked error, (2) without `--apply`, command produces read-only recommendations only, (3) with `--apply`, presents full change plan via AskUserQuestion Phase 2->3 template, (4) operator confirms once, (5) changes execute in presented order. | L | M2.1 | pending |
-| 64 | Implement `unifi secure` command: firewall audit, ZBF review, ACL analysis, port forwarding, IDS trend, rogue AP detection. Risk-ranked output via OX formatters. | M | Task 58 | pending |
-| 65 | Implement `unifi config` command: config state review, `--drift` diffs against stored baseline. | M | Task 60 | pending |
-| 66 | Implement write tool `unifi__config__save_baseline(site_id)`: persists config snapshot as baseline. **Write acceptance criteria:** (1) `UNIFI_WRITE_ENABLED=true` required, (2) `--apply` flag required, (3) operator confirmation via AskUserQuestion, (4) returns structured success/failure result. | M | Task 59 | pending |
-| 67 | Implement write tool `unifi__config__create_port_profile(name, native_vlan, tagged_vlans, poe?)`: POST to `/api/s/{site}/rest/portconf`. Same write acceptance criteria as Task 66. | M | Plan Phase 1 | pending |
-| 68 | Implement write tool `unifi__topology__assign_port_profile(device_id, port_idx, profile_name)`: PUT port_overrides on device. Same write acceptance criteria as Task 66. | M | Plan Phase 1 | pending |
-| 69 | Implement `unifi port-profile create` and `unifi port-profile assign` commands: three-phase confirmation model (PRD 10.2). Port-profile assign triggers OutageRiskAgent assessment (session port check) when netex umbrella is installed; without umbrella, presents warning that outage risk assessment is unavailable. | L | Tasks 67, 68 | pending |
-| 70 | Write tests for all Phase 2 commands and write operations. Test write gate enforcement (env var disabled, --apply missing, confirmation flow). Test three-phase confirmation model end-to-end. | L | Tasks 62-69 | pending |
+| 62 | Implement `unifi wifi` command: channel utilization summary, RF scan results, roaming stats per PRD command definition. | M | Task 53 | done |
+| 63 | Implement `unifi optimize` command: read phase calls wifi, traffic, security, config skills. Generates prioritized recommendations. Write gate enforces `--apply` + confirmation. **Write acceptance criteria:** (1) `UNIFI_WRITE_ENABLED` must be `true` or command returns write-blocked error, (2) without `--apply`, command produces read-only recommendations only, (3) with `--apply`, presents full change plan via AskUserQuestion Phase 2->3 template, (4) operator confirms once, (5) changes execute in presented order. | L | M2.1 | done |
+| 64 | Implement `unifi secure` command: firewall audit, ZBF review, ACL analysis, port forwarding, IDS trend, rogue AP detection. Risk-ranked output via OX formatters. | M | Task 58 | done |
+| 65 | Implement `unifi config` command: config state review, `--drift` diffs against stored baseline. | M | Task 60 | done |
+| 66 | Implement write tool `unifi__config__save_baseline(site_id)`: persists config snapshot as baseline. **Write acceptance criteria:** (1) `UNIFI_WRITE_ENABLED=true` required, (2) `--apply` flag required, (3) operator confirmation via AskUserQuestion, (4) returns structured success/failure result. | M | Task 59 | done |
+| 67 | Implement write tool `unifi__config__create_port_profile(name, native_vlan, tagged_vlans, poe?)`: POST to `/api/s/{site}/rest/portconf`. Same write acceptance criteria as Task 66. | M | Plan Phase 1 | done |
+| 68 | Implement write tool `unifi__topology__assign_port_profile(device_id, port_idx, profile_name)`: PUT port_overrides on device. Same write acceptance criteria as Task 66. | M | Plan Phase 1 | done |
+| 69 | Implement `unifi port-profile create` and `unifi port-profile assign` commands: three-phase confirmation model (PRD 10.2). Port-profile assign triggers OutageRiskAgent assessment (session port check) when netex umbrella is installed; without umbrella, presents warning that outage risk assessment is unavailable. | L | Tasks 67, 68 | done |
+| 70 | Write tests for all Phase 2 commands and write operations. Test write gate enforcement (env var disabled, --apply missing, confirmation flow). Test three-phase confirmation model end-to-end. | L | Tasks 62-69 | done |
 
 **Parallelizable:** Tasks 62-68 can all run concurrently (7 tasks). Task 69 depends on 67, 68. Task 70 after all.
 **Milestone Value:** Complete unifi command set. Write operations available for port profiles and config baselines. All PRD Section 3 requirements fulfilled.
@@ -199,16 +199,16 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 
 | # | Task | Complexity | Dependencies | Status |
 |---|------|-----------|--------------|--------|
-| 71 | Write 5 advanced unifi workflow examples (PRD Section 9.4): diagnose client complaint, optimize WiFi, firewall posture audit, config drift detection, MSP fleet digest. Follow 7-section template. Include "Working Safely" section. | L | M2.2 | pending |
-| 72 | Update `docs/unifi/commands.md` and `docs/unifi/skills.md` with all Phase 2 commands and skills. | M | M2.2 | pending |
-| 73 | Create `opnsense/pyproject.toml` with dependencies (same stack: `mcp`, `httpx`, `pydantic`, `python-dotenv`). Define entry point. Add `[project.entry-points."netex.plugins"]` for Plugin Registry (D12). | M | None | pending |
-| 74 | Create opnsense directory structure: `opnsense/src/{agents,api,tools,models}/`, `opnsense/tests/`, `__init__.py` files. Create `.env.example` with all opnsense env vars. | S | None | pending |
-| 75 | Create `opnsense/SKILL.md` from PRD Appendix B (YAML frontmatter + overview + auth + interaction model). | M | None | pending |
-| 76 | Create opnsense MCP server entry point (`opnsense/src/server.py`): initialize server, transport via `--transport stdio|http` (D13), `--check` startup health probe, env var loading (`OPNSENSE_HOST`, `OPNSENSE_API_KEY`, `OPNSENSE_API_SECRET`, `OPNSENSE_WRITE_ENABLED`, `OPNSENSE_VERIFY_SSL` (D11)). Structured logging. | M | Task 73 | pending |
-| 77 | Create GitHub Actions CI workflow (`.github/workflows/opnsense.yml`): ruff, mypy, pytest with coverage. | M | Task 73 | pending |
-| 78 | Create opnsense shared utilities: `opnsense/src/errors.py` (same hierarchy as unifi, D14), `opnsense/src/cache.py` (TTL cache, same design as unifi), `opnsense/src/safety.py` (write gate with reconfigure awareness -- blocks reconfigure unless write gate passed), `opnsense/src/output.py` (OX formatters), `opnsense/src/ask.py` (AskUserQuestion patterns). | L | None | pending |
-| 79 | Create opnsense Pydantic models: `Interface`, `VLANInterface`, `FirewallRule`, `Alias`, `NATRule`, `Route`, `Gateway`, `IPSecSession`, `WireGuardPeer`, `OpenVPNInstance`, `DHCPLease`, `DNSOverride`, `IDSAlert`, `Certificate`, `FirmwareStatus`. | L | None | pending |
-| 80 | Create `opnsense/tests/fixtures/`: realistic mock OPNsense API response JSON files. Create `opnsense/tests/test_safety.py` and `opnsense/tests/test_cache.py`. | M | Task 78 | pending |
+| 71 | Write 5 advanced unifi workflow examples (PRD Section 9.4): diagnose client complaint, optimize WiFi, firewall posture audit, config drift detection, MSP fleet digest. Follow 7-section template. Include "Working Safely" section. | L | M2.2 | done |
+| 72 | Update `docs/unifi/commands.md` and `docs/unifi/skills.md` with all Phase 2 commands and skills. | M | M2.2 | done |
+| 73 | Create `opnsense/pyproject.toml` with dependencies (same stack: `mcp`, `httpx`, `pydantic`, `python-dotenv`). Define entry point. Add `[project.entry-points."netex.plugins"]` for Plugin Registry (D12). | M | None | done |
+| 74 | Create opnsense directory structure: `opnsense/src/{agents,api,tools,models}/`, `opnsense/tests/`, `__init__.py` files. Create `.env.example` with all opnsense env vars. | S | None | done |
+| 75 | Create `opnsense/SKILL.md` from PRD Appendix B (YAML frontmatter + overview + auth + interaction model). | M | None | done |
+| 76 | Create opnsense MCP server entry point (`opnsense/src/server.py`): initialize server, transport via `--transport stdio|http` (D13), `--check` startup health probe, env var loading (`OPNSENSE_HOST`, `OPNSENSE_API_KEY`, `OPNSENSE_API_SECRET`, `OPNSENSE_WRITE_ENABLED`, `OPNSENSE_VERIFY_SSL` (D11)). Structured logging. | M | Task 73 | done |
+| 77 | Create GitHub Actions CI workflow (`.github/workflows/opnsense.yml`): ruff, mypy, pytest with coverage. | M | Task 73 | done |
+| 78 | Create opnsense shared utilities: `opnsense/src/errors.py` (same hierarchy as unifi, D14), `opnsense/src/cache.py` (TTL cache, same design as unifi), `opnsense/src/safety.py` (write gate with reconfigure awareness -- blocks reconfigure unless write gate passed), `opnsense/src/output.py` (OX formatters), `opnsense/src/ask.py` (AskUserQuestion patterns). | L | None | done |
+| 79 | Create opnsense Pydantic models: `Interface`, `VLANInterface`, `FirewallRule`, `Alias`, `NATRule`, `Route`, `Gateway`, `IPSecSession`, `WireGuardPeer`, `OpenVPNInstance`, `DHCPLease`, `DNSOverride`, `IDSAlert`, `Certificate`, `FirmwareStatus`. | L | None | done |
+| 80 | Create `opnsense/tests/fixtures/`: realistic mock OPNsense API response JSON files. Create `opnsense/tests/test_safety.py` and `opnsense/tests/test_cache.py`. | M | Task 78 | done |
 
 **Parallelizable:** Tasks 71-72 (unifi docs) and Tasks 73-80 (opnsense scaffold) are fully independent. Within opnsense: 73-75, 78-79 concurrent. 76-77 depend on 73. Max 8 concurrent.
 **Milestone Value:** unifi plugin is fully documented with advanced workflows. opnsense skeleton is ready for API client and skill implementation.
