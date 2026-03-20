@@ -1,0 +1,1 @@
+"""OPNsense Pydantic data models."""
