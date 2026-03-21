@@ -306,12 +306,13 @@ def main(argv: list[str] | None = None) -> None:
     try:
         config = _load_env()
     except ConfigError as exc:
-        logger.error(
-            "Configuration error: %s",
+        logger.warning(
+            "Configuration incomplete: %s. "
+            "Server will start but tools will fail until env vars are set.",
             str(exc),
             extra={"component": "startup"},
         )
-        raise SystemExit(1) from exc
+        config = {}
 
     write_enabled = config.get("UNIFI_WRITE_ENABLED", "false").lower() == "true"
     cache_ttl = int(config.get("NETEX_CACHE_TTL", "300"))
