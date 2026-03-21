@@ -302,6 +302,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.check:
         raise SystemExit(_run_check())
 
+    # Register MCP tools before starting the server
+    import unifi.tools  # noqa: F401
+
     # --- normal startup ---
     try:
         config = _load_env()

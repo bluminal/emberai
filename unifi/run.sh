@@ -19,4 +19,4 @@ if [ ! -d "$VENV_DIR" ]; then
     echo "[unifi] Ready." >&2
 fi
 
-exec "$VENV_DIR/bin/python" -m unifi.server "$@"
+exec "$VENV_DIR/bin/python" -m unifi "$@"
