@@ -12,6 +12,9 @@ build/
 .coverage
 .pytest_cache/
 
+# Secrets
+.envrc
+
 # Plugin runtime data (created by run.sh on first run)
 .data/
 
