@@ -18,4 +18,4 @@ else
     "$VENV_DIR/bin/pip" install -q -e "$PLUGIN_DIR"
 fi
 
-echo '{"systemMessage": "netex plugin: dependencies installed. Install unifi and/or opnsense plugins for cross-vendor orchestration."}'
+echo '{"systemMessage": "netex plugin installed. Install the unifi and/or opnsense plugins for cross-vendor orchestration. See: https://bluminal.github.io/emberai/getting-started/installation/"}'

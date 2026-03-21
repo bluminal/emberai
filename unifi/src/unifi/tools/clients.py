@@ -16,6 +16,7 @@ from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.errors import APIError, NetexError
 from unifi.models.client import Client
 from unifi.server import mcp_server
+from unifi.tools._client_factory import get_local_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _get_client() -> LocalGatewayClient:
-    """Get a configured LocalGatewayClient from environment variables."""
-    host = os.environ.get("UNIFI_LOCAL_HOST", "")
-    key = os.environ.get("UNIFI_LOCAL_KEY", "")
-    return LocalGatewayClient(host=host, api_key=key)
+_get_client = get_local_client  # Shared factory with credential validation
 
 
 # ---------------------------------------------------------------------------

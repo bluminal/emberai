@@ -14,15 +14,14 @@ import logging
 import os
 from typing import Any
 
-from unifi.api.cloud_v1_client import CloudV1Client
-from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.api.response import normalize_response
-from unifi.errors import APIError, AuthenticationError, ValidationError
+from unifi.errors import APIError, ValidationError
 from unifi.models.device import Device
 from unifi.models.site import Site
 from unifi.models.vlan import VLAN
 from unifi.safety import write_gate
 from unifi.server import mcp_server
+from unifi.tools._client_factory import get_cloud_client, get_local_client
 
 logger = logging.getLogger(__name__)
 
@@ -60,29 +59,8 @@ def _state_to_str(state: int | str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_client() -> LocalGatewayClient:
-    """Get a configured LocalGatewayClient from environment variables."""
-    host = os.environ.get("UNIFI_LOCAL_HOST", "")
-    key = os.environ.get("UNIFI_LOCAL_KEY", "")
-    return LocalGatewayClient(host=host, api_key=key)
-
-
-def _get_cloud_client() -> CloudV1Client:
-    """Get a configured CloudV1Client from the ``UNIFI_API_KEY`` env var.
-
-    Raises
-    ------
-    AuthenticationError
-        If ``UNIFI_API_KEY`` is not set or empty.
-    """
-    api_key = os.environ.get("UNIFI_API_KEY", "").strip()
-    if not api_key:
-        raise AuthenticationError(
-            "UNIFI_API_KEY is not configured. "
-            "Set this environment variable to use Cloud V1 API features.",
-            env_var="UNIFI_API_KEY",
-        )
-    return CloudV1Client(api_key=api_key)
+_get_client = get_local_client
+_get_cloud_client = get_cloud_client
 
 
 # ---------------------------------------------------------------------------

@@ -21,4 +21,8 @@ else
     "$VENV_DIR/bin/pip" install -q -e "$PLUGIN_DIR"
 fi
 
-echo '{"systemMessage": "unifi plugin: dependencies installed successfully. Configure UNIFI_LOCAL_HOST and UNIFI_LOCAL_KEY to connect to your UniFi gateway."}'
+if [ -z "${UNIFI_LOCAL_HOST:-}" ] || [ -z "${UNIFI_LOCAL_KEY:-}" ]; then
+    echo '{"systemMessage": "unifi plugin installed. No credentials configured yet — set UNIFI_LOCAL_HOST and UNIFI_LOCAL_KEY to connect to your UniFi gateway. See: https://bluminal.github.io/emberai/getting-started/authentication/"}'
+else
+    echo '{"systemMessage": "unifi plugin installed and credentials detected."}'
+fi

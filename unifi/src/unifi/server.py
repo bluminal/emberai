@@ -308,7 +308,8 @@ def main(argv: list[str] | None = None) -> None:
     except ConfigError as exc:
         logger.warning(
             "Configuration incomplete: %s. "
-            "Server will start but tools will fail until env vars are set.",
+            "Server will start but tools will fail until env vars are set. "
+            "See: https://bluminal.github.io/emberai/getting-started/authentication/",
             str(exc),
             extra={"component": "startup"},
         )

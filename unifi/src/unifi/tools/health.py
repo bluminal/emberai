@@ -23,6 +23,7 @@ from unifi.api.response import NormalizedResponse
 from unifi.models.event import Event
 from unifi.models.health import FirmwareStatus, HealthStatus
 from unifi.server import mcp_server
+from unifi.tools._client_factory import get_local_client
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +57,7 @@ def _state_to_str(state: int | str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_client() -> LocalGatewayClient:
-    """Get a configured LocalGatewayClient from environment variables."""
-    host = os.environ.get("UNIFI_LOCAL_HOST", "")
-    key = os.environ.get("UNIFI_LOCAL_KEY", "")
-    return LocalGatewayClient(host=host, api_key=key)
+_get_client = get_local_client  # Shared factory with credential validation
 
 
 def _has_cloud_api_key() -> bool:

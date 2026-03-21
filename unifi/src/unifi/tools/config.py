@@ -20,6 +20,7 @@ from unifi.api.response import normalize_response
 from unifi.errors import ValidationError
 from unifi.safety import write_gate
 from unifi.server import mcp_server
+from unifi.tools._client_factory import get_local_client
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _get_client() -> LocalGatewayClient:
-    """Get a configured LocalGatewayClient from environment variables."""
-    host = os.environ.get("UNIFI_LOCAL_HOST", "")
-    key = os.environ.get("UNIFI_LOCAL_KEY", "")
-    return LocalGatewayClient(host=host, api_key=key)
+_get_client = get_local_client  # Shared factory with credential validation
 
 
 # ---------------------------------------------------------------------------

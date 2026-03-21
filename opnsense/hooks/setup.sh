@@ -18,4 +18,8 @@ else
     "$VENV_DIR/bin/pip" install -q -e "$PLUGIN_DIR"
 fi
 
-echo '{"systemMessage": "opnsense plugin: dependencies installed. Configure OPNSENSE_HOST, OPNSENSE_API_KEY, and OPNSENSE_API_SECRET to connect."}'
+if [ -z "${OPNSENSE_HOST:-}" ] || [ -z "${OPNSENSE_API_KEY:-}" ] || [ -z "${OPNSENSE_API_SECRET:-}" ]; then
+    echo '{"systemMessage": "opnsense plugin installed. No credentials configured yet — set OPNSENSE_HOST, OPNSENSE_API_KEY, and OPNSENSE_API_SECRET. See: https://bluminal.github.io/emberai/getting-started/authentication/"}'
+else
+    echo '{"systemMessage": "opnsense plugin installed and credentials detected."}'
+fi
