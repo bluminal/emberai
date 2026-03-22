@@ -107,7 +107,10 @@ class OPNsenseClient:
             headers={
                 "Authorization": self._auth_header,
                 "Accept": "application/json",
-                "Content-Type": "application/json",
+                # Note: Content-Type is NOT set here because OPNsense 26.x
+                # returns 400 on GET requests that include Content-Type.
+                # POST/PUT methods pass Content-Type via the json= parameter
+                # which httpx sets automatically.
             },
             verify=self._verify_ssl,
             timeout=httpx.Timeout(timeout),
