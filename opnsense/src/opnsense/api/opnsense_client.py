@@ -569,7 +569,13 @@ class OPNsenseClient:
         self._raise_for_status(response, endpoint)
 
         # --- Parse JSON ---
-        return response.json()  # type: ignore[no-any-return]
+        # Some OPNsense endpoints return arrays instead of dicts
+        # (e.g., /api/interfaces/overview/export). Wrap arrays in a
+        # dict so callers always get a consistent type.
+        data = response.json()
+        if isinstance(data, list):
+            return {"rows": data, "_was_array": True}
+        return data  # type: ignore[no-any-return]
 
     def _raise_for_status(self, response: httpx.Response, endpoint: str) -> None:
         """Translate HTTP error responses to the structured error hierarchy.
