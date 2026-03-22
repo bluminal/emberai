@@ -318,16 +318,21 @@ def main(argv: list[str] | None = None) -> None:
     if args.check:
         raise SystemExit(_run_check())
 
+    # Register MCP tools before starting the server
+    import opnsense.tools  # noqa: F401
+
     # --- normal startup ---
     try:
         config = _load_env()
     except ConfigError as exc:
-        logger.error(
-            "Configuration error: %s",
+        logger.warning(
+            "Configuration incomplete: %s. "
+            "Server will start but tools will fail until env vars are set. "
+            "See: https://bluminal.github.io/emberai/getting-started/authentication/",
             str(exc),
             extra={"component": "startup"},
         )
-        raise SystemExit(1) from exc
+        config = {}
 
     write_enabled = config.get("OPNSENSE_WRITE_ENABLED", "false").lower() == "true"
     verify_ssl = config.get("OPNSENSE_VERIFY_SSL", "true").lower() != "false"

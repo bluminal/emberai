@@ -18,4 +18,4 @@ if [ ! -d "$VENV_DIR" ]; then
     echo "[opnsense] Ready." >&2
 fi
 
-exec "$VENV_DIR/bin/python" -m opnsense.server "$@"
+exec "$VENV_DIR/bin/python" -m opnsense "$@"

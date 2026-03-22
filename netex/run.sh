@@ -18,4 +18,4 @@ if [ ! -d "$VENV_DIR" ]; then
     echo "[netex] Ready." >&2
 fi
 
-exec "$VENV_DIR/bin/python" -m netex.server "$@"
+exec "$VENV_DIR/bin/python" -m netex "$@"
