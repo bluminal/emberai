@@ -26,16 +26,22 @@ class Interface(BaseModel):
     model_config = ConfigDict(strict=True, populate_by_name=True)
 
     name: str = Field(
-        description="Interface identifier (e.g. 'igb0', 'vtnet1', 'opt1')",
+        default="",
+        alias="device",
+        description="Interface device name (e.g. 'igb0', 'vtnet1')",
     )
     description: str = Field(
         default="",
         description="User-assigned interface description (e.g. 'LAN', 'WAN', 'DMZ')",
     )
+    identifier: str = Field(
+        default="",
+        description="OPNsense interface identifier (e.g. 'wan', 'lan', 'opt1')",
+    )
     ip: str = Field(
         default="",
         alias="addr4",
-        description="IPv4 address assigned to this interface",
+        description="IPv4 address with CIDR (e.g. '10.10.10.1/24')",
     )
     subnet: str = Field(
         default="",
@@ -44,15 +50,18 @@ class Interface(BaseModel):
     )
     if_type: str = Field(
         default="",
-        alias="type",
-        description="Interface type (e.g. 'ethernet', 'vlan', 'bridge', 'lagg')",
+        description="Link type (e.g. 'dhcp', 'static', 'none')",
     )
     enabled: bool = Field(
         default=True,
         description="Whether the interface is administratively enabled",
     )
+    status: str = Field(
+        default="",
+        description="Operational status (e.g. 'up', 'down', 'no carrier')",
+    )
     vlan_id: int | None = Field(
         default=None,
         alias="vlan_tag",
-        description="VLAN tag ID if this is a VLAN interface (e.g. 10, 20, 100)",
+        description="VLAN tag ID if this is a VLAN interface",
     )
