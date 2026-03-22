@@ -35,10 +35,18 @@ async def run_interface_report() -> str:
     Returns:
         A markdown-formatted report string.
     """
-    # Fetch data from tools
+    # Fetch data from tools (gracefully handle missing endpoints)
     interfaces = await opnsense__interfaces__list_interfaces()
-    vlans = await opnsense__interfaces__list_vlan_interfaces()
-    leases = await opnsense__interfaces__get_dhcp_leases()
+    try:
+        vlans = await opnsense__interfaces__list_vlan_interfaces()
+    except Exception:
+        logger.warning("VLAN interfaces endpoint not available, skipping")
+        vlans = []
+    try:
+        leases = await opnsense__interfaces__get_dhcp_leases()
+    except Exception:
+        logger.warning("DHCP leases endpoint not available, skipping")
+        leases = []
 
     findings: list[Finding] = []
     sections: list[str] = []
