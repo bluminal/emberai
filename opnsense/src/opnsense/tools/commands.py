@@ -1594,13 +1594,15 @@ async def opnsense_dns_configure(
             if iface not in current_list:
                 current_list.append(iface)
 
-        # Set updated interfaces
+        # Set updated interfaces + enable DHCP hostname registration
         await client.write(
             "unbound", "settings", "set",
             data={
                 "unbound": {
                     "general": {
                         "active_interface": ",".join(current_list),
+                        "regdhcp": "1",
+                        "regdhcpstatic": "1",
                     },
                 },
             },
