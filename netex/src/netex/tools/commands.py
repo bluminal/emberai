@@ -27,13 +27,12 @@ from typing import Any
 from netex.agents.network_security_agent import NetworkSecurityAgent
 from netex.agents.outage_risk_agent import OutageRiskAgent
 from netex.models.manifest import (
-    AccessPolicyRule,
     PolicyAction,
     SiteManifest,
     VLANDefinition,
     parse_manifest,
 )
-from netex.output import Finding, Severity, format_change_plan, format_table
+from netex.output import Finding, Severity, format_change_plan
 from netex.registry.plugin_registry import PluginRegistry
 from netex.safety import check_write_enabled
 from netex.server import mcp_server
@@ -129,7 +128,11 @@ def _build_provision_plan_steps(
                 f"{action_label} {rule.source} -> {rule.destination}"
                 + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
             ),
-            "detail": rule.description or f"{action_label} traffic from {rule.source} to {rule.destination}",
+            "detail": (
+                rule.description
+                or f"{action_label} traffic from {rule.source}"
+                f" to {rule.destination}"
+            ),
         })
 
     # Phase 5: Edge networks (VLAN objects on UniFi)
@@ -368,7 +371,11 @@ async def netex__network__provision_site(
 
     if dry_run:
         wf.transition(WorkflowState.CANCELLED, "Dry-run mode: plan generated without execution")
-        return plan_output + "\n\n*Dry-run mode: no changes made. Remove --dry-run and add --apply to execute.*"
+        return (
+            plan_output
+            + "\n\n*Dry-run mode: no changes made."
+            " Remove --dry-run and add --apply to execute.*"
+        )
 
     # --- Write gate check ---
     if not check_write_enabled("NETEX"):
@@ -461,7 +468,7 @@ async def netex__network__verify_policy(
             "(--vlan) to verify."
         )
 
-    registry = _build_registry()
+    _build_registry()
 
     # Parse manifest if provided
     manifest: SiteManifest | None = None
@@ -682,7 +689,10 @@ async def netex__vlan__provision_batch(
             plan_steps.append({
                 "system": "gateway",
                 "description": f"Configure DHCP for {vlan.name}",
-                "detail": f"Range: {vlan.dhcp_range_start or 'auto'}-{vlan.dhcp_range_end or 'auto'}",
+                "detail": (
+                    f"Range: {vlan.dhcp_range_start or 'auto'}"
+                    f"-{vlan.dhcp_range_end or 'auto'}"
+                ),
             })
         plan_steps.append({
             "system": "edge",
@@ -976,8 +986,6 @@ async def netex__policy__sync(
         f"**Plugins:** {len(gw_plugins)} gateway, {len(edge_plugins)} edge",
         "",
     ]
-
-    drift_items: list[dict[str, str]] = []
 
     for domain_name, skill1, skill2 in check_domains:
         tools1 = registry.tools_for_skill(skill1)

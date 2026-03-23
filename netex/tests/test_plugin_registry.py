@@ -7,7 +7,6 @@ import pytest
 
 from netex.registry.plugin_registry import PluginMetadata, PluginRegistry
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -38,7 +37,10 @@ def _opnsense_info() -> dict:
         "vendor": "opnsense",
         "description": "OPNsense gateway intelligence",
         "roles": ["gateway"],
-        "skills": ["interfaces", "firewall", "routing", "vpn", "security", "services", "diagnostics"],
+        "skills": [
+            "interfaces", "firewall", "routing", "vpn",
+            "security", "services", "diagnostics",
+        ],
         "write_flag": "OPNSENSE_WRITE_ENABLED",
         "contract_version": "1.0.0",
         "tools": {

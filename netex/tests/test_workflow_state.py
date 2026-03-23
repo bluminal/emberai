@@ -18,7 +18,6 @@ from netex.workflows.workflow_state import (
     WorkflowState,
 )
 
-
 # ---------------------------------------------------------------------------
 # WorkflowState enum
 # ---------------------------------------------------------------------------
@@ -80,7 +79,8 @@ class TestWorkflowConstruction:
 
 class TestTransitions:
     def test_valid_happy_path(self) -> None:
-        """Full happy path: created -> resolving -> planning -> awaiting -> executing -> completed."""
+        """Full happy path: created -> resolving -> planning ->
+        awaiting -> executing -> completed."""
         wf = Workflow(workflow_type="test")
         wf.transition(WorkflowState.RESOLVING, "Gathering state")
         assert wf.state == WorkflowState.RESOLVING

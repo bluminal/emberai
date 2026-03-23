@@ -137,7 +137,7 @@ def _run_check() -> int:
     all_ok = True
     load_dotenv()
 
-    for var_name, default, description in _OPTIONAL_ENV_VARS:
+    for var_name, default, _description in _OPTIONAL_ENV_VARS:
         value = os.environ.get(var_name, "").strip()
         status = value if value else f"(default: {default})"
         print(f"  [INFO] {var_name} = {status}")
@@ -153,9 +153,12 @@ def _run_check() -> int:
             for p in plugins:
                 print(f"  [PASS] Found plugin: {p['name']} (roles: {p['roles']})")
         else:
-            print("  [WARN] No vendor plugins found -- install at least one (e.g., unifi, opnsense)")
+            print(
+                "  [WARN] No vendor plugins found"
+                " -- install at least one (e.g., unifi, opnsense)"
+            )
             all_ok = False
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"  [FAIL] Plugin discovery failed: {exc}")
         all_ok = False
 

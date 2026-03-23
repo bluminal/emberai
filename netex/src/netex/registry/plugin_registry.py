@@ -114,7 +114,7 @@ class PluginRegistry:
 
         try:
             entry_points = importlib.metadata.entry_points(group=self.ENTRY_POINT_GROUP)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("Failed to query entry points for group %s", self.ENTRY_POINT_GROUP)
             return 0
 
@@ -134,7 +134,7 @@ class PluginRegistry:
                 count += 1
                 logger.info("Discovered plugin: %s", info.get("name", ep.name))
 
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("Failed to load plugin %s: %s", ep.name, exc)
 
         return count

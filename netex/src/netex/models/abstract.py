@@ -25,7 +25,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -111,7 +110,7 @@ class VLAN(BaseModel):
             return cls(
                 vlan_id=int(raw_data.get("vlan", raw_data.get("vlanid", 0))),
                 name=raw_data.get("descr", raw_data.get("description", "")),
-                subnet=raw_data.get("subnet", None),
+                subnet=raw_data.get("subnet"),
                 dhcp_enabled=raw_data.get("dhcp_enabled", False),
                 source_plugin=vendor_name,
                 raw_data=raw_data,
@@ -120,7 +119,7 @@ class VLAN(BaseModel):
             return cls(
                 vlan_id=int(raw_data.get("vlan_id", raw_data.get("vlan", 0))),
                 name=raw_data.get("name", ""),
-                subnet=raw_data.get("ip_subnet", raw_data.get("subnet", None)),
+                subnet=raw_data.get("ip_subnet", raw_data.get("subnet")),
                 dhcp_enabled=raw_data.get("dhcpd_enabled", raw_data.get("dhcp_enabled", False)),
                 source_plugin=vendor_name,
                 raw_data=raw_data,
@@ -130,7 +129,7 @@ class VLAN(BaseModel):
             return cls(
                 vlan_id=int(raw_data.get("vlan_id", raw_data.get("id", 0))),
                 name=raw_data.get("name", ""),
-                subnet=raw_data.get("subnet", None),
+                subnet=raw_data.get("subnet"),
                 dhcp_enabled=raw_data.get("dhcp_enabled", False),
                 source_plugin=vendor_name,
                 raw_data=raw_data,

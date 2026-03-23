@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from netex.models.abstract import (
     VLAN,
     DHCPLease,
@@ -20,7 +18,6 @@ from netex.models.abstract import (
     VPNTunnel,
     VPNType,
 )
-
 
 # ---------------------------------------------------------------------------
 # VLAN
@@ -365,14 +362,20 @@ class TestNetworkTopology:
 
     def test_merge_topologies(self) -> None:
         topo1 = NetworkTopology(
-            nodes=[TopologyNode(node_id="gw-1", name="Gateway", node_type=TopologyNodeType.GATEWAY)],
+            nodes=[TopologyNode(
+                node_id="gw-1", name="Gateway",
+                node_type=TopologyNodeType.GATEWAY,
+            )],
             vlans=[VLAN(vlan_id=10, name="LAN", source_plugin="opnsense")],
             source_plugins=["opnsense"],
         )
         topo2 = NetworkTopology(
             nodes=[
                 TopologyNode(node_id="sw-1", name="Switch", node_type=TopologyNodeType.SWITCH),
-                TopologyNode(node_id="gw-1", name="Gateway-dup", node_type=TopologyNodeType.GATEWAY),
+                TopologyNode(
+                    node_id="gw-1", name="Gateway-dup",
+                    node_type=TopologyNodeType.GATEWAY,
+                ),
             ],
             links=[TopologyLink(source_id="gw-1", target_id="sw-1")],
             vlans=[VLAN(vlan_id=10, name="LAN", source_plugin="unifi")],

@@ -11,7 +11,6 @@ from netex.models.security_finding import (
     sort_findings,
 )
 
-
 # ---------------------------------------------------------------------------
 # SecurityFinding construction
 # ---------------------------------------------------------------------------
@@ -105,10 +104,26 @@ class TestSecurityFinding:
 class TestSortFindings:
     def test_sort_by_severity(self) -> None:
         findings = [
-            SecurityFinding(severity=FindingSeverity.LOW, category=FindingCategory.GENERAL, description="low"),
-            SecurityFinding(severity=FindingSeverity.CRITICAL, category=FindingCategory.GENERAL, description="critical"),
-            SecurityFinding(severity=FindingSeverity.HIGH, category=FindingCategory.GENERAL, description="high"),
-            SecurityFinding(severity=FindingSeverity.MEDIUM, category=FindingCategory.GENERAL, description="medium"),
+            SecurityFinding(
+                severity=FindingSeverity.LOW,
+                category=FindingCategory.GENERAL,
+                description="low",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.CRITICAL,
+                category=FindingCategory.GENERAL,
+                description="critical",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.HIGH,
+                category=FindingCategory.GENERAL,
+                description="high",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.MEDIUM,
+                category=FindingCategory.GENERAL,
+                description="medium",
+            ),
         ]
         sorted_f = sort_findings(findings)
         assert [f.severity for f in sorted_f] == [
@@ -120,8 +135,16 @@ class TestSortFindings:
 
     def test_stable_sort_within_severity(self) -> None:
         findings = [
-            SecurityFinding(severity=FindingSeverity.HIGH, category=FindingCategory.GENERAL, description="first"),
-            SecurityFinding(severity=FindingSeverity.HIGH, category=FindingCategory.GENERAL, description="second"),
+            SecurityFinding(
+                severity=FindingSeverity.HIGH,
+                category=FindingCategory.GENERAL,
+                description="first",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.HIGH,
+                category=FindingCategory.GENERAL,
+                description="second",
+            ),
         ]
         sorted_f = sort_findings(findings)
         assert sorted_f[0].description == "first"
@@ -138,9 +161,21 @@ class TestSortFindings:
 class TestGroupFindings:
     def test_group_by_category(self) -> None:
         findings = [
-            SecurityFinding(severity=FindingSeverity.HIGH, category=FindingCategory.FIREWALL_POLICY, description="fw1"),
-            SecurityFinding(severity=FindingSeverity.LOW, category=FindingCategory.FIREWALL_POLICY, description="fw2"),
-            SecurityFinding(severity=FindingSeverity.MEDIUM, category=FindingCategory.DNS_SECURITY, description="dns1"),
+            SecurityFinding(
+                severity=FindingSeverity.HIGH,
+                category=FindingCategory.FIREWALL_POLICY,
+                description="fw1",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.LOW,
+                category=FindingCategory.FIREWALL_POLICY,
+                description="fw2",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.MEDIUM,
+                category=FindingCategory.DNS_SECURITY,
+                description="dns1",
+            ),
         ]
         grouped = group_findings_by_category(findings)
         assert FindingCategory.FIREWALL_POLICY in grouped
@@ -150,8 +185,16 @@ class TestGroupFindings:
 
     def test_groups_sorted_by_severity(self) -> None:
         findings = [
-            SecurityFinding(severity=FindingSeverity.LOW, category=FindingCategory.FIREWALL_POLICY, description="low"),
-            SecurityFinding(severity=FindingSeverity.CRITICAL, category=FindingCategory.FIREWALL_POLICY, description="critical"),
+            SecurityFinding(
+                severity=FindingSeverity.LOW,
+                category=FindingCategory.FIREWALL_POLICY,
+                description="low",
+            ),
+            SecurityFinding(
+                severity=FindingSeverity.CRITICAL,
+                category=FindingCategory.FIREWALL_POLICY,
+                description="critical",
+            ),
         ]
         grouped = group_findings_by_category(findings)
         fw_group = grouped[FindingCategory.FIREWALL_POLICY]

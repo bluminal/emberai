@@ -27,8 +27,7 @@ Every error inherits the following structured fields from ``NetexError``:
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
-
+from typing import Any, ClassVar
 
 # ---------------------------------------------------------------------------
 # WriteGateReason enum
@@ -289,7 +288,7 @@ class WriteGateError(NetexError):
         Why the write was blocked.
     """
 
-    _REASON_MESSAGES: dict[WriteGateReason, str] = {
+    _REASON_MESSAGES: ClassVar[dict[WriteGateReason, str]] = {
         WriteGateReason.ENV_VAR_DISABLED: (
             "Set NETEX_WRITE_ENABLED=true to allow write operations"
         ),

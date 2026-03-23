@@ -16,11 +16,9 @@ The manifest is the single source of truth for ``provision-site``,
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 
 # ---------------------------------------------------------------------------
 # Enums

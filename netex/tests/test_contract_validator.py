@@ -12,7 +12,6 @@ from netex.registry.contract_validator import (
     ValidationResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -131,13 +130,20 @@ class TestRolesValidation:
         info = _valid_plugin_info()
         info["roles"] = ["gateway", "edge"]
         report = validator.validate(info)
-        assert not any(r.field == "roles" and r.level == ValidationLevel.ERROR for r in report.results)
+        assert not any(
+            r.field == "roles" and r.level == ValidationLevel.ERROR
+            for r in report.results
+        )
 
     def test_unknown_role_warning(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["roles"] = ["unknown_role"]
         report = validator.validate(info)
-        assert any(r.field == "roles" and r.level == ValidationLevel.WARNING for r in report.results)
+        assert any(
+            r.field == "roles"
+            and r.level == ValidationLevel.WARNING
+            for r in report.results
+        )
 
     def test_roles_not_list_error(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
@@ -155,13 +161,20 @@ class TestSkillsValidation:
         info = _valid_plugin_info()
         info["skills"] = ["topology", "firewall"]
         report = validator.validate(info)
-        assert not any(r.field == "skills" and r.level == ValidationLevel.ERROR for r in report.results)
+        assert not any(
+            r.field == "skills" and r.level == ValidationLevel.ERROR
+            for r in report.results
+        )
 
     def test_unknown_skill_warning(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["skills"] = ["unknown_skill"]
         report = validator.validate(info)
-        assert any(r.field == "skills" and r.level == ValidationLevel.WARNING for r in report.results)
+        assert any(
+            r.field == "skills"
+            and r.level == ValidationLevel.WARNING
+            for r in report.results
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -173,13 +186,20 @@ class TestWriteFlagValidation:
         info = _valid_plugin_info()
         info["write_flag"] = "MYPLUGIN_WRITE_ENABLED"
         report = validator.validate(info)
-        assert not any(r.field == "write_flag" and r.level == ValidationLevel.ERROR for r in report.results)
+        assert not any(
+            r.field == "write_flag" and r.level == ValidationLevel.ERROR
+            for r in report.results
+        )
 
     def test_invalid_write_flag_pattern(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["write_flag"] = "bad_flag"
         report = validator.validate(info)
-        assert any(r.field == "write_flag" and r.level == ValidationLevel.WARNING for r in report.results)
+        assert any(
+            r.field == "write_flag"
+            and r.level == ValidationLevel.WARNING
+            for r in report.results
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -191,13 +211,21 @@ class TestContractVersion:
         info = _valid_plugin_info()
         info["contract_version"] = "1.0.0"
         report = validator.validate(info)
-        assert not any(r.field == "contract_version" and r.level == ValidationLevel.ERROR for r in report.results)
+        assert not any(
+            r.field == "contract_version"
+            and r.level == ValidationLevel.ERROR
+            for r in report.results
+        )
 
     def test_invalid_contract_version(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["contract_version"] = "not-semver"
         report = validator.validate(info)
-        assert any(r.field == "contract_version" and r.level == ValidationLevel.ERROR for r in report.results)
+        assert any(
+            r.field == "contract_version"
+            and r.level == ValidationLevel.ERROR
+            for r in report.results
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +256,11 @@ class TestToolNameValidation:
         report = validator.validate(info)
         # The hyphen in plugin name is valid in the name field, but the
         # tool name pattern requires lowercase alphanumeric only
-        tool_errors = [r for r in report.results if "tool" in r.field.lower() and r.level == ValidationLevel.ERROR]
+        tool_errors = [
+            r for r in report.results
+            if "tool" in r.field.lower()
+            and r.level == ValidationLevel.ERROR
+        ]
         # test-plugin has hyphen, which is invalid in tool names
         assert len(tool_errors) > 0
 
@@ -317,8 +349,12 @@ class TestContractValidationReport:
 
     def test_errors_property(self) -> None:
         report = ContractValidationReport(plugin_name="test")
-        report.results.append(ValidationResult(level=ValidationLevel.ERROR, field="a", message="err"))
-        report.results.append(ValidationResult(level=ValidationLevel.WARNING, field="b", message="warn"))
+        report.results.append(ValidationResult(
+            level=ValidationLevel.ERROR, field="a", message="err",
+        ))
+        report.results.append(ValidationResult(
+            level=ValidationLevel.WARNING, field="b", message="warn",
+        ))
         assert len(report.errors) == 1
         assert len(report.warnings) == 1
 
@@ -326,5 +362,7 @@ class TestContractValidationReport:
         report = ContractValidationReport(plugin_name="test")
         assert "PASS" in report.format_report()
 
-        report.results.append(ValidationResult(level=ValidationLevel.ERROR, field="x", message="fail"))
+        report.results.append(ValidationResult(
+            level=ValidationLevel.ERROR, field="x", message="fail",
+        ))
         assert "FAIL" in report.format_report()

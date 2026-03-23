@@ -17,6 +17,11 @@ from unittest.mock import patch
 
 import pytest
 
+from netex.models.manifest import (
+    VLANDefinition,
+    parse_manifest,
+)
+from netex.registry.plugin_registry import PluginRegistry
 from netex.tools.commands import (
     _build_full_change_steps,
     _build_provision_plan_steps,
@@ -30,18 +35,6 @@ from netex.tools.commands import (
     netex__vlan__provision_batch,
     netex__vpn__status,
 )
-from netex.models.manifest import (
-    AccessPolicyRule,
-    PolicyAction,
-    PortProfileDefinition,
-    SiteManifest,
-    VLANDefinition,
-    WiFiDefinition,
-    WiFiSecurity,
-    parse_manifest,
-)
-from netex.registry.plugin_registry import PluginRegistry
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

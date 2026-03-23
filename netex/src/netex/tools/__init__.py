@@ -4,7 +4,7 @@ Imports command modules to register their @mcp_server.tool() handlers
 at module load time.
 """
 
-from netex.tools.commands import (  # noqa: F401
+from netex.tools.commands import (
     netex__dns__trace,
     netex__network__provision_site,
     netex__network__verify_policy,

@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 from netex.server import (
-    ConfigError,
     JSONFormatter,
     _configure_logging,
     _load_env,
@@ -17,7 +16,6 @@ from netex.server import (
     mcp_server,
     plugin_info,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import functools
 import os
-from collections.abc import Callable
 from enum import StrEnum
-from typing import ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from netex.errors import WriteGateError
 

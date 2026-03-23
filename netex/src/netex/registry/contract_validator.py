@@ -181,25 +181,28 @@ class ContractValidator:
 
         # Validate netex_contract_version
         contract_ver = frontmatter.get("netex_contract_version")
-        if contract_ver is not None:
-            if not isinstance(contract_ver, str) or not re.match(r"^\d+\.\d+\.\d+$", contract_ver):
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field="frontmatter.netex_contract_version",
-                    message="Must be a semver string (e.g., '1.0.0')",
-                    value=contract_ver,
-                ))
+        if contract_ver is not None and (
+            not isinstance(contract_ver, str)
+            or not re.match(r"^\d+\.\d+\.\d+$", contract_ver)
+        ):
+            report.results.append(ValidationResult(
+                level=ValidationLevel.ERROR,
+                field="frontmatter.netex_contract_version",
+                message="Must be a semver string (e.g., '1.0.0')",
+                value=contract_ver,
+            ))
 
         # Validate netex_vendor (if present and not orchestrator)
         vendor = frontmatter.get("netex_vendor")
-        if vendor is not None:
-            if not isinstance(vendor, str) or not vendor.strip():
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field="frontmatter.netex_vendor",
-                    message="Must be a non-empty string",
-                    value=vendor,
-                ))
+        if vendor is not None and (
+            not isinstance(vendor, str) or not vendor.strip()
+        ):
+            report.results.append(ValidationResult(
+                level=ValidationLevel.ERROR,
+                field="frontmatter.netex_vendor",
+                message="Must be a non-empty string",
+                value=vendor,
+            ))
 
         # Validate netex_role (if present)
         roles = frontmatter.get("netex_role")
@@ -218,16 +221,19 @@ class ContractValidator:
 
         # Validate netex_skills (if present)
         skills = frontmatter.get("netex_skills")
-        if skills is not None:
-            if isinstance(skills, list):
-                for skill in skills:
-                    if skill not in KNOWN_SKILL_GROUPS:
-                        report.results.append(ValidationResult(
-                            level=ValidationLevel.WARNING,
-                            field="frontmatter.netex_skills",
-                            message=f"Unknown skill group '{skill}'. Known: {sorted(KNOWN_SKILL_GROUPS)}",
-                            value=skill,
-                        ))
+        if skills is not None and isinstance(skills, list):
+            for skill in skills:
+                if skill not in KNOWN_SKILL_GROUPS:
+                    known = sorted(KNOWN_SKILL_GROUPS)
+                    report.results.append(ValidationResult(
+                        level=ValidationLevel.WARNING,
+                        field="frontmatter.netex_skills",
+                        message=(
+                            f"Unknown skill group '{skill}'. "
+                            f"Known: {known}"
+                        ),
+                        value=skill,
+                    ))
 
         return report
 
@@ -244,7 +250,8 @@ class ContractValidator:
                 field="tool_name",
                 message=(
                     f"Tool name '{tool_name}' does not match the required pattern "
-                    f"{{plugin}}__{{skill}}__{{operation}} (lowercase, double underscore separators)"
+                    f"{{plugin}}__{{skill}}__{{operation}} "
+                    f"(lowercase, double underscore separators)"
                 ),
                 value=tool_name,
             )
@@ -283,7 +290,10 @@ class ContractValidator:
             report.results.append(ValidationResult(
                 level=ValidationLevel.ERROR,
                 field="name",
-                message="Plugin name must be lowercase alphanumeric with optional hyphens/underscores",
+                message=(
+                    "Plugin name must be lowercase alphanumeric"
+                    " with optional hyphens/underscores"
+                ),
                 value=name,
             ))
 
@@ -364,7 +374,10 @@ class ContractValidator:
                     report.results.append(ValidationResult(
                         level=ValidationLevel.WARNING,
                         field="skills",
-                        message=f"Unknown skill group '{skill}'. Known: {sorted(KNOWN_SKILL_GROUPS)}",
+                        message=(
+                            f"Unknown skill group '{skill}'. "
+                            f"Known: {sorted(KNOWN_SKILL_GROUPS)}"
+                        ),
                         value=skill,
                     ))
 
