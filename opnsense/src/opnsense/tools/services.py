@@ -82,7 +82,7 @@ async def opnsense__services__get_dns_forwarders(
         List of DNS forwarder dictionaries.
     """
     raw = await client.get("unbound", "forward", "searchForward")
-    rows = raw.get("rows", [])
+    rows: list[dict[str, Any]] = raw.get("rows", [])
 
     logger.info("Listed %d DNS forwarders", len(rows))
     return rows

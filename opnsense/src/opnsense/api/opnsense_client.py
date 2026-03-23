@@ -119,6 +119,10 @@ class OPNsenseClient:
         # Cache for GET responses.
         self._cache = cache if cache is not None else TTLCache()
 
+        # Legacy session-based client for PHP page operations.
+        # Created lazily in post_legacy() when first needed.
+        self._legacy_client: httpx.AsyncClient | None = None
+
         if not self._verify_ssl:
             logger.warning(
                 "SSL verification is disabled for %s. "
@@ -275,11 +279,12 @@ class OPNsenseClient:
         dict
             The raw JSON response (from cache or API).
         """
-        return await self._cache.get_or_fetch(
+        result: dict[str, Any] = await self._cache.get_or_fetch(
             cache_key,
             fetcher=lambda: self.get(module, controller, command, params=params),
             ttl=ttl,
         )
+        return result
 
     async def post(
         self,
@@ -435,9 +440,9 @@ class OPNsenseClient:
         except (APIError, NetworkError):
             raise
         except httpx.ConnectError as exc:
-            raise NetworkError(str(exc), original_error=exc) from exc
+            raise NetworkError(str(exc)) from exc
         except httpx.TimeoutException as exc:
-            raise NetworkError(f"Timeout: {exc}", original_error=exc) from exc
+            raise NetworkError(f"Timeout: {exc}") from exc
 
     @staticmethod
     def _extract_csrf(html: str) -> tuple[str, str]:

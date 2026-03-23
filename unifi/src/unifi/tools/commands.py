@@ -252,7 +252,8 @@ async def _lookup_switch(
             or device.get("mac", "").lower() == switch_lower
             or device.get("name", "").lower() == switch_lower
         ):
-            return device
+            result: dict[str, Any] = device
+            return result
 
     return None
 
@@ -554,7 +555,8 @@ async def _lookup_network_by_name(
     name_lower = name.strip().lower()
     for v in vlans:
         if v.get("name", "").strip().lower() == name_lower:
-            return v
+            result: dict[str, Any] = v
+            return result
 
     return None
 

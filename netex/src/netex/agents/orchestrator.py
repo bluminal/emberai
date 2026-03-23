@@ -173,7 +173,8 @@ def resolve_plugin_for_role(
             f"No plugin provides the '{role}' role. Install a compatible vendor plugin.",
             required_role=role,
         )
-    return plugins[0]["name"]
+    result: str = plugins[0]["name"]
+    return result
 
 
 # ---------------------------------------------------------------------------

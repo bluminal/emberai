@@ -111,7 +111,7 @@ def format_severity_report(title: str, findings: list[Finding]) -> str:
 
     # Render each severity group.
     for sev in Severity:
-        group = grouped.get(sev)
+        group = grouped.get(sev, [])
         if not group:
             continue
 

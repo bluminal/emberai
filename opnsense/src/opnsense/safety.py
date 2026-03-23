@@ -37,7 +37,7 @@ import os
 from enum import StrEnum
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-from opnsense.errors import WriteGateError
+from opnsense.errors import WriteGateError, WriteGateReason
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -149,13 +149,13 @@ def write_gate(plugin_name: str = "OPNSENSE") -> Callable[[Callable[P, T]], Call
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:  # type: ignore[misc]
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Step 1: Check environment variable
             if not check_write_enabled(plugin_name):
                 raise WriteGateError(
                     f"Write operations are disabled for {plugin_name}. "
                     f"Set {env_var}=true to enable.",
-                    reason=WriteBlockReason.ENV_VAR_DISABLED,
+                    reason=WriteGateReason.ENV_VAR_DISABLED,
                     plugin_name=plugin_name,
                     env_var=env_var,
                 )
@@ -166,13 +166,13 @@ def write_gate(plugin_name: str = "OPNSENSE") -> Callable[[Callable[P, T]], Call
                 raise WriteGateError(
                     "Write operations require the --apply flag. "
                     "Without --apply, this command runs in plan-only mode.",
-                    reason=WriteBlockReason.APPLY_FLAG_MISSING,
+                    reason=WriteGateReason.APPLY_FLAG_MISSING,
                     plugin_name=plugin_name,
                     env_var=env_var,
                 )
 
             # Both gates passed -- execute the wrapped function
-            return await func(*args, **kwargs)  # type: ignore[misc]
+            return await func(*args, **kwargs)  # type: ignore[misc, no-any-return]
 
         return wrapper  # type: ignore[return-value]
 
@@ -217,13 +217,13 @@ def reconfigure_gate(plugin_name: str = "OPNSENSE") -> Callable[[Callable[P, T]]
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:  # type: ignore[misc]
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Step 1: Check environment variable
             if not check_write_enabled(plugin_name):
                 raise WriteGateError(
                     f"Reconfigure operations are disabled for {plugin_name}. "
                     f"Set {env_var}=true to enable.",
-                    reason=WriteBlockReason.ENV_VAR_DISABLED,
+                    reason=WriteGateReason.ENV_VAR_DISABLED,
                     plugin_name=plugin_name,
                     env_var=env_var,
                     details={"is_reconfigure": True},
@@ -236,14 +236,14 @@ def reconfigure_gate(plugin_name: str = "OPNSENSE") -> Callable[[Callable[P, T]]
                     "Reconfigure operations require the --apply flag. "
                     "Without --apply, this command runs in plan-only mode. "
                     "Reconfigure pushes saved config to the live system.",
-                    reason=WriteBlockReason.APPLY_FLAG_MISSING,
+                    reason=WriteGateReason.APPLY_FLAG_MISSING,
                     plugin_name=plugin_name,
                     env_var=env_var,
                     details={"is_reconfigure": True},
                 )
 
             # Both gates passed -- execute the reconfigure function
-            return await func(*args, **kwargs)  # type: ignore[misc]
+            return await func(*args, **kwargs)  # type: ignore[misc, no-any-return]
 
         # Mark the wrapper so callers can detect reconfigure functions.
         wrapper._is_reconfigure = True  # type: ignore[attr-defined]

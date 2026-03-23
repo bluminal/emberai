@@ -115,7 +115,7 @@ async def opnsense__security__get_ids_rules(
         params["searchPhrase"] = filter_text
 
     raw = await client.get("ids", "rule", "searchRule", params=params)
-    rows = raw.get("rows", [])
+    rows: list[dict[str, Any]] = raw.get("rows", [])
 
     logger.info("Retrieved %d IDS rules (filter=%s)", len(rows), filter_text)
     return rows

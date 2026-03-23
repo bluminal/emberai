@@ -90,7 +90,7 @@ def _is_ap(device: dict[str, Any]) -> bool:
     if device_type in _AP_TYPES:
         return True
     # Fallback: check model prefix for AP models
-    model = device.get("model", "")
+    model = str(device.get("model", ""))
     return model.startswith("U6") or model.startswith("U7") or model.startswith("UAP")
 
 

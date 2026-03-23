@@ -155,7 +155,7 @@ async def opnsense__firewall__get_rule(uuid: str) -> dict[str, Any]:
         await client.close()
 
     # getRule returns a nested structure with the rule under a key
-    rule_data = raw.get("rule", raw)
+    rule_data: dict[str, Any] = raw.get("rule", raw)
 
     logger.info(
         "Retrieved firewall rule: %s",

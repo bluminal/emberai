@@ -97,7 +97,8 @@ def _format_uptime(seconds: int) -> str:
 
 def _client_display_name(client: dict[str, Any]) -> str:
     """Return the best available display name for a client."""
-    return client.get("hostname") or client.get("client_mac", "unknown")
+    name: str = client.get("hostname") or client.get("client_mac", "unknown")
+    return name
 
 
 def _connection_info(client: dict[str, Any]) -> str:
@@ -112,8 +113,8 @@ def _connection_info(client: dict[str, Any]) -> str:
             return f"Port {port}"
         return "Wired"
 
-    ap = client.get("ap_id", "")
-    ssid = client.get("ssid", "")
+    ap = str(client.get("ap_id", ""))
+    ssid = str(client.get("ssid", ""))
     if ap and ssid:
         return f"{ap} ({ssid})"
     if ap:
