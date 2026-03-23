@@ -383,6 +383,22 @@ Deployed against a real OPNsense SG-4860 running 26.1.4 + UniFi network (5 devic
 **Parallelizable:** Tasks 170-176 can all run concurrently (7 tasks). Task 177 depends on 170-176. Task 178 depends on 177.
 **Milestone Value:** OPNsense plugin works correctly against real 26.x hardware. All read tools return accurate data for interfaces, firewall rules, gateways, VPNs, DNS, diagnostics, and VLANs. Network verification can complete end-to-end.
 
+### Milestone 4.6: FreeRADIUS WiFi VLAN Assignment
+
+MAC Authentication Bypass (MAB) via FreeRADIUS on OPNsense, enabling per-device VLAN overrides on WiFi. Specific devices (e.g., gaming consoles) are forced onto designated VLANs regardless of which SSID they connect to. Non-overridden devices fall through to the SSID's default VLAN.
+
+| # | Task | Complexity | Dependencies | Status |
+|---|------|-----------|--------------|--------|
+| 179 | **Research & install FreeRADIUS plugin on OPNsense.** Investigate whether OPNsense 26.x has `os-freeradius` available in the plugin manager. Install the plugin, verify the service starts, and confirm it listens on the expected ports (1812/1813 UDP). Discover any OPNsense API endpoints for FreeRADIUS management (check `/api/freeradius/` namespace). Document findings: available API surface, configuration file locations, and any web-UI-only settings that lack API support. | M | None | pending |
+| 180 | **Configure FreeRADIUS for MAC Authentication Bypass.** Configure the `authorize` and `authenticate` sections for MAB (MAC-as-username/password, lowercase colon-separated format). Create initial MAC-to-VLAN mapping (users file or SQL backend -- decide based on Task 179 API findings). Configure RADIUS clients to allow the UniFi controller IP. Set VLAN assignment attributes: `Tunnel-Type = VLAN`, `Tunnel-Medium-Type = IEEE-802`, `Tunnel-Private-Group-Id = <vlan_id>`. Verify with `radtest` that a known MAC returns the correct VLAN attributes. | M | Task 179 | pending |
+| 181 | **Configure UniFi WLANs for RADIUS MAC authentication.** Update Neffroad and Neffroad-IoT WLANs to enable RADIUS MAC authentication (`mac_filter_enabled` + `radius_mac_auth_enabled`) pointing at the OPNsense gateway IP as the RADIUS server. Neffroad-Guest stays PSK-only. This is a UniFi write operation (write gate applies). Verify the UniFi controller sends Access-Request packets to FreeRADIUS on device connect. | S | Task 180 | pending |
+| 182 | **Add opnsense plugin tools for FreeRADIUS MAC-VLAN management.** Create `opnsense__services__list_radius_clients` (read: list configured RADIUS clients and their shared secrets) and `opnsense__services__add_radius_mac_vlan` (write: add/update a MAC-to-VLAN mapping in the FreeRADIUS users database). Write tool is gated per D8 (env var + `--apply` + operator confirmation). If Task 179 reveals no usable API, implement via config file manipulation with appropriate safety checks. | M | Task 179 | pending |
+| 183 | **Write tests for FreeRADIUS tools.** Test `list_radius_clients` and `add_radius_mac_vlan` with mocked API/config responses. Test write gate enforcement (env var disabled, `--apply` missing). Add mock fixtures for FreeRADIUS API responses (or config file content if API unavailable). Coverage in `opnsense/tests/test_freeradius.py`. | S | Task 182 | pending |
+| 184 | **Verify end-to-end WiFi VLAN assignment.** Connect a test device whose MAC is in the override list via WiFi. Confirm it lands on the overridden VLAN (check via `unifi__clients__get_client` VLAN field and OPNsense DHCP lease). Confirm a non-overridden device on the same SSID lands on the SSID's default VLAN. Document the verification results. | S | Tasks 180, 181 | pending |
+
+**Parallelizable:** Tasks 179 and the research portion of 180 can begin in parallel with Milestone 4.5 (FreeRADIUS install is via OPNsense web UI, not the API). Tasks 182 and 183 depend on 179 (API discovery). Task 184 depends on both 180 and 181.
+**Milestone Value:** Specific WiFi devices are automatically assigned to designated VLANs (e.g., gaming consoles to VLAN 70) regardless of SSID, with conversational management of MAC-to-VLAN mappings through the opnsense plugin.
+
 ---
 
 ## Plan Phase 5: Advanced Features + Scale (v0.4.0-plan - v0.5.0-plan)
