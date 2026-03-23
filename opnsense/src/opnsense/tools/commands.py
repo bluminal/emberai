@@ -1071,11 +1071,20 @@ async def opnsense_dhcp_reserve_batch(
     rows = [[d["hostname"], d["mac"], d["ip"], interface.strip()] for d in device_list]
     sections.append(format_table(headers, rows, title="Planned DHCP Reservations"))
 
-    # Verify MACs against existing leases
-    from opnsense.tools.interfaces import opnsense__interfaces__get_dhcp_leases
-
-    leases = await opnsense__interfaces__get_dhcp_leases(interface=interface.strip())
-    lease_macs = {l.get("mac", "").lower() for l in leases}
+    # Verify MACs against dnsmasq DHCP leases
+    client = _get_client()
+    lease_macs: set[str] = set()
+    try:
+        leases_raw = await client.get("dnsmasq", "leases", "search")
+        if isinstance(leases_raw, dict):
+            for lease in leases_raw.get("rows", []):
+                mac = lease.get("hwaddr", "").lower()
+                if mac:
+                    lease_macs.add(mac)
+    except Exception:
+        pass  # Skip verification if leases endpoint fails
+    finally:
+        await client.close()
 
     verified: list[dict[str, str]] = []
     unverified: list[dict[str, str]] = []
@@ -1100,28 +1109,39 @@ async def opnsense_dhcp_reserve_batch(
         sections.append(f"\n---\n*Plan-only mode.* {describe_write_status()}")
         return "\n".join(sections)
 
-    # Apply mode
+    # Apply mode — use dnsmasq addHost API (not Kea)
     if not check_write_enabled("OPNSENSE"):
         sections.append(f"\n---\n*Write operations are disabled.* {describe_write_status()}")
         return "\n".join(sections)
 
-    from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_reservation
-
+    client = _get_client()
     results: list[dict[str, Any]] = []
     errors: list[str] = []
 
-    for dev in device_list:
-        try:
-            result = await opnsense__interfaces__add_dhcp_reservation(
-                interface=interface.strip(),
-                mac=dev["mac"],
-                ip=dev["ip"],
-                hostname=dev["hostname"],
-                apply=True,
-            )
-            results.append(result)
-        except Exception as exc:
-            errors.append(f"Failed: {dev['hostname']} ({dev['mac']} -> {dev['ip']}): {exc}")
+    try:
+        for dev in device_list:
+            try:
+                result = await client.write(
+                    "dnsmasq", "settings", "addHost",
+                    data={
+                        "host": {
+                            "host": dev["hostname"],
+                            "domain": "home.neffroad.net",
+                            "ip": dev["ip"],
+                            "hwaddr": dev["mac"],
+                            "descr": f"Static reservation for {dev['hostname']}",
+                        },
+                    },
+                )
+                results.append({"hostname": dev["hostname"], "uuid": result.get("uuid", "")})
+            except Exception as exc:
+                errors.append(f"Failed: {dev['hostname']} ({dev['mac']} -> {dev['ip']}): {exc}")
+
+        # Reconfigure dnsmasq once after all reservations
+        if results:
+            await client.reconfigure("dnsmasq", "service")
+    finally:
+        await client.close()
 
     sections.append(format_summary(
         "Batch Reservation Results",
