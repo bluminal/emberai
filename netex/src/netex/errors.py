@@ -33,6 +33,7 @@ from typing import Any, ClassVar
 # WriteGateReason enum
 # ---------------------------------------------------------------------------
 
+
 class WriteGateReason(StrEnum):
     """Reason a write operation was blocked by the safety gate."""
 
@@ -43,6 +44,7 @@ class WriteGateReason(StrEnum):
 # ---------------------------------------------------------------------------
 # Base error
 # ---------------------------------------------------------------------------
+
 
 class NetexError(Exception):
     """Base exception for all netex umbrella plugin errors.
@@ -106,6 +108,7 @@ class NetexError(Exception):
 # Plugin not found
 # ---------------------------------------------------------------------------
 
+
 class PluginNotFoundError(NetexError):
     """Raised when a required vendor plugin is not installed.
 
@@ -156,6 +159,7 @@ class PluginNotFoundError(NetexError):
 # Contract violation
 # ---------------------------------------------------------------------------
 
+
 class ContractViolationError(NetexError):
     """Raised when a plugin fails Vendor Plugin Contract validation.
 
@@ -199,6 +203,7 @@ class ContractViolationError(NetexError):
 # ---------------------------------------------------------------------------
 # Workflow error
 # ---------------------------------------------------------------------------
+
 
 class WorkflowError(NetexError):
     """Raised when a workflow state machine transition is invalid.
@@ -250,6 +255,7 @@ class WorkflowError(NetexError):
 # Validation
 # ---------------------------------------------------------------------------
 
+
 class ValidationError(NetexError):
     """Raised when input validation or schema conformance fails.
 
@@ -277,6 +283,7 @@ class ValidationError(NetexError):
 # Write gate
 # ---------------------------------------------------------------------------
 
+
 class WriteGateError(NetexError):
     """Raised when a write operation is blocked by the safety gate.
 
@@ -292,9 +299,7 @@ class WriteGateError(NetexError):
         WriteGateReason.ENV_VAR_DISABLED: (
             "Set NETEX_WRITE_ENABLED=true to allow write operations"
         ),
-        WriteGateReason.APPLY_FLAG_MISSING: (
-            "Add the --apply flag to execute write operations"
-        ),
+        WriteGateReason.APPLY_FLAG_MISSING: ("Add the --apply flag to execute write operations"),
     }
 
     def __init__(

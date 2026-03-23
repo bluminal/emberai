@@ -29,7 +29,6 @@ from opnsense.safety import (
     write_gate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — sample decorated functions
 # ---------------------------------------------------------------------------
@@ -123,7 +122,8 @@ class TestCheckWriteEnabled:
                 )
 
     def test_uses_plugin_name_for_env_var(self) -> None:
-        with patch.dict(os.environ, {"UNIFI_WRITE_ENABLED": "true"}):
+        env = {"UNIFI_WRITE_ENABLED": "true"}
+        with patch.dict(os.environ, env, clear=True):
             assert check_write_enabled("UNIFI") is True
             assert check_write_enabled("OPNSENSE") is False
 
@@ -201,9 +201,11 @@ class TestWriteGateEnvVar:
 
     @pytest.mark.asyncio
     async def test_error_message_includes_env_var_name(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(WriteGateError, match="OPNSENSE_WRITE_ENABLED"):
-                await sample_write_tool("test", apply=True)
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(WriteGateError, match="OPNSENSE_WRITE_ENABLED"),
+        ):
+            await sample_write_tool("test", apply=True)
 
     @pytest.mark.asyncio
     async def test_env_var_takes_priority_over_apply_flag(self) -> None:
@@ -241,9 +243,11 @@ class TestWriteGateApplyFlag:
 
     @pytest.mark.asyncio
     async def test_error_message_mentions_apply(self) -> None:
-        with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
-            with pytest.raises(WriteGateError, match="--apply"):
-                await sample_write_tool("test")
+        with (
+            patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
+            pytest.raises(WriteGateError, match="--apply"),
+        ):
+            await sample_write_tool("test")
 
 
 # ---------------------------------------------------------------------------
@@ -349,9 +353,11 @@ class TestReconfigureGateEnvVar:
 
     @pytest.mark.asyncio
     async def test_error_message_says_reconfigure(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(WriteGateError, match="[Rr]econfigure"):
-                await sample_reconfigure_tool(apply=True)
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(WriteGateError, match=r"[Rr]econfigure"),
+        ):
+            await sample_reconfigure_tool(apply=True)
 
     @pytest.mark.asyncio
     async def test_error_carries_is_reconfigure_detail(self) -> None:
@@ -378,9 +384,11 @@ class TestReconfigureGateApplyFlag:
 
     @pytest.mark.asyncio
     async def test_error_message_mentions_reconfigure(self) -> None:
-        with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
-            with pytest.raises(WriteGateError, match="[Rr]econfigure"):
-                await sample_reconfigure_tool()
+        with (
+            patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
+            pytest.raises(WriteGateError, match=r"[Rr]econfigure"),
+        ):
+            await sample_reconfigure_tool()
 
     @pytest.mark.asyncio
     async def test_error_carries_is_reconfigure_detail(self) -> None:
@@ -470,9 +478,8 @@ class TestWriteGateErrorStructure:
 
     @pytest.mark.asyncio
     async def test_error_is_exception(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(Exception):
-                await sample_write_tool("test", apply=True)
+        with patch.dict(os.environ, {}, clear=True), pytest.raises(WriteGateError):
+            await sample_write_tool("test", apply=True)
 
     @pytest.mark.asyncio
     async def test_error_message_is_str(self) -> None:

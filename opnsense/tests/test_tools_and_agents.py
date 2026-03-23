@@ -33,7 +33,6 @@ from opnsense.errors import APIError, ValidationError, WriteGateError
 from opnsense.safety import WriteBlockReason
 from tests.fixtures import load_fixture
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -57,7 +56,9 @@ def _make_mock_client(
         client.get = AsyncMock(return_value=get_response or {})
         client.get_cached = AsyncMock(return_value=get_cached_response or get_response or {})
 
-    client.write = AsyncMock(return_value=write_response or {"result": "saved", "uuid": "new-uuid-123"})
+    client.write = AsyncMock(
+        return_value=write_response or {"result": "saved", "uuid": "new-uuid-123"},
+    )
     client.reconfigure = AsyncMock(return_value=reconfigure_response or {"status": "ok"})
 
     return client
@@ -91,6 +92,7 @@ class TestListInterfaces:
         mock_client = _make_mock_client(get_cached_response=INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             result = await opnsense__interfaces__list_interfaces()
 
         assert len(result) == 4
@@ -103,6 +105,7 @@ class TestListInterfaces:
         mock_client = _make_mock_client(get_cached_response=INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             result = await opnsense__interfaces__list_interfaces()
 
         iface = result[0]
@@ -118,9 +121,10 @@ class TestListInterfaces:
         mock_client = _make_mock_client(get_cached_response=INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             result = await opnsense__interfaces__list_interfaces()
 
-        vlan_iface = [i for i in result if i["name"] == "igb1_vlan10"][0]
+        vlan_iface = next(i for i in result if i["name"] == "igb1_vlan10")
         assert vlan_iface["vlan_id"] == 10
         assert vlan_iface["if_type"] == "vlan"
 
@@ -129,6 +133,7 @@ class TestListInterfaces:
         mock_client = _make_mock_client(get_cached_response=INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             await opnsense__interfaces__list_interfaces()
 
         mock_client.get_cached.assert_awaited_once()
@@ -140,6 +145,7 @@ class TestListInterfaces:
         mock_client = _make_mock_client(get_cached_response={"rows": []})
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             result = await opnsense__interfaces__list_interfaces()
 
         assert result == []
@@ -153,6 +159,7 @@ class TestListVlanInterfaces:
         mock_client = _make_mock_client(get_cached_response=VLAN_INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_vlan_interfaces
+
             result = await opnsense__interfaces__list_vlan_interfaces()
 
         assert len(result) == 3
@@ -163,6 +170,7 @@ class TestListVlanInterfaces:
         mock_client = _make_mock_client(get_cached_response=VLAN_INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_vlan_interfaces
+
             result = await opnsense__interfaces__list_vlan_interfaces()
 
         vlan = result[0]
@@ -177,6 +185,7 @@ class TestListVlanInterfaces:
         mock_client = _make_mock_client(get_cached_response=VLAN_INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_vlan_interfaces
+
             result = await opnsense__interfaces__list_vlan_interfaces()
 
         for vlan in result:
@@ -187,9 +196,10 @@ class TestListVlanInterfaces:
         mock_client = _make_mock_client(get_cached_response=VLAN_INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_vlan_interfaces
+
             result = await opnsense__interfaces__list_vlan_interfaces()
 
-        mgmt_vlan = [v for v in result if v["tag"] == 99][0]
+        mgmt_vlan = next(v for v in result if v["tag"] == 99)
         assert mgmt_vlan["pcp"] == 6
 
 
@@ -201,6 +211,7 @@ class TestGetDhcpLeases:
         mock_client = _make_mock_client(get_cached_response=DHCP_LEASES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__get_dhcp_leases
+
             result = await opnsense__interfaces__get_dhcp_leases()
 
         assert len(result) == 5
@@ -210,6 +221,7 @@ class TestGetDhcpLeases:
         mock_client = _make_mock_client(get_cached_response=DHCP_LEASES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__get_dhcp_leases
+
             result = await opnsense__interfaces__get_dhcp_leases(interface="igb1_vlan30")
 
         assert len(result) == 2
@@ -221,6 +233,7 @@ class TestGetDhcpLeases:
         mock_client = _make_mock_client(get_cached_response=DHCP_LEASES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__get_dhcp_leases
+
             result = await opnsense__interfaces__get_dhcp_leases(interface="nonexistent")
 
         assert result == []
@@ -230,6 +243,7 @@ class TestGetDhcpLeases:
         mock_client = _make_mock_client(get_cached_response=DHCP_LEASES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__get_dhcp_leases
+
             result = await opnsense__interfaces__get_dhcp_leases()
 
         lease = result[0]
@@ -244,6 +258,7 @@ class TestGetDhcpLeases:
         mock_client = _make_mock_client(get_cached_response=DHCP_LEASES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__get_dhcp_leases
+
             result = await opnsense__interfaces__get_dhcp_leases(interface=None)
 
         assert len(result) == 5
@@ -256,9 +271,13 @@ class TestAddVlanInterface:
     async def test_write_gate_env_var_disabled(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.interfaces import opnsense__interfaces__add_vlan_interface
+
             with pytest.raises(WriteGateError) as exc_info:
                 await opnsense__interfaces__add_vlan_interface(
-                    tag=20, parent_if="igb1", description="Test", apply=True,
+                    tag=20,
+                    parent_if="igb1",
+                    description="Test",
+                    apply=True,
                 )
             assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
 
@@ -266,9 +285,12 @@ class TestAddVlanInterface:
     async def test_write_gate_apply_missing(self) -> None:
         with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
             from opnsense.tools.interfaces import opnsense__interfaces__add_vlan_interface
+
             with pytest.raises(WriteGateError) as exc_info:
                 await opnsense__interfaces__add_vlan_interface(
-                    tag=20, parent_if="igb1", description="Test",
+                    tag=20,
+                    parent_if="igb1",
+                    description="Test",
                 )
             assert exc_info.value.reason == WriteBlockReason.APPLY_FLAG_MISSING
 
@@ -280,9 +302,12 @@ class TestAddVlanInterface:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_vlan_interface
+
             with pytest.raises(ValidationError, match="1 and 4094"):
                 await opnsense__interfaces__add_vlan_interface(
-                    tag=0, parent_if="igb1", apply=True,
+                    tag=0,
+                    parent_if="igb1",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -293,9 +318,12 @@ class TestAddVlanInterface:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_vlan_interface
+
             with pytest.raises(ValidationError, match="1 and 4094"):
                 await opnsense__interfaces__add_vlan_interface(
-                    tag=4095, parent_if="igb1", apply=True,
+                    tag=4095,
+                    parent_if="igb1",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -306,9 +334,12 @@ class TestAddVlanInterface:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_vlan_interface
+
             with pytest.raises(ValidationError, match="empty"):
                 await opnsense__interfaces__add_vlan_interface(
-                    tag=20, parent_if="", apply=True,
+                    tag=20,
+                    parent_if="",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -319,8 +350,12 @@ class TestAddVlanInterface:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_vlan_interface
+
             result = await opnsense__interfaces__add_vlan_interface(
-                tag=20, parent_if="igb1", description="Test VLAN", apply=True,
+                tag=20,
+                parent_if="igb1",
+                description="Test VLAN",
+                apply=True,
             )
 
         assert result["status"] == "created"
@@ -337,10 +372,13 @@ class TestAddDhcpReservation:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_reservation
+
             with pytest.raises(WriteGateError):
                 await opnsense__interfaces__add_dhcp_reservation(
-                    interface="igb1", mac="aa:bb:cc:dd:ee:ff",
-                    ip="192.168.1.50", apply=True,
+                    interface="igb1",
+                    mac="aa:bb:cc:dd:ee:ff",
+                    ip="192.168.1.50",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -351,9 +389,13 @@ class TestAddDhcpReservation:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_reservation
+
             with pytest.raises(ValidationError, match="MAC"):
                 await opnsense__interfaces__add_dhcp_reservation(
-                    interface="igb1", mac="", ip="192.168.1.50", apply=True,
+                    interface="igb1",
+                    mac="",
+                    ip="192.168.1.50",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -364,9 +406,13 @@ class TestAddDhcpReservation:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_reservation
+
             result = await opnsense__interfaces__add_dhcp_reservation(
-                interface="igb1", mac="aa:bb:cc:dd:ee:ff",
-                ip="192.168.1.50", hostname="my-device", apply=True,
+                interface="igb1",
+                mac="aa:bb:cc:dd:ee:ff",
+                ip="192.168.1.50",
+                hostname="my-device",
+                apply=True,
             )
 
         assert result["status"] == "created"
@@ -381,10 +427,13 @@ class TestAddDhcpSubnet:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_subnet
+
             with pytest.raises(WriteGateError):
                 await opnsense__interfaces__add_dhcp_subnet(
-                    interface="igb1_vlan10", subnet="192.168.10.0/24",
-                    range_from="192.168.10.100", range_to="192.168.10.200",
+                    interface="igb1_vlan10",
+                    subnet="192.168.10.0/24",
+                    range_from="192.168.10.100",
+                    range_to="192.168.10.200",
                     apply=True,
                 )
 
@@ -396,10 +445,13 @@ class TestAddDhcpSubnet:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_subnet
+
             with pytest.raises(ValidationError, match="Interface"):
                 await opnsense__interfaces__add_dhcp_subnet(
-                    interface="", subnet="192.168.10.0/24",
-                    range_from="192.168.10.100", range_to="192.168.10.200",
+                    interface="",
+                    subnet="192.168.10.0/24",
+                    range_from="192.168.10.100",
+                    range_to="192.168.10.200",
                     apply=True,
                 )
 
@@ -411,10 +463,14 @@ class TestAddDhcpSubnet:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__add_dhcp_subnet
+
             result = await opnsense__interfaces__add_dhcp_subnet(
-                interface="igb1_vlan10", subnet="192.168.10.0/24",
-                range_from="192.168.10.100", range_to="192.168.10.200",
-                dns_servers="1.1.1.1,8.8.8.8", apply=True,
+                interface="igb1_vlan10",
+                subnet="192.168.10.0/24",
+                range_from="192.168.10.100",
+                range_to="192.168.10.200",
+                dns_servers="1.1.1.1,8.8.8.8",
+                apply=True,
             )
 
         assert result["status"] == "created"
@@ -429,10 +485,14 @@ class TestConfigureVlan:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
+
             with pytest.raises(WriteGateError):
                 await opnsense__interfaces__configure_vlan(
-                    tag=20, parent_if="igb1", ip="192.168.20.1",
-                    subnet="24", apply=True,
+                    tag=20,
+                    parent_if="igb1",
+                    ip="192.168.20.1",
+                    subnet="24",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -443,10 +503,14 @@ class TestConfigureVlan:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
+
             with pytest.raises(ValidationError, match="1 and 4094"):
                 await opnsense__interfaces__configure_vlan(
-                    tag=5000, parent_if="igb1", ip="192.168.20.1",
-                    subnet="24", apply=True,
+                    tag=5000,
+                    parent_if="igb1",
+                    ip="192.168.20.1",
+                    subnet="24",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -457,10 +521,14 @@ class TestConfigureVlan:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
+
             with pytest.raises(ValidationError, match="together"):
                 await opnsense__interfaces__configure_vlan(
-                    tag=20, parent_if="igb1", ip="192.168.20.1",
-                    subnet="24", dhcp_range_from="192.168.20.100",
+                    tag=20,
+                    parent_if="igb1",
+                    ip="192.168.20.1",
+                    subnet="24",
+                    dhcp_range_from="192.168.20.100",
                     apply=True,
                 )
 
@@ -472,30 +540,47 @@ class TestConfigureVlan:
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
+
             result = await opnsense__interfaces__configure_vlan(
-                tag=20, parent_if="igb1", ip="192.168.20.1",
-                subnet="24", description="Test VLAN 20", apply=True,
+                tag=20,
+                parent_if="igb1",
+                ip="192.168.20.1",
+                subnet="24",
+                description="Test VLAN 20",
+                apply=True,
             )
 
         assert result["status"] == "configured"
         assert result["tag"] == 20
         assert "configure_dhcp" not in result.get("completed_steps", [])
-        # write called at least twice (VLAN + IP), reconfigure at least twice
-        assert mock_client.write.await_count >= 2
-        assert mock_client.reconfigure.await_count >= 2
+        # write called once (VLAN creation), reconfigure once (vlan_settings)
+        # IP assignment uses post_legacy, not write
+        assert mock_client.write.await_count >= 1
+        assert mock_client.reconfigure.await_count >= 1
 
     @pytest.mark.asyncio
     async def test_successful_configure_with_dhcp(self) -> None:
         mock_client = _make_mock_client()
+        # post_legacy must return HTML so the interface assignment lookup works.
+        # Second call returns HTML with a select for our VLAN device.
+        assign_html = (
+            '<select name="opt3"><option value="vlan0.20" selected>vlan0.20</option></select>'
+        )
+        mock_client.post_legacy = AsyncMock(side_effect=["", assign_html, "", ""])
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
+
             result = await opnsense__interfaces__configure_vlan(
-                tag=20, parent_if="igb1", ip="192.168.20.1",
-                subnet="24", dhcp_range_from="192.168.20.100",
-                dhcp_range_to="192.168.20.200", apply=True,
+                tag=20,
+                parent_if="igb1",
+                ip="192.168.20.1",
+                subnet="24",
+                dhcp_range_from="192.168.20.100",
+                dhcp_range_to="192.168.20.200",
+                apply=True,
             )
 
         assert result["status"] == "configured"
@@ -503,31 +588,36 @@ class TestConfigureVlan:
         assert result["dhcp_range_from"] == "192.168.20.100"
 
     @pytest.mark.asyncio
-    async def test_rollback_on_ip_failure(self) -> None:
-        """When IP assignment fails, the VLAN should be rolled back."""
+    async def test_step3_failure_recorded_in_completed_steps(self) -> None:
+        """When legacy IP assignment fails, step3_failed is recorded.
+
+        Step 3 (interface assignment + IP) uses legacy PHP pages which
+        may fail without rolling back the VLAN.  The failure is recorded
+        gracefully so the VLAN device exists and can be configured manually.
+        """
         mock_client = _make_mock_client()
-        # First write succeeds (VLAN), second fails (IP)
-        mock_client.write = AsyncMock(
-            side_effect=[
-                {"result": "saved", "uuid": "vlan-uuid"},
-                {"result": "failed"},
-                {"result": "saved"},  # rollback delete
-            ],
-        )
+        # post_legacy raises to simulate Step 3 failure
+        mock_client.post_legacy = AsyncMock(side_effect=Exception("Legacy page unavailable"))
 
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
             patch("opnsense.tools.interfaces._get_client", return_value=mock_client),
         ):
             from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
-            with pytest.raises(APIError, match="Step 3 failed"):
-                await opnsense__interfaces__configure_vlan(
-                    tag=20, parent_if="igb1", ip="192.168.20.1",
-                    subnet="24", apply=True,
-                )
 
-        # Should have attempted rollback (delete VLAN)
-        assert mock_client.write.await_count >= 3
+            result = await opnsense__interfaces__configure_vlan(
+                tag=20,
+                parent_if="igb1",
+                ip="192.168.20.1",
+                subnet="24",
+                apply=True,
+            )
+
+        assert result["status"] == "configured"
+        assert "step3_failed" in result["completed_steps"]
+        # VLAN write + reconfigure should still have been called
+        mock_client.write.assert_awaited_once()
+        mock_client.reconfigure.assert_awaited_once()
 
 
 # ===========================================================================
@@ -543,6 +633,7 @@ class TestListRules:
         mock_client = _make_mock_client(get_cached_response=FIREWALL_RULES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_rules
+
             result = await opnsense__firewall__list_rules()
 
         assert len(result) == 5
@@ -553,6 +644,7 @@ class TestListRules:
         mock_client = _make_mock_client(get_cached_response=FIREWALL_RULES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_rules
+
             result = await opnsense__firewall__list_rules(interface="opt1")
 
         assert len(result) == 2
@@ -564,6 +656,7 @@ class TestListRules:
         mock_client = _make_mock_client(get_cached_response=FIREWALL_RULES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_rules
+
             result = await opnsense__firewall__list_rules()
 
         rule = result[0]
@@ -577,6 +670,7 @@ class TestListRules:
         mock_client = _make_mock_client(get_cached_response=FIREWALL_RULES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_rules
+
             result = await opnsense__firewall__list_rules(interface="nonexistent")
 
         assert result == []
@@ -591,6 +685,7 @@ class TestGetRule:
         mock_client = _make_mock_client(get_response=rule_data)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__get_rule
+
             result = await opnsense__firewall__get_rule(uuid="test-uuid")
 
         assert result["uuid"] == "test-uuid"
@@ -598,6 +693,7 @@ class TestGetRule:
     @pytest.mark.asyncio
     async def test_empty_uuid_raises(self) -> None:
         from opnsense.tools.firewall import opnsense__firewall__get_rule
+
         with pytest.raises(ValidationError, match="UUID"):
             await opnsense__firewall__get_rule(uuid="")
 
@@ -610,6 +706,7 @@ class TestListAliases:
         mock_client = _make_mock_client(get_cached_response=ALIASES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_aliases
+
             result = await opnsense__firewall__list_aliases()
 
         assert len(result) == 3
@@ -620,6 +717,7 @@ class TestListAliases:
         mock_client = _make_mock_client(get_cached_response=ALIASES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_aliases
+
             result = await opnsense__firewall__list_aliases()
 
         alias = result[0]
@@ -637,6 +735,7 @@ class TestListNatRules:
         mock_client = _make_mock_client(get_cached_response=NAT_RULES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_nat_rules
+
             result = await opnsense__firewall__list_nat_rules()
 
         assert len(result) == 2
@@ -646,6 +745,7 @@ class TestListNatRules:
         mock_client = _make_mock_client(get_cached_response=NAT_RULES_FIXTURE)
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__list_nat_rules
+
             result = await opnsense__firewall__list_nat_rules()
 
         assert result[0]["target"] == "192.168.1.50"
@@ -659,10 +759,14 @@ class TestAddRule:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.firewall import opnsense__firewall__add_rule
+
             with pytest.raises(WriteGateError):
                 await opnsense__firewall__add_rule(
-                    interface="lan", action="pass", src="any",
-                    dst="any", apply=True,
+                    interface="lan",
+                    action="pass",
+                    src="any",
+                    dst="any",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -673,10 +777,14 @@ class TestAddRule:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_rule
+
             with pytest.raises(ValidationError, match="Action"):
                 await opnsense__firewall__add_rule(
-                    interface="lan", action="allow", src="any",
-                    dst="any", apply=True,
+                    interface="lan",
+                    action="allow",
+                    src="any",
+                    dst="any",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -687,30 +795,48 @@ class TestAddRule:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_rule
+
             with pytest.raises(ValidationError, match="Interface"):
                 await opnsense__firewall__add_rule(
-                    interface="", action="pass", src="any",
-                    dst="any", apply=True,
+                    interface="",
+                    action="pass",
+                    src="any",
+                    dst="any",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
     async def test_successful_add(self) -> None:
         mock_client = _make_mock_client()
+        # Savepoint returns a revision so the apply/cancelRollback flow runs
+        mock_client.post = AsyncMock(
+            side_effect=[
+                {"revision": "abc123"},  # savepoint
+                {"status": "ok"},  # apply
+                {"status": "ok"},  # cancelRollback
+            ],
+        )
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_rule
+
             result = await opnsense__firewall__add_rule(
-                interface="lan", action="block", src="192.168.1.0/24",
-                dst="10.0.0.0/8", protocol="TCP",
-                description="Block LAN to VPN", apply=True,
+                interface="lan",
+                action="block",
+                src="192.168.1.0/24",
+                dst="10.0.0.0/8",
+                protocol="TCP",
+                description="Block LAN to VPN",
+                apply=True,
             )
 
         assert result["status"] == "created"
         assert result["action"] == "block"
         mock_client.write.assert_awaited_once()
-        mock_client.reconfigure.assert_awaited_once()
+        # OPNsense 26.x uses savepoint/apply/cancelRollback instead of reconfigure
+        assert mock_client.post.await_count == 3
 
     @pytest.mark.asyncio
     async def test_add_with_position(self) -> None:
@@ -720,9 +846,14 @@ class TestAddRule:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_rule
+
             result = await opnsense__firewall__add_rule(
-                interface="lan", action="pass", src="any",
-                dst="any", position=5, apply=True,
+                interface="lan",
+                action="pass",
+                src="any",
+                dst="any",
+                position=5,
+                apply=True,
             )
 
         assert result["status"] == "created"
@@ -737,9 +868,12 @@ class TestToggleRule:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.firewall import opnsense__firewall__toggle_rule
+
             with pytest.raises(WriteGateError):
                 await opnsense__firewall__toggle_rule(
-                    uuid="test-uuid", enabled=False, apply=True,
+                    uuid="test-uuid",
+                    enabled=False,
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -750,9 +884,12 @@ class TestToggleRule:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__toggle_rule
+
             with pytest.raises(ValidationError, match="UUID"):
                 await opnsense__firewall__toggle_rule(
-                    uuid="", enabled=True, apply=True,
+                    uuid="",
+                    enabled=True,
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -763,8 +900,11 @@ class TestToggleRule:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__toggle_rule
+
             result = await opnsense__firewall__toggle_rule(
-                uuid="test-uuid", enabled=False, apply=True,
+                uuid="test-uuid",
+                enabled=False,
+                apply=True,
             )
 
         assert result["status"] == "disabled"
@@ -778,8 +918,11 @@ class TestToggleRule:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__toggle_rule
+
             result = await opnsense__firewall__toggle_rule(
-                uuid="test-uuid", enabled=True, apply=True,
+                uuid="test-uuid",
+                enabled=True,
+                apply=True,
             )
 
         assert result["status"] == "enabled"
@@ -793,9 +936,12 @@ class TestAddAlias:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.firewall import opnsense__firewall__add_alias
+
             with pytest.raises(WriteGateError):
                 await opnsense__firewall__add_alias(
-                    name="test", alias_type="host", content="1.2.3.4",
+                    name="test",
+                    alias_type="host",
+                    content="1.2.3.4",
                     apply=True,
                 )
 
@@ -807,9 +953,12 @@ class TestAddAlias:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_alias
+
             with pytest.raises(ValidationError, match="type"):
                 await opnsense__firewall__add_alias(
-                    name="test", alias_type="invalid", content="1.2.3.4",
+                    name="test",
+                    alias_type="invalid",
+                    content="1.2.3.4",
                     apply=True,
                 )
 
@@ -821,9 +970,12 @@ class TestAddAlias:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_alias
+
             with pytest.raises(ValidationError, match="name"):
                 await opnsense__firewall__add_alias(
-                    name="", alias_type="host", content="1.2.3.4",
+                    name="",
+                    alias_type="host",
+                    content="1.2.3.4",
                     apply=True,
                 )
 
@@ -835,9 +987,12 @@ class TestAddAlias:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_alias
+
             with pytest.raises(ValidationError, match="content"):
                 await opnsense__firewall__add_alias(
-                    name="test", alias_type="host", content="",
+                    name="test",
+                    alias_type="host",
+                    content="",
                     apply=True,
                 )
 
@@ -849,10 +1004,13 @@ class TestAddAlias:
             patch("opnsense.tools.firewall._get_client", return_value=mock_client),
         ):
             from opnsense.tools.firewall import opnsense__firewall__add_alias
+
             result = await opnsense__firewall__add_alias(
-                name="blocked_hosts", alias_type="host",
+                name="blocked_hosts",
+                alias_type="host",
                 content="10.0.0.1\n10.0.0.2",
-                description="Blocked hosts", apply=True,
+                description="Blocked hosts",
+                apply=True,
             )
 
         assert result["status"] == "created"
@@ -875,6 +1033,7 @@ class TestListRoutes:
         mock_client.get = AsyncMock(side_effect=APIError("Not found", status_code=404))
         with patch("opnsense.tools.routing._get_client", return_value=mock_client):
             from opnsense.tools.routing import opnsense__routing__list_routes
+
             result = await opnsense__routing__list_routes()
 
         assert len(result) == 3
@@ -885,6 +1044,7 @@ class TestListRoutes:
         mock_client.get = AsyncMock(side_effect=APIError("Not found", status_code=404))
         with patch("opnsense.tools.routing._get_client", return_value=mock_client):
             from opnsense.tools.routing import opnsense__routing__list_routes
+
             result = await opnsense__routing__list_routes()
 
         route = result[0]
@@ -900,6 +1060,7 @@ class TestListRoutes:
         mock_client.get = AsyncMock(side_effect=APIError("Not found", status_code=404))
         with patch("opnsense.tools.routing._get_client", return_value=mock_client):
             from opnsense.tools.routing import opnsense__routing__list_routes
+
             result = await opnsense__routing__list_routes()
 
         disabled_routes = [r for r in result if r["disabled"]]
@@ -915,6 +1076,7 @@ class TestListGateways:
         mock_client = _make_mock_client(get_cached_response=GATEWAYS_FIXTURE)
         with patch("opnsense.tools.routing._get_client", return_value=mock_client):
             from opnsense.tools.routing import opnsense__routing__list_gateways
+
             result = await opnsense__routing__list_gateways()
 
         assert len(result) == 2
@@ -925,6 +1087,7 @@ class TestListGateways:
         mock_client = _make_mock_client(get_cached_response=GATEWAYS_FIXTURE)
         with patch("opnsense.tools.routing._get_client", return_value=mock_client):
             from opnsense.tools.routing import opnsense__routing__list_gateways
+
             result = await opnsense__routing__list_gateways()
 
         gw = result[0]
@@ -939,6 +1102,7 @@ class TestListGateways:
         mock_client = _make_mock_client(get_cached_response=GATEWAYS_FIXTURE)
         with patch("opnsense.tools.routing._get_client", return_value=mock_client):
             from opnsense.tools.routing import opnsense__routing__list_gateways
+
             result = await opnsense__routing__list_gateways()
 
         assert result[0]["rtt_ms"] == 4.2
@@ -951,6 +1115,7 @@ class TestQuaggraGracefulDegradation:
     @pytest.mark.asyncio
     async def test_quagga_404_returns_false(self) -> None:
         from opnsense.tools.routing import _probe_quagga
+
         mock_client = MagicMock(spec=OPNsenseClient)
         mock_client.get = AsyncMock(
             side_effect=APIError("Not found", status_code=404),
@@ -962,6 +1127,7 @@ class TestQuaggraGracefulDegradation:
     @pytest.mark.asyncio
     async def test_quagga_available(self) -> None:
         from opnsense.tools.routing import _probe_quagga
+
         mock_client = MagicMock(spec=OPNsenseClient)
         mock_client.get = AsyncMock(return_value={"status": "ok"})
 
@@ -971,6 +1137,7 @@ class TestQuaggraGracefulDegradation:
     @pytest.mark.asyncio
     async def test_quagga_unexpected_error(self) -> None:
         from opnsense.tools.routing import _probe_quagga
+
         mock_client = MagicMock(spec=OPNsenseClient)
         mock_client.get = AsyncMock(side_effect=Exception("Unexpected"))
 
@@ -985,9 +1152,12 @@ class TestAddRoute:
     async def test_write_gate_blocks(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             from opnsense.tools.routing import opnsense__routing__add_route
+
             with pytest.raises(WriteGateError):
                 await opnsense__routing__add_route(
-                    network="10.0.0.0/8", gateway="WAN_GW", apply=True,
+                    network="10.0.0.0/8",
+                    gateway="WAN_GW",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -998,9 +1168,12 @@ class TestAddRoute:
             patch("opnsense.tools.routing._get_client", return_value=mock_client),
         ):
             from opnsense.tools.routing import opnsense__routing__add_route
+
             with pytest.raises(ValidationError, match="Network"):
                 await opnsense__routing__add_route(
-                    network="", gateway="WAN_GW", apply=True,
+                    network="",
+                    gateway="WAN_GW",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -1011,9 +1184,12 @@ class TestAddRoute:
             patch("opnsense.tools.routing._get_client", return_value=mock_client),
         ):
             from opnsense.tools.routing import opnsense__routing__add_route
+
             with pytest.raises(ValidationError, match="Gateway"):
                 await opnsense__routing__add_route(
-                    network="10.0.0.0/8", gateway="", apply=True,
+                    network="10.0.0.0/8",
+                    gateway="",
+                    apply=True,
                 )
 
     @pytest.mark.asyncio
@@ -1024,9 +1200,12 @@ class TestAddRoute:
             patch("opnsense.tools.routing._get_client", return_value=mock_client),
         ):
             from opnsense.tools.routing import opnsense__routing__add_route
+
             result = await opnsense__routing__add_route(
-                network="10.0.0.0/8", gateway="WAN_GW",
-                description="Test route", apply=True,
+                network="10.0.0.0/8",
+                gateway="WAN_GW",
+                description="Test route",
+                apply=True,
             )
 
         assert result["status"] == "created"
@@ -1049,6 +1228,7 @@ class TestGetLldpNeighbors:
         mock_client = _make_mock_client(get_response=LLDP_NEIGHBORS_FIXTURE)
         with patch("opnsense.tools.diagnostics._get_client", return_value=mock_client):
             from opnsense.tools.diagnostics import opnsense__diagnostics__get_lldp_neighbors
+
             result = await opnsense__diagnostics__get_lldp_neighbors()
 
         assert len(result) == 2
@@ -1059,6 +1239,7 @@ class TestGetLldpNeighbors:
         mock_client = _make_mock_client(get_response=LLDP_NEIGHBORS_FIXTURE)
         with patch("opnsense.tools.diagnostics._get_client", return_value=mock_client):
             from opnsense.tools.diagnostics import opnsense__diagnostics__get_lldp_neighbors
+
             result = await opnsense__diagnostics__get_lldp_neighbors(interface="igb0")
 
         assert len(result) == 1
@@ -1069,6 +1250,7 @@ class TestGetLldpNeighbors:
         mock_client = _make_mock_client(get_response=LLDP_NEIGHBORS_FIXTURE)
         with patch("opnsense.tools.diagnostics._get_client", return_value=mock_client):
             from opnsense.tools.diagnostics import opnsense__diagnostics__get_lldp_neighbors
+
             result = await opnsense__diagnostics__get_lldp_neighbors()
 
         neighbor = result[0]
@@ -1081,6 +1263,7 @@ class TestGetLldpNeighbors:
         mock_client = _make_mock_client(get_response={"lldp": {"interface": []}})
         with patch("opnsense.tools.diagnostics._get_client", return_value=mock_client):
             from opnsense.tools.diagnostics import opnsense__diagnostics__get_lldp_neighbors
+
             result = await opnsense__diagnostics__get_lldp_neighbors()
 
         assert result == []
@@ -1090,6 +1273,7 @@ class TestGetLldpNeighbors:
         mock_client = _make_mock_client(get_response=LLDP_NEIGHBORS_FIXTURE)
         with patch("opnsense.tools.diagnostics._get_client", return_value=mock_client):
             from opnsense.tools.diagnostics import opnsense__diagnostics__get_lldp_neighbors
+
             result = await opnsense__diagnostics__get_lldp_neighbors(interface="igb99")
 
         assert result == []
@@ -1112,6 +1296,7 @@ class TestInterfaceAgent:
         with patch("opnsense.tools.interfaces._get_client") as mock_factory:
             mock_factory.side_effect = [mock_iface_client, mock_vlan_client, mock_dhcp_client]
             from opnsense.agents.interfaces import run_interface_report
+
             report = await run_interface_report()
 
         assert "Interface & VLAN Inventory Report" in report
@@ -1128,6 +1313,7 @@ class TestInterfaceAgent:
         with patch("opnsense.tools.interfaces._get_client") as mock_factory:
             mock_factory.side_effect = [mock_iface_client, mock_vlan_client, mock_dhcp_client]
             from opnsense.agents.interfaces import run_interface_report
+
             report = await run_interface_report()
 
         assert "Interface Inventory" in report
@@ -1143,6 +1329,7 @@ class TestInterfaceAgent:
         with patch("opnsense.tools.interfaces._get_client") as mock_factory:
             mock_factory.side_effect = [mock_iface_client, mock_vlan_client, mock_dhcp_client]
             from opnsense.agents.interfaces import run_interface_report
+
             report = await run_interface_report()
 
         assert "expired" in report.lower()
@@ -1160,6 +1347,7 @@ class TestFirewallAgent:
         with patch("opnsense.tools.firewall._get_client") as mock_factory:
             mock_factory.side_effect = [mock_rules_client, mock_aliases_client, mock_nat_client]
             from opnsense.agents.firewall import run_firewall_audit
+
             report = await run_firewall_audit()
 
         assert "Firewall Audit Report" in report
@@ -1175,6 +1363,7 @@ class TestFirewallAgent:
         with patch("opnsense.tools.firewall._get_client") as mock_factory:
             mock_factory.side_effect = [mock_rules_client, mock_aliases_client, mock_nat_client]
             from opnsense.agents.firewall import run_firewall_audit
+
             report = await run_firewall_audit()
 
         assert "Firewall Rules" in report
@@ -1190,6 +1379,7 @@ class TestFirewallAgent:
         with patch("opnsense.tools.firewall._get_client") as mock_factory:
             mock_factory.side_effect = [mock_rules_client, mock_aliases_client, mock_nat_client]
             from opnsense.agents.firewall import run_firewall_audit
+
             report = await run_firewall_audit()
 
         # There are block rules in the fixture -- some may lack logging
@@ -1274,6 +1464,7 @@ class TestRoutingAgent:
         with patch("opnsense.tools.routing._get_client") as mock_factory:
             mock_factory.side_effect = [mock_routes_client, mock_gw_client]
             from opnsense.agents.routing import run_routing_report
+
             report = await run_routing_report()
 
         assert "Routing Table Report" in report
@@ -1288,6 +1479,7 @@ class TestRoutingAgent:
         with patch("opnsense.tools.routing._get_client") as mock_factory:
             mock_factory.side_effect = [mock_routes_client, mock_gw_client]
             from opnsense.agents.routing import run_routing_report
+
             report = await run_routing_report()
 
         assert "Gateway Status" in report
@@ -1302,6 +1494,7 @@ class TestRoutingAgent:
         with patch("opnsense.tools.routing._get_client") as mock_factory:
             mock_factory.side_effect = [mock_routes_client, mock_gw_client]
             from opnsense.agents.routing import run_routing_report
+
             report = await run_routing_report()
 
         assert "disabled" in report.lower()
@@ -1329,6 +1522,7 @@ class TestRoutingAgent:
         with patch("opnsense.tools.routing._get_client") as mock_factory:
             mock_factory.side_effect = [mock_routes_client, mock_gw_client]
             from opnsense.agents.routing import run_routing_report
+
             report = await run_routing_report()
 
         assert "CRITICAL" in report
@@ -1357,6 +1551,7 @@ class TestRoutingAgent:
         with patch("opnsense.tools.routing._get_client") as mock_factory:
             mock_factory.side_effect = [mock_routes_client, mock_gw_client]
             from opnsense.agents.routing import run_routing_report
+
             report = await run_routing_report()
 
         assert "HIGH" in report
@@ -1372,46 +1567,62 @@ class TestClientFactory:
     """Verify _get_client() uses environment variables correctly."""
 
     def test_interface_client_factory(self) -> None:
-        with patch.dict(os.environ, {
-            "OPNSENSE_HOST": "https://192.168.1.1",
-            "OPNSENSE_API_KEY": "test-key",
-            "OPNSENSE_API_SECRET": "test-secret",
-            "OPNSENSE_VERIFY_SSL": "false",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPNSENSE_HOST": "https://192.168.1.1",
+                "OPNSENSE_API_KEY": "test-key",
+                "OPNSENSE_API_SECRET": "test-secret",
+                "OPNSENSE_VERIFY_SSL": "false",
+            },
+        ):
             from opnsense.tools.interfaces import _get_client
+
             client = _get_client()
             assert client._base_url == "https://192.168.1.1"
             assert client._verify_ssl is False
 
     def test_firewall_client_factory(self) -> None:
-        with patch.dict(os.environ, {
-            "OPNSENSE_HOST": "https://fw.local",
-            "OPNSENSE_API_KEY": "key",
-            "OPNSENSE_API_SECRET": "secret",
-            "OPNSENSE_VERIFY_SSL": "true",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPNSENSE_HOST": "https://fw.local",
+                "OPNSENSE_API_KEY": "key",
+                "OPNSENSE_API_SECRET": "secret",
+                "OPNSENSE_VERIFY_SSL": "true",
+            },
+        ):
             from opnsense.tools.firewall import _get_client
+
             client = _get_client()
             assert client._base_url == "https://fw.local"
             assert client._verify_ssl is True
 
     def test_routing_client_factory(self) -> None:
-        with patch.dict(os.environ, {
-            "OPNSENSE_HOST": "https://router.local",
-            "OPNSENSE_API_KEY": "key",
-            "OPNSENSE_API_SECRET": "secret",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPNSENSE_HOST": "https://router.local",
+                "OPNSENSE_API_KEY": "key",
+                "OPNSENSE_API_SECRET": "secret",
+            },
+        ):
             from opnsense.tools.routing import _get_client
+
             client = _get_client()
             assert client._base_url == "https://router.local"
 
     def test_diagnostics_client_factory(self) -> None:
-        with patch.dict(os.environ, {
-            "OPNSENSE_HOST": "https://diag.local",
-            "OPNSENSE_API_KEY": "key",
-            "OPNSENSE_API_SECRET": "secret",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPNSENSE_HOST": "https://diag.local",
+                "OPNSENSE_API_KEY": "key",
+                "OPNSENSE_API_SECRET": "secret",
+            },
+        ):
             from opnsense.tools.diagnostics import _get_client
+
             client = _get_client()
             assert client._base_url == "https://diag.local"
 
@@ -1424,6 +1635,7 @@ class TestClientCleanup:
         mock_client = _make_mock_client(get_cached_response=INTERFACES_FIXTURE)
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             await opnsense__interfaces__list_interfaces()
 
         mock_client.close.assert_awaited_once()
@@ -1435,6 +1647,7 @@ class TestClientCleanup:
         )
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
+
             with pytest.raises(APIError):
                 await opnsense__interfaces__list_interfaces()
 
@@ -1451,18 +1664,22 @@ class TestToolsInit:
 
     def test_imports_interfaces(self) -> None:
         import opnsense.tools
+
         assert hasattr(opnsense.tools, "interfaces")
 
     def test_imports_firewall(self) -> None:
         import opnsense.tools
+
         assert hasattr(opnsense.tools, "firewall")
 
     def test_imports_routing(self) -> None:
         import opnsense.tools
+
         assert hasattr(opnsense.tools, "routing")
 
     def test_imports_diagnostics(self) -> None:
         import opnsense.tools
+
         assert hasattr(opnsense.tools, "diagnostics")
 
 
@@ -1471,12 +1688,15 @@ class TestAgentsInit:
 
     def test_exports_interface_report(self) -> None:
         from opnsense.agents import run_interface_report
+
         assert callable(run_interface_report)
 
     def test_exports_firewall_audit(self) -> None:
         from opnsense.agents import run_firewall_audit
+
         assert callable(run_firewall_audit)
 
     def test_exports_routing_report(self) -> None:
         from opnsense.agents import run_routing_report
+
         assert callable(run_routing_report)

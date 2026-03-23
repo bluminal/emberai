@@ -34,6 +34,7 @@ logger = logging.getLogger("netex.registry")
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PluginMetadata:
     """Parsed and validated metadata for a single vendor plugin.
@@ -76,6 +77,7 @@ class PluginMetadata:
 # ---------------------------------------------------------------------------
 # Plugin Registry
 # ---------------------------------------------------------------------------
+
 
 class PluginRegistry:
     """Discovers and indexes installed vendor plugins via entry points.
@@ -209,11 +211,7 @@ class PluginRegistry:
             List of plugin metadata dicts, one per registered plugin.
             Excludes the orchestrator (netex itself) from the list.
         """
-        return [
-            p.to_dict()
-            for p in self._plugins.values()
-            if not p.is_orchestrator
-        ]
+        return [p.to_dict() for p in self._plugins.values() if not p.is_orchestrator]
 
     def get_plugin(self, name: str) -> PluginMetadata | None:
         """Return metadata for a specific plugin by name."""
@@ -283,20 +281,24 @@ class PluginRegistry:
             # Check if the plugin has registered specific tools for this skill
             tool_names = plugin.tools.get(skill, [])
             for tool_name in tool_names:
-                results.append({
-                    "plugin": name,
-                    "skill": skill,
-                    "tool": tool_name,
-                })
+                results.append(
+                    {
+                        "plugin": name,
+                        "skill": skill,
+                        "tool": tool_name,
+                    }
+                )
 
             # If no specific tools are registered but the plugin has the skill,
             # generate the conventional tool name pattern
             if not tool_names:
-                results.append({
-                    "plugin": name,
-                    "skill": skill,
-                    "tool": f"{name}__{skill}",
-                })
+                results.append(
+                    {
+                        "plugin": name,
+                        "skill": skill,
+                        "tool": f"{name}__{skill}",
+                    }
+                )
 
         return results
 

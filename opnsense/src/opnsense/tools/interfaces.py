@@ -65,7 +65,9 @@ async def opnsense__interfaces__list_interfaces() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "interfaces", "overview", "export",
+            "interfaces",
+            "overview",
+            "export",
             cache_key="interfaces:list",
             ttl=CacheTTL.INTERFACES,
         )
@@ -135,7 +137,9 @@ async def opnsense__interfaces__list_vlan_interfaces() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "interfaces", "vlan_settings", "searchItem",
+            "interfaces",
+            "vlan_settings",
+            "searchItem",
             cache_key="interfaces:vlans",
             ttl=CacheTTL.VLAN_INTERFACES,
         )
@@ -184,7 +188,9 @@ async def opnsense__interfaces__get_dhcp_leases(
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "kea", "leases", "search",
+            "kea",
+            "leases",
+            "search",
             cache_key="dhcp:leases",
             ttl=CacheTTL.DHCP_LEASES,
         )
@@ -267,7 +273,9 @@ async def opnsense__interfaces__add_vlan_interface(
         # Write the VLAN definition
         vlan_device = f"vlan0.{tag}"
         write_result = await client.write(
-            "interfaces", "vlan_settings", "addItem",
+            "interfaces",
+            "vlan_settings",
+            "addItem",
             data={
                 "vlan": {
                     "if": parent_if.strip(),
@@ -296,7 +304,9 @@ async def opnsense__interfaces__add_vlan_interface(
 
     logger.info(
         "Added VLAN interface: tag=%d, parent=%s, description='%s'",
-        tag, parent_if, description,
+        tag,
+        parent_if,
+        description,
         extra={"component": "interfaces"},
     )
 
@@ -351,7 +361,9 @@ async def opnsense__interfaces__add_dhcp_reservation(
     client = _get_client()
     try:
         write_result = await client.write(
-            "kea", "dhcpv4", "add_reservation",
+            "kea",
+            "dhcpv4",
+            "add_reservation",
             data={
                 "reservation": {
                     "hw_address": mac.strip(),
@@ -377,7 +389,10 @@ async def opnsense__interfaces__add_dhcp_reservation(
 
     logger.info(
         "Added DHCP reservation: %s -> %s on %s (hostname=%s)",
-        mac, ip, interface, hostname,
+        mac,
+        ip,
+        interface,
+        hostname,
         extra={"component": "interfaces"},
     )
 
@@ -451,7 +466,9 @@ async def opnsense__interfaces__add_dhcp_subnet(
             subnet_data["subnet4"]["option_data"] = dns_servers.strip()
 
         write_result = await client.write(
-            "kea", "dhcpv4", "add_subnet",
+            "kea",
+            "dhcpv4",
+            "add_subnet",
             data=subnet_data,
         )
 
@@ -471,7 +488,11 @@ async def opnsense__interfaces__add_dhcp_subnet(
 
     logger.info(
         "Added DHCP subnet: %s on %s (range %s-%s, dns=%s)",
-        subnet, interface, range_from, range_to, dns_servers,
+        subnet,
+        interface,
+        range_from,
+        range_to,
+        dns_servers,
         extra={"component": "interfaces"},
     )
 
@@ -562,7 +583,9 @@ async def opnsense__interfaces__configure_vlan(
         # OPNsense 26.x requires vlanif (device name) in the payload
         vlan_device = f"vlan0.{tag}"
         vlan_result = await client.write(
-            "interfaces", "vlan_settings", "addItem",
+            "interfaces",
+            "vlan_settings",
+            "addItem",
             data={
                 "vlan": {
                     "if": parent_if.strip(),
@@ -612,6 +635,7 @@ async def opnsense__interfaces__configure_vlan(
             # 3b: Find which interface slot was assigned by parsing
             # the assignments page HTML (more reliable than API on 26.x)
             import re as _re
+
             assign_html = await client.post_legacy(
                 "/interfaces_assign.php",
                 form_data={},  # GET-like POST just to get the page with CSRF
@@ -621,8 +645,7 @@ async def opnsense__interfaces__configure_vlan(
             assigned_if = None
             # Match rows: <td>opt3</td> ... vlan0.20
             opt_matches = _re.findall(
-                r'name=["\'](\w+)["\']\s[^>]*>.*?'
-                + _re.escape(vlan_if_name),
+                r'name=["\'](\w+)["\']\s[^>]*>.*?' + _re.escape(vlan_if_name),
                 assign_html,
                 _re.DOTALL,
             )
@@ -630,7 +653,8 @@ async def opnsense__interfaces__configure_vlan(
                 assigned_if = opt_matches[-1]
             else:
                 # Fallback: find optN associated with our device
-                # The assignments page has <select name="optN"> with our device as the selected option
+                # The assignments page has <select name="optN">
+                # with our device as the selected option
                 for m in _re.finditer(
                     r'<select[^>]*name=["\'](\w+)["\'][^>]*>.*?</select>',
                     assign_html,
@@ -679,7 +703,8 @@ async def opnsense__interfaces__configure_vlan(
             logger.warning(
                 "Step 3 failed for VLAN %d: %s. VLAN device created but "
                 "assignment/IP may need manual config.",
-                tag, exc,
+                tag,
+                exc,
             )
             completed_steps.append("step3_failed")
 
@@ -697,12 +722,17 @@ async def opnsense__interfaces__configure_vlan(
                         if isinstance(iface_field, str):
                             iface_list = [i.strip() for i in iface_field.split(",") if i.strip()]
                         elif isinstance(iface_field, dict):
-                            iface_list = [k for k, v in iface_field.items()
-                                          if isinstance(v, dict) and v.get("selected")]
+                            iface_list = [
+                                k
+                                for k, v in iface_field.items()
+                                if isinstance(v, dict) and v.get("selected")
+                            ]
                 if assigned_if and assigned_if not in iface_list:
                     iface_list.append(assigned_if)
                     await client.write(
-                        "dnsmasq", "settings", "set",
+                        "dnsmasq",
+                        "settings",
+                        "set",
                         data={"dnsmasq": {"interface": ",".join(iface_list)}},
                     )
 
@@ -718,13 +748,17 @@ async def opnsense__interfaces__configure_vlan(
                 }
 
                 dhcp_result = await client.write(
-                    "dnsmasq", "settings", "add_range",
+                    "dnsmasq",
+                    "settings",
+                    "add_range",
                     data=range_data,
                 )
 
                 if not is_action_success(dhcp_result):
                     validations = dhcp_result.get("validations", {})
-                    detail = f"validations={validations}" if validations else f"response={dhcp_result}"
+                    detail = (
+                        f"validations={validations}" if validations else f"response={dhcp_result}"
+                    )
                     logger.warning("DHCP config failed for VLAN %d: %s", tag, detail)
                     completed_steps.append("dhcp_failed")
                 else:
@@ -742,7 +776,10 @@ async def opnsense__interfaces__configure_vlan(
 
     logger.info(
         "Configured VLAN %d on %s: ip=%s/%s, dhcp=%s",
-        tag, parent_if, ip, subnet,
+        tag,
+        parent_if,
+        ip,
+        subnet,
         f"{dhcp_range_from}-{dhcp_range_to}" if has_dhcp else "none",
         extra={"component": "interfaces"},
     )

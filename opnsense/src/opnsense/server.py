@@ -107,9 +107,7 @@ def _load_env() -> dict[str, str]:
         config[var_name] = value
 
     if missing:
-        raise ConfigError(
-            "Required environment variables are not set:\n" + "\n".join(missing)
-        )
+        raise ConfigError("Required environment variables are not set:\n" + "\n".join(missing))
 
     for var_name, default, _description in _OPTIONAL_ENV_VARS:
         config[var_name] = os.environ.get(var_name, default).strip() or default
@@ -122,8 +120,9 @@ def _load_env() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def _check_connectivity(host: str, api_key: str, api_secret: str,
-                              verify_ssl: bool) -> tuple[bool, str]:
+async def _check_connectivity(
+    host: str, api_key: str, api_secret: str, verify_ssl: bool
+) -> tuple[bool, str]:
     """Attempt a lightweight GET to *host* using Basic Auth and return (ok, detail).
 
     Uses a short timeout to avoid blocking the health probe.  OPNsense
@@ -147,7 +146,7 @@ async def _check_connectivity(host: str, api_key: str, api_secret: str,
         return False, f"Connection refused or unreachable: {url} ({exc})"
     except httpx.TimeoutException:
         return False, f"Connection timed out after 10 s: {url}"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return False, f"Unexpected error connecting to {url}: {exc}"
 
 
@@ -171,16 +170,13 @@ def _run_check() -> int:
         value = os.environ.get(var_name, "").strip()
         if value:
             # Mask sensitive values
-            if var_name == "OPNSENSE_HOST":
-                display = value
-            else:
-                display = f"{value[:4]}****"
+            display = value if var_name == "OPNSENSE_HOST" else f"{value[:4]}****"
             print(f"  [PASS] {var_name} = {display}")
         else:
             print(f"  [FAIL] {var_name} is not set -- {description}")
             all_ok = False
 
-    for var_name, default, description in _OPTIONAL_ENV_VARS:
+    for var_name, default, _description in _OPTIONAL_ENV_VARS:
         value = os.environ.get(var_name, "").strip()
         status = value if value else f"(default: {default})"
         # Mask API keys/secrets

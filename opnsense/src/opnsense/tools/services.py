@@ -18,11 +18,13 @@ Tools
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.models.services import DHCPLease, DNSOverride
 from opnsense.safety import reconfigure_gate, write_gate
+
+if TYPE_CHECKING:
+    from opnsense.api.opnsense_client import OPNsenseClient
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +56,7 @@ async def opnsense__services__get_dns_overrides(
             override = DNSOverride.model_validate(row)
             overrides.append(override.model_dump())
         except Exception:
-            logger.warning(
-                "Failed to parse DNS override: %s", row.get("hostname", "unknown")
-            )
+            logger.warning("Failed to parse DNS override: %s", row.get("hostname", "unknown"))
             overrides.append(row)
 
     logger.info("Listed %d DNS overrides", len(overrides))
@@ -208,7 +208,12 @@ async def opnsense__services__add_dns_override(
         If ``OPNSENSE_WRITE_ENABLED`` is not ``true`` or ``apply`` is ``False``.
     """
     write_result = await _add_dns_override_write(
-        client, hostname, domain, ip, description, apply=apply,
+        client,
+        hostname,
+        domain,
+        ip,
+        description,
+        apply=apply,
     )
     reconfigure_result = await _reconfigure_unbound(client, apply=apply)
 
@@ -259,9 +264,7 @@ async def opnsense__services__get_dhcp_leases4(
 
             leases.append(lease_dict)
         except Exception:
-            logger.warning(
-                "Failed to parse DHCP lease: %s", row.get("address", "unknown")
-            )
+            logger.warning("Failed to parse DHCP lease: %s", row.get("address", "unknown"))
             if interface is None or row.get("interface") == interface:
                 leases.append(row)
 

@@ -93,15 +93,36 @@ class ContractValidationReport:
 # Known valid values
 # ---------------------------------------------------------------------------
 
-KNOWN_ROLES = frozenset({
-    "gateway", "edge", "wireless", "overlay", "dns", "monitoring",
-})
+KNOWN_ROLES = frozenset(
+    {
+        "gateway",
+        "edge",
+        "wireless",
+        "overlay",
+        "dns",
+        "monitoring",
+    }
+)
 
-KNOWN_SKILL_GROUPS = frozenset({
-    "topology", "health", "wifi", "clients", "traffic",
-    "security", "config", "multisite", "interfaces", "firewall",
-    "routing", "vpn", "services", "diagnostics", "firmware",
-})
+KNOWN_SKILL_GROUPS = frozenset(
+    {
+        "topology",
+        "health",
+        "wifi",
+        "clients",
+        "traffic",
+        "security",
+        "config",
+        "multisite",
+        "interfaces",
+        "firewall",
+        "routing",
+        "vpn",
+        "services",
+        "diagnostics",
+        "firmware",
+    }
+)
 
 # Tool name pattern: {plugin}__{skill}__{operation}
 TOOL_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*__[a-z][a-z0-9_]*__[a-z][a-z0-9_]*$")
@@ -110,6 +131,7 @@ TOOL_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*__[a-z][a-z0-9_]*__[a-z][a-z0-9_
 # ---------------------------------------------------------------------------
 # Validator
 # ---------------------------------------------------------------------------
+
 
 class ContractValidator:
     """Validates vendor plugin metadata against the Vendor Plugin Contract.
@@ -173,36 +195,39 @@ class ContractValidator:
         required_fields = ["name", "version", "description"]
         for f in required_fields:
             if f not in frontmatter or not frontmatter[f]:
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field=f"frontmatter.{f}",
-                    message=f"Required frontmatter field '{f}' is missing or empty",
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field=f"frontmatter.{f}",
+                        message=f"Required frontmatter field '{f}' is missing or empty",
+                    )
+                )
 
         # Validate netex_contract_version
         contract_ver = frontmatter.get("netex_contract_version")
         if contract_ver is not None and (
-            not isinstance(contract_ver, str)
-            or not re.match(r"^\d+\.\d+\.\d+$", contract_ver)
+            not isinstance(contract_ver, str) or not re.match(r"^\d+\.\d+\.\d+$", contract_ver)
         ):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                field="frontmatter.netex_contract_version",
-                message="Must be a semver string (e.g., '1.0.0')",
-                value=contract_ver,
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    field="frontmatter.netex_contract_version",
+                    message="Must be a semver string (e.g., '1.0.0')",
+                    value=contract_ver,
+                )
+            )
 
         # Validate netex_vendor (if present and not orchestrator)
         vendor = frontmatter.get("netex_vendor")
-        if vendor is not None and (
-            not isinstance(vendor, str) or not vendor.strip()
-        ):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                field="frontmatter.netex_vendor",
-                message="Must be a non-empty string",
-                value=vendor,
-            ))
+        if vendor is not None and (not isinstance(vendor, str) or not vendor.strip()):
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    field="frontmatter.netex_vendor",
+                    message="Must be a non-empty string",
+                    value=vendor,
+                )
+            )
 
         # Validate netex_role (if present)
         roles = frontmatter.get("netex_role")
@@ -212,12 +237,14 @@ class ContractValidator:
             if isinstance(roles, list):
                 for role in roles:
                     if role not in KNOWN_ROLES:
-                        report.results.append(ValidationResult(
-                            level=ValidationLevel.WARNING,
-                            field="frontmatter.netex_role",
-                            message=f"Unknown role '{role}'. Known: {sorted(KNOWN_ROLES)}",
-                            value=role,
-                        ))
+                        report.results.append(
+                            ValidationResult(
+                                level=ValidationLevel.WARNING,
+                                field="frontmatter.netex_role",
+                                message=f"Unknown role '{role}'. Known: {sorted(KNOWN_ROLES)}",
+                                value=role,
+                            )
+                        )
 
         # Validate netex_skills (if present)
         skills = frontmatter.get("netex_skills")
@@ -225,15 +252,14 @@ class ContractValidator:
             for skill in skills:
                 if skill not in KNOWN_SKILL_GROUPS:
                     known = sorted(KNOWN_SKILL_GROUPS)
-                    report.results.append(ValidationResult(
-                        level=ValidationLevel.WARNING,
-                        field="frontmatter.netex_skills",
-                        message=(
-                            f"Unknown skill group '{skill}'. "
-                            f"Known: {known}"
-                        ),
-                        value=skill,
-                    ))
+                    report.results.append(
+                        ValidationResult(
+                            level=ValidationLevel.WARNING,
+                            field="frontmatter.netex_skills",
+                            message=(f"Unknown skill group '{skill}'. Known: {known}"),
+                            value=skill,
+                        )
+                    )
 
         return report
 
@@ -262,186 +288,236 @@ class ContractValidator:
     # ------------------------------------------------------------------
 
     def _validate_required_fields(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Check that all required fields are present and non-empty."""
         required = ["name", "version", "description"]
         for f in required:
             if f not in info:
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field=f,
-                    message=f"Required field '{f}' is missing",
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field=f,
+                        message=f"Required field '{f}' is missing",
+                    )
+                )
             elif not info[f]:
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field=f,
-                    message=f"Required field '{f}' is empty",
-                    value=info[f],
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field=f,
+                        message=f"Required field '{f}' is empty",
+                        value=info[f],
+                    )
+                )
 
     def _validate_name(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate plugin name format."""
         name = info.get("name")
         if name and not re.match(r"^[a-z][a-z0-9_-]*$", name):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                field="name",
-                message=(
-                    "Plugin name must be lowercase alphanumeric"
-                    " with optional hyphens/underscores"
-                ),
-                value=name,
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    field="name",
+                    message=(
+                        "Plugin name must be lowercase alphanumeric"
+                        " with optional hyphens/underscores"
+                    ),
+                    value=name,
+                )
+            )
 
     def _validate_version(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate version string format (semver)."""
         version = info.get("version")
         if version and not re.match(r"^\d+\.\d+\.\d+", version):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                field="version",
-                message="Version should follow semantic versioning (e.g., '1.0.0')",
-                value=version,
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    field="version",
+                    message="Version should follow semantic versioning (e.g., '1.0.0')",
+                    value=version,
+                )
+            )
 
     def _validate_roles(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate roles list."""
         roles = info.get("roles")
         is_orchestrator = info.get("is_orchestrator", False)
 
         if roles is None and not is_orchestrator:
-            report.results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                field="roles",
-                message="Vendor plugins should declare at least one role",
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    field="roles",
+                    message="Vendor plugins should declare at least one role",
+                )
+            )
             return
 
         if roles is not None:
             if not isinstance(roles, list):
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field="roles",
-                    message="'roles' must be a list of strings",
-                    value=roles,
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field="roles",
+                        message="'roles' must be a list of strings",
+                        value=roles,
+                    )
+                )
                 return
 
             for role in roles:
                 if role not in KNOWN_ROLES:
-                    report.results.append(ValidationResult(
-                        level=ValidationLevel.WARNING,
-                        field="roles",
-                        message=f"Unknown role '{role}'. Known roles: {sorted(KNOWN_ROLES)}",
-                        value=role,
-                    ))
+                    report.results.append(
+                        ValidationResult(
+                            level=ValidationLevel.WARNING,
+                            field="roles",
+                            message=f"Unknown role '{role}'. Known roles: {sorted(KNOWN_ROLES)}",
+                            value=role,
+                        )
+                    )
 
     def _validate_skills(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate skills list."""
         skills = info.get("skills")
         is_orchestrator = info.get("is_orchestrator", False)
 
         if skills is None and not is_orchestrator:
-            report.results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                field="skills",
-                message="Vendor plugins should declare at least one skill",
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    field="skills",
+                    message="Vendor plugins should declare at least one skill",
+                )
+            )
             return
 
         if skills is not None:
             if not isinstance(skills, list):
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field="skills",
-                    message="'skills' must be a list of strings",
-                    value=skills,
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field="skills",
+                        message="'skills' must be a list of strings",
+                        value=skills,
+                    )
+                )
                 return
 
             for skill in skills:
                 if skill not in KNOWN_SKILL_GROUPS:
-                    report.results.append(ValidationResult(
-                        level=ValidationLevel.WARNING,
-                        field="skills",
-                        message=(
-                            f"Unknown skill group '{skill}'. "
-                            f"Known: {sorted(KNOWN_SKILL_GROUPS)}"
-                        ),
-                        value=skill,
-                    ))
+                    report.results.append(
+                        ValidationResult(
+                            level=ValidationLevel.WARNING,
+                            field="skills",
+                            message=(
+                                f"Unknown skill group '{skill}'. "
+                                f"Known: {sorted(KNOWN_SKILL_GROUPS)}"
+                            ),
+                            value=skill,
+                        )
+                    )
 
     def _validate_write_flag(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate write_flag naming convention."""
         write_flag = info.get("write_flag")
         is_orchestrator = info.get("is_orchestrator", False)
 
         if write_flag is None and not is_orchestrator:
-            report.results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                field="write_flag",
-                message="Vendor plugins should declare a write_flag (e.g., 'PLUGIN_WRITE_ENABLED')",
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    field="write_flag",
+                    message=(
+                        "Vendor plugins should declare a write_flag (e.g., 'PLUGIN_WRITE_ENABLED')"
+                    ),
+                )
+            )
             return
 
         if write_flag is not None:
             if not isinstance(write_flag, str):
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field="write_flag",
-                    message="'write_flag' must be a string",
-                    value=write_flag,
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field="write_flag",
+                        message="'write_flag' must be a string",
+                        value=write_flag,
+                    )
+                )
             elif not re.match(r"^[A-Z][A-Z0-9_]*_WRITE_ENABLED$", write_flag):
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.WARNING,
-                    field="write_flag",
-                    message="write_flag should follow pattern '{PLUGIN}_WRITE_ENABLED'",
-                    value=write_flag,
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.WARNING,
+                        field="write_flag",
+                        message="write_flag should follow pattern '{PLUGIN}_WRITE_ENABLED'",
+                        value=write_flag,
+                    )
+                )
 
     def _validate_contract_version(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate contract_version field."""
         version = info.get("contract_version")
         if version is None:
-            report.results.append(ValidationResult(
-                level=ValidationLevel.WARNING,
-                field="contract_version",
-                message="Plugins should declare their contract_version",
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    field="contract_version",
+                    message="Plugins should declare their contract_version",
+                )
+            )
             return
 
         if not isinstance(version, str):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                field="contract_version",
-                message="'contract_version' must be a string",
-                value=version,
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    field="contract_version",
+                    message="'contract_version' must be a string",
+                    value=version,
+                )
+            )
         elif not re.match(r"^\d+\.\d+\.\d+$", version):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                field="contract_version",
-                message="'contract_version' must be a semver string (e.g., '1.0.0')",
-                value=version,
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    field="contract_version",
+                    message="'contract_version' must be a semver string (e.g., '1.0.0')",
+                    value=version,
+                )
+            )
 
     def _validate_tools(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Validate tool names follow the naming convention."""
         tools = info.get("tools")
@@ -449,24 +525,28 @@ class ContractValidator:
             return
 
         if not isinstance(tools, dict):
-            report.results.append(ValidationResult(
-                level=ValidationLevel.ERROR,
-                field="tools",
-                message="'tools' must be a dict mapping skill groups to tool name lists",
-                value=type(tools).__name__,
-            ))
+            report.results.append(
+                ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    field="tools",
+                    message="'tools' must be a dict mapping skill groups to tool name lists",
+                    value=type(tools).__name__,
+                )
+            )
             return
 
         plugin_name = info.get("name", "")
 
         for skill_group, tool_names in tools.items():
             if not isinstance(tool_names, list):
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.ERROR,
-                    field=f"tools.{skill_group}",
-                    message=f"Tool names for skill group '{skill_group}' must be a list",
-                    value=type(tool_names).__name__,
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.ERROR,
+                        field=f"tools.{skill_group}",
+                        message=f"Tool names for skill group '{skill_group}' must be a list",
+                        value=type(tool_names).__name__,
+                    )
+                )
                 continue
 
             for tool_name in tool_names:
@@ -477,33 +557,43 @@ class ContractValidator:
 
                 # Check plugin prefix matches
                 if plugin_name and not tool_name.startswith(f"{plugin_name}__"):
-                    report.results.append(ValidationResult(
-                        level=ValidationLevel.WARNING,
-                        field=f"tools.{skill_group}",
-                        message=(
-                            f"Tool '{tool_name}' does not start with plugin prefix "
-                            f"'{plugin_name}__'"
-                        ),
-                        value=tool_name,
-                    ))
+                    report.results.append(
+                        ValidationResult(
+                            level=ValidationLevel.WARNING,
+                            field=f"tools.{skill_group}",
+                            message=(
+                                f"Tool '{tool_name}' does not start with plugin prefix "
+                                f"'{plugin_name}__'"
+                            ),
+                            value=tool_name,
+                        )
+                    )
 
     def _validate_recommended_fields(
-        self, info: dict[str, Any], report: ContractValidationReport,
+        self,
+        info: dict[str, Any],
+        report: ContractValidationReport,
     ) -> None:
         """Check for recommended but not required fields."""
         is_orchestrator = info.get("is_orchestrator", False)
 
         if not is_orchestrator:
             if "vendor" not in info:
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.INFO,
-                    field="vendor",
-                    message="Consider declaring 'vendor' for clearer plugin identification",
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.INFO,
+                        field="vendor",
+                        message="Consider declaring 'vendor' for clearer plugin identification",
+                    )
+                )
 
             if "server_factory" not in info:
-                report.results.append(ValidationResult(
-                    level=ValidationLevel.INFO,
-                    field="server_factory",
-                    message="Consider providing 'server_factory' for embedded server instantiation",
-                ))
+                report.results.append(
+                    ValidationResult(
+                        level=ValidationLevel.INFO,
+                        field="server_factory",
+                        message=(
+                            "Consider providing 'server_factory' for embedded server instantiation"
+                        ),
+                    )
+                )

@@ -101,45 +101,59 @@ def _make_empty_registry() -> PluginRegistry:
 def _make_full_registry() -> PluginRegistry:
     """Return a registry with mock gateway and edge plugins."""
     registry = PluginRegistry(auto_discover=False)
-    registry.register({
-        "name": "opnsense",
-        "version": "1.0.0",
-        "vendor": "opnsense",
-        "roles": ["gateway"],
-        "skills": [
-            "interfaces", "firewall", "routing", "vpn",
-            "services", "security", "diagnostics", "firmware",
-        ],
-        "tools": {
-            "firewall": ["opnsense__firewall__list_rules"],
-            "services": ["opnsense__services__resolve_hostname"],
-            "vpn": ["opnsense__vpn__get_status"],
-            "interfaces": ["opnsense__interfaces__list_vlan_interfaces"],
-            "security": ["opnsense__security__list_alerts"],
-            "diagnostics": ["opnsense__diagnostics__run_traceroute"],
-            "firmware": ["opnsense__firmware__get_status"],
-        },
-        "write_flag": "OPNSENSE_WRITE_ENABLED",
-        "contract_version": "1.0.0",
-    })
-    registry.register({
-        "name": "unifi",
-        "version": "1.0.0",
-        "vendor": "unifi",
-        "roles": ["edge", "wireless"],
-        "skills": [
-            "topology", "health", "wifi", "clients",
-            "security", "config",
-        ],
-        "tools": {
-            "topology": ["unifi__topology__list_devices"],
-            "clients": ["unifi__clients__list_clients"],
-            "wifi": ["unifi__wifi__list_ssids"],
-            "health": ["unifi__health__get_status"],
-        },
-        "write_flag": "UNIFI_WRITE_ENABLED",
-        "contract_version": "1.0.0",
-    })
+    registry.register(
+        {
+            "name": "opnsense",
+            "version": "1.0.0",
+            "vendor": "opnsense",
+            "roles": ["gateway"],
+            "skills": [
+                "interfaces",
+                "firewall",
+                "routing",
+                "vpn",
+                "services",
+                "security",
+                "diagnostics",
+                "firmware",
+            ],
+            "tools": {
+                "firewall": ["opnsense__firewall__list_rules"],
+                "services": ["opnsense__services__resolve_hostname"],
+                "vpn": ["opnsense__vpn__get_status"],
+                "interfaces": ["opnsense__interfaces__list_vlan_interfaces"],
+                "security": ["opnsense__security__list_alerts"],
+                "diagnostics": ["opnsense__diagnostics__run_traceroute"],
+                "firmware": ["opnsense__firmware__get_status"],
+            },
+            "write_flag": "OPNSENSE_WRITE_ENABLED",
+            "contract_version": "1.0.0",
+        }
+    )
+    registry.register(
+        {
+            "name": "unifi",
+            "version": "1.0.0",
+            "vendor": "unifi",
+            "roles": ["edge", "wireless"],
+            "skills": [
+                "topology",
+                "health",
+                "wifi",
+                "clients",
+                "security",
+                "config",
+            ],
+            "tools": {
+                "topology": ["unifi__topology__list_devices"],
+                "clients": ["unifi__clients__list_clients"],
+                "wifi": ["unifi__wifi__list_ssids"],
+                "health": ["unifi__health__get_status"],
+            },
+            "write_flag": "UNIFI_WRITE_ENABLED",
+            "contract_version": "1.0.0",
+        }
+    )
     return registry
 
 
@@ -153,6 +167,7 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
 # Helper function tests
 # ---------------------------------------------------------------------------
 
+
 class TestBuildVLANChangeSteps:
     def test_single_vlan(self) -> None:
         vlans = [VLANDefinition(vlan_id=10, name="mgmt", subnet="10.10.0.0/24")]
@@ -164,9 +179,14 @@ class TestBuildVLANChangeSteps:
         assert steps[1]["subsystem"] == "dhcp"
 
     def test_vlan_without_dhcp(self) -> None:
-        vlans = [VLANDefinition(
-            vlan_id=10, name="mgmt", subnet="10.10.0.0/24", dhcp_enabled=False,
-        )]
+        vlans = [
+            VLANDefinition(
+                vlan_id=10,
+                name="mgmt",
+                subnet="10.10.0.0/24",
+                dhcp_enabled=False,
+            )
+        ]
         steps = _build_vlan_change_steps(vlans)
         assert len(steps) == 1
         assert steps[0]["subsystem"] == "vlan"
@@ -246,6 +266,7 @@ class TestFormatRiskAssessment:
 # Task 139: provision-site command tests
 # ---------------------------------------------------------------------------
 
+
 class TestProvisionSite:
     async def test_invalid_manifest_returns_error(self) -> None:
         result = await netex__network__provision_site("not: valid: yaml: []")
@@ -254,7 +275,8 @@ class TestProvisionSite:
     async def test_dry_run_returns_plan(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                MINIMAL_MANIFEST_YAML, dry_run=True,
+                MINIMAL_MANIFEST_YAML,
+                dry_run=True,
             )
         assert "Dry-run" in result or "dry-run" in result.lower()
         assert "Change Plan" in result
@@ -262,7 +284,8 @@ class TestProvisionSite:
     async def test_dry_run_full_manifest(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                FULL_MANIFEST_YAML, dry_run=True,
+                FULL_MANIFEST_YAML,
+                dry_run=True,
             )
         assert "TestSite" in result
         assert "3" in result  # 3 VLANs
@@ -280,17 +303,20 @@ class TestProvisionSite:
     async def test_write_disabled_blocks_execution(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                MINIMAL_MANIFEST_YAML, apply=True,
+                MINIMAL_MANIFEST_YAML,
+                apply=True,
             )
         assert "Write operations are disabled" in result
 
     async def test_apply_with_write_enabled(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                MINIMAL_MANIFEST_YAML, apply=True,
+                MINIMAL_MANIFEST_YAML,
+                apply=True,
             )
         assert "Execution Report" in result
         assert "completed" in result.lower()
@@ -298,24 +324,28 @@ class TestProvisionSite:
     async def test_plan_includes_outage_risk(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                MINIMAL_MANIFEST_YAML, dry_run=True,
+                MINIMAL_MANIFEST_YAML,
+                dry_run=True,
             )
         assert "OUTAGE RISK" in result or "outage" in result.lower()
 
     async def test_plan_includes_rollback(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                FULL_MANIFEST_YAML, dry_run=True,
+                FULL_MANIFEST_YAML,
+                dry_run=True,
             )
         assert "ROLLBACK" in result or "rollback" in result.lower()
 
     async def test_suggests_verify_policy_after_execution(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__network__provision_site(
-                MINIMAL_MANIFEST_YAML, apply=True,
+                MINIMAL_MANIFEST_YAML,
+                apply=True,
             )
         assert "verify-policy" in result
 
@@ -323,6 +353,7 @@ class TestProvisionSite:
 # ---------------------------------------------------------------------------
 # Task 140: verify-policy command tests
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyPolicy:
     async def test_no_args_returns_error(self) -> None:
@@ -386,6 +417,7 @@ class TestVerifyPolicy:
 # Task 141: vlan provision-batch command tests
 # ---------------------------------------------------------------------------
 
+
 class TestVLANProvisionBatch:
     async def test_invalid_manifest(self) -> None:
         result = await netex__vlan__provision_batch("not valid yaml")
@@ -400,28 +432,33 @@ class TestVLANProvisionBatch:
     async def test_write_disabled(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__vlan__provision_batch(
-                MINIMAL_MANIFEST_YAML, apply=True,
+                MINIMAL_MANIFEST_YAML,
+                apply=True,
             )
         assert "Write operations are disabled" in result
 
     async def test_apply_with_write_enabled(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__vlan__provision_batch(
-                MINIMAL_MANIFEST_YAML, apply=True,
+                MINIMAL_MANIFEST_YAML,
+                apply=True,
             )
         assert "Execution Report" in result
         assert "completed" in result.lower()
 
     async def test_batch_with_multiple_vlans(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__vlan__provision_batch(
-                FULL_MANIFEST_YAML, apply=True,
+                FULL_MANIFEST_YAML,
+                apply=True,
             )
         assert "3 VLANs" in result
         assert "Execution Report" in result
@@ -435,6 +472,7 @@ class TestVLANProvisionBatch:
 # ---------------------------------------------------------------------------
 # Task 142: dns trace command tests
 # ---------------------------------------------------------------------------
+
 
 class TestDNSTrace:
     async def test_no_plugins(self) -> None:
@@ -451,7 +489,8 @@ class TestDNSTrace:
     async def test_trace_with_client(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):
             result = await netex__dns__trace(
-                "nas.home.lan", client_mac="aa:bb:cc:dd:ee:ff",
+                "nas.home.lan",
+                client_mac="aa:bb:cc:dd:ee:ff",
             )
         assert "aa:bb:cc:dd:ee:ff" in result
         assert "Client Context" in result
@@ -465,6 +504,7 @@ class TestDNSTrace:
 # ---------------------------------------------------------------------------
 # Task 142: vpn status command tests
 # ---------------------------------------------------------------------------
+
 
 class TestVPNStatus:
     async def test_no_plugins(self) -> None:
@@ -493,6 +533,7 @@ class TestVPNStatus:
 # Task 142: policy sync command tests
 # ---------------------------------------------------------------------------
 
+
 class TestPolicySync:
     async def test_no_plugins(self) -> None:
         with patch("netex.tools.commands._build_registry", return_value=_make_empty_registry()):
@@ -518,7 +559,8 @@ class TestPolicySync:
         assert "Write operations are disabled" in result
 
     async def test_non_dry_run_no_apply(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("NETEX_WRITE_ENABLED", "true")
         with patch("netex.tools.commands._build_registry", return_value=_make_full_registry()):

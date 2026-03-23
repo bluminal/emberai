@@ -15,10 +15,10 @@ from unifi.ask import (
     format_plan_modification,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def sample_assumptions() -> list[Assumption]:
@@ -78,6 +78,7 @@ def sample_steps() -> list[PlanStep]:
 # Scenario 1: Assumption resolution
 # ---------------------------------------------------------------------------
 
+
 class TestFormatAssumptionResolution:
     """Tests for format_assumption_resolution."""
 
@@ -85,9 +86,7 @@ class TestFormatAssumptionResolution:
         result = format_assumption_resolution(sample_assumptions)
         assert "## Assumption Resolution" in result
 
-    def test_resolved_assumptions_shown(
-        self, sample_assumptions: list[Assumption]
-    ) -> None:
+    def test_resolved_assumptions_shown(self, sample_assumptions: list[Assumption]) -> None:
         result = format_assumption_resolution(sample_assumptions)
         assert "### Already Determined" in result
         assert "VLAN 10" in result
@@ -101,9 +100,7 @@ class TestFormatAssumptionResolution:
         assert "Which VLAN ID should be used for IoT devices?" in result
         assert "Should the guest network use client isolation?" in result
 
-    def test_implications_included(
-        self, sample_assumptions: list[Assumption]
-    ) -> None:
+    def test_implications_included(self, sample_assumptions: list[Assumption]) -> None:
         result = format_assumption_resolution(sample_assumptions)
         assert "If VLAN 50" in result
         assert "If yes, wireless clients" in result
@@ -152,6 +149,7 @@ class TestFormatAssumptionResolution:
 # ---------------------------------------------------------------------------
 # Scenario 2: Plan confirmation
 # ---------------------------------------------------------------------------
+
 
 class TestFormatPlanConfirmation:
     """Tests for format_plan_confirmation."""
@@ -239,6 +237,7 @@ class TestFormatPlanConfirmation:
 # Scenario 3: CRITICAL risk confirmation
 # ---------------------------------------------------------------------------
 
+
 class TestFormatCriticalRiskConfirmation:
     """Tests for format_critical_risk_confirmation."""
 
@@ -288,9 +287,7 @@ class TestFormatCriticalRiskConfirmation:
             affected_path="path",
         )
         # Blockquote lines indicate visual distinction
-        blockquote_lines = [
-            line for line in result.splitlines() if line.startswith(">")
-        ]
+        blockquote_lines = [line for line in result.splitlines() if line.startswith(">")]
         assert len(blockquote_lines) >= 3
 
 
@@ -298,12 +295,11 @@ class TestFormatCriticalRiskConfirmation:
 # Scenario 4: Execution failure
 # ---------------------------------------------------------------------------
 
+
 class TestFormatExecutionFailure:
     """Tests for format_execution_failure."""
 
-    def test_execution_stopped_callout(
-        self, sample_steps: list[PlanStep]
-    ) -> None:
+    def test_execution_stopped_callout(self, sample_steps: list[PlanStep]) -> None:
         result = format_execution_failure(
             completed_steps=sample_steps[:2],
             failed_step=sample_steps[2],
@@ -311,9 +307,7 @@ class TestFormatExecutionFailure:
         )
         assert "> **EXECUTION STOPPED**" in result
 
-    def test_completed_steps_shown(
-        self, sample_steps: list[PlanStep]
-    ) -> None:
+    def test_completed_steps_shown(self, sample_steps: list[PlanStep]) -> None:
         result = format_execution_failure(
             completed_steps=sample_steps[:2],
             failed_step=sample_steps[2],
@@ -353,9 +347,7 @@ class TestFormatExecutionFailure:
         assert "leave the current state" in result
         assert "assess manually" in result
 
-    def test_failed_step_detail_included(
-        self, sample_steps: list[PlanStep]
-    ) -> None:
+    def test_failed_step_detail_included(self, sample_steps: list[PlanStep]) -> None:
         result = format_execution_failure(
             completed_steps=[],
             failed_step=sample_steps[0],
@@ -367,6 +359,7 @@ class TestFormatExecutionFailure:
 # ---------------------------------------------------------------------------
 # Scenario 5: Plan modification
 # ---------------------------------------------------------------------------
+
 
 class TestFormatPlanModification:
     """Tests for format_plan_modification."""
@@ -426,7 +419,7 @@ class TestFormatPlanModification:
         )
         result = format_plan_modification(
             original_steps=sample_steps,
-            modified_steps=sample_steps + [added_step],
+            modified_steps=[*sample_steps, added_step],
             reason="Added WiFi SSID",
         )
         assert "Step 4 (added)" in result
@@ -458,9 +451,7 @@ class TestFormatPlanModification:
         )
         assert "2 step(s) unchanged" in result
 
-    def test_fresh_confirmation_prompt(
-        self, sample_steps: list[PlanStep]
-    ) -> None:
+    def test_fresh_confirmation_prompt(self, sample_steps: list[PlanStep]) -> None:
         result = format_plan_modification(
             original_steps=sample_steps,
             modified_steps=sample_steps,
@@ -468,9 +459,7 @@ class TestFormatPlanModification:
         )
         assert "Confirm to proceed, or tell me what to change." in result
 
-    def test_updated_execution_steps_section(
-        self, sample_steps: list[PlanStep]
-    ) -> None:
+    def test_updated_execution_steps_section(self, sample_steps: list[PlanStep]) -> None:
         result = format_plan_modification(
             original_steps=sample_steps,
             modified_steps=sample_steps,
@@ -499,6 +488,7 @@ class TestFormatPlanModification:
 # ---------------------------------------------------------------------------
 # Data structure tests
 # ---------------------------------------------------------------------------
+
 
 class TestDataStructures:
     """Tests for Assumption and PlanStep dataclasses."""

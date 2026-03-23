@@ -41,7 +41,10 @@ class TestGetIDSAlerts:
 
         assert len(alerts) == 4
         client.get.assert_called_once_with(
-            "ids", "service", "queryAlerts", params={},
+            "ids",
+            "service",
+            "queryAlerts",
+            params={},
         )
 
     @pytest.mark.asyncio
@@ -109,7 +112,9 @@ class TestGetIDSAlerts:
         await opnsense__security__get_ids_alerts(client, hours=24)
 
         client.get.assert_called_once_with(
-            "ids", "service", "queryAlerts",
+            "ids",
+            "service",
+            "queryAlerts",
             params={"fileSince": "24"},
         )
 
@@ -161,7 +166,9 @@ class TestGetIDSRules:
         await opnsense__security__get_ids_rules(client, filter_text="SSH")
 
         client.get.assert_called_once_with(
-            "ids", "rule", "searchRule",
+            "ids",
+            "rule",
+            "searchRule",
             params={"searchPhrase": "SSH"},
         )
 
@@ -174,7 +181,9 @@ class TestGetIDSRules:
         await opnsense__security__get_ids_rules(client)
 
         client.get.assert_called_once_with(
-            "ids", "rule", "searchRule",
+            "ids",
+            "rule",
+            "searchRule",
             params={},
         )
 

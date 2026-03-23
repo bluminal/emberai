@@ -53,12 +53,12 @@ class CachedGatewayClient:
     # TTL per endpoint category (PRD Section 6.3).
     # Keys are suffix patterns matched against the request endpoint.
     ENDPOINT_TTLS: ClassVar[dict[str, int]] = {
-        "stat/device": 300,       # Device list: 5 min
-        "stat/health": 120,       # Site health: 2 min
-        "stat/sta": 30,           # Client list: 30 sec
-        "stat/event": 0,          # Events: no cache (always fresh)
+        "stat/device": 300,  # Device list: 5 min
+        "stat/health": 120,  # Site health: 2 min
+        "stat/sta": 30,  # Client list: 30 sec
+        "stat/event": 0,  # Events: no cache (always fresh)
         "rest/networkconf": 300,  # VLAN config: 5 min
-        "rest/wlanconf": 300,     # WLAN config: 5 min
+        "rest/wlanconf": 300,  # WLAN config: 5 min
     }
     DEFAULT_TTL: int = 300  # 5 min default
 

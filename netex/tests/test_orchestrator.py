@@ -27,6 +27,7 @@ from netex.workflows.workflow_state import Workflow, WorkflowState
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_registry(
     *,
     gateway: bool = True,
@@ -37,55 +38,70 @@ def _make_registry(
     registry = PluginRegistry(auto_discover=False)
 
     if gateway:
-        registry.register({
-            "name": "opnsense",
-            "version": "1.0.0",
-            "vendor": "OPNsense",
-            "roles": ["gateway"],
-            "skills": [
-                "interfaces", "firewall", "routing", "services",
-                "vpn", "diagnostics", "security", "firmware", "health",
-            ],
-            "tools": {
-                "interfaces": ["opnsense__interfaces__list_vlans"],
-                "firewall": [
-                    "opnsense__firewall__list_rules",
-                    "opnsense__firewall__add_rule",
+        registry.register(
+            {
+                "name": "opnsense",
+                "version": "1.0.0",
+                "vendor": "OPNsense",
+                "roles": ["gateway"],
+                "skills": [
+                    "interfaces",
+                    "firewall",
+                    "routing",
+                    "services",
+                    "vpn",
+                    "diagnostics",
+                    "security",
+                    "firmware",
+                    "health",
                 ],
-                "services": ["opnsense__services__list_dhcp"],
-                "diagnostics": ["opnsense__diagnostics__run_traceroute"],
-                "security": ["opnsense__security__list_ids_rules"],
-                "health": ["opnsense__health__system_info"],
-            },
-        })
+                "tools": {
+                    "interfaces": ["opnsense__interfaces__list_vlans"],
+                    "firewall": [
+                        "opnsense__firewall__list_rules",
+                        "opnsense__firewall__add_rule",
+                    ],
+                    "services": ["opnsense__services__list_dhcp"],
+                    "diagnostics": ["opnsense__diagnostics__run_traceroute"],
+                    "security": ["opnsense__security__list_ids_rules"],
+                    "health": ["opnsense__health__system_info"],
+                },
+            }
+        )
 
     if edge:
-        registry.register({
-            "name": "unifi",
-            "version": "1.0.0",
-            "vendor": "Ubiquiti",
-            "roles": ["edge"],
-            "skills": [
-                "topology", "config", "wifi", "clients",
-                "security", "health",
-            ],
-            "tools": {
-                "topology": [
-                    "unifi__topology__list_devices",
-                    "unifi__topology__get_device",
+        registry.register(
+            {
+                "name": "unifi",
+                "version": "1.0.0",
+                "vendor": "Ubiquiti",
+                "roles": ["edge"],
+                "skills": [
+                    "topology",
+                    "config",
+                    "wifi",
+                    "clients",
+                    "security",
+                    "health",
                 ],
-                "config": [
-                    "unifi__config__list_networks",
-                    "unifi__config__create_network",
-                ],
-                "wifi": ["unifi__wifi__list_wlans"],
-                "clients": ["unifi__clients__list_clients"],
-                "security": ["unifi__security__list_acls"],
-                "health": ["unifi__health__site_health"],
-            },
-        })
+                "tools": {
+                    "topology": [
+                        "unifi__topology__list_devices",
+                        "unifi__topology__get_device",
+                    ],
+                    "config": [
+                        "unifi__config__list_networks",
+                        "unifi__config__create_network",
+                    ],
+                    "wifi": ["unifi__wifi__list_wlans"],
+                    "clients": ["unifi__clients__list_clients"],
+                    "security": ["unifi__security__list_acls"],
+                    "health": ["unifi__health__site_health"],
+                },
+            }
+        )
 
-    for plugin in (extra_plugins or []):
+    for plugin in extra_plugins or []:
         registry.register(plugin)
 
     return registry
@@ -559,10 +575,13 @@ class TestRollback:
         async def rb_step_1():
             rollback_log.append("rolled back step 1")
 
-        result = await orch.rollback(wf, [
-            {"description": "Undo step 1", "fn": rb_step_1, "step_number": 1},
-            {"description": "Undo step 2", "fn": rb_step_2, "step_number": 2},
-        ])
+        result = await orch.rollback(
+            wf,
+            [
+                {"description": "Undo step 1", "fn": rb_step_1, "step_number": 1},
+                {"description": "Undo step 2", "fn": rb_step_2, "step_number": 2},
+            ],
+        )
 
         assert result["success"] is True
         assert result["rolled_back_steps"] == 2
@@ -587,11 +606,14 @@ class TestRollback:
         async def rb_fail():
             raise RuntimeError("Cannot undo")
 
-        result = await orch.rollback(wf, [
-            {"description": "Undo step 1", "fn": rb_ok, "step_number": 1},
-            {"description": "Undo step 2", "fn": rb_fail, "step_number": 2},
-            {"description": "Undo step 3", "fn": rb_ok, "step_number": 3},
-        ])
+        result = await orch.rollback(
+            wf,
+            [
+                {"description": "Undo step 1", "fn": rb_ok, "step_number": 1},
+                {"description": "Undo step 2", "fn": rb_fail, "step_number": 2},
+                {"description": "Undo step 3", "fn": rb_ok, "step_number": 3},
+            ],
+        )
 
         assert result["success"] is False
         assert wf.state == WorkflowState.ROLLBACK_FAILED
@@ -630,9 +652,12 @@ class TestRollback:
         async def rb_ok():
             pass
 
-        result = await orch.rollback(wf, [
-            {"description": "Undo step 1", "fn": rb_ok, "step_number": 1},
-        ])
+        result = await orch.rollback(
+            wf,
+            [
+                {"description": "Undo step 1", "fn": rb_ok, "step_number": 1},
+            ],
+        )
 
         assert len(result["step_results"]) == 1
         assert result["step_results"][0]["success"] is True
@@ -649,9 +674,12 @@ class TestRollback:
         wf.transition(WorkflowState.EXECUTING, "Executing")
         wf.transition(WorkflowState.FAILED, "Failed")
 
-        result = await orch.rollback(wf, [
-            {"description": "Undo step 1", "fn": None, "step_number": 1},
-        ])
+        result = await orch.rollback(
+            wf,
+            [
+                {"description": "Undo step 1", "fn": None, "step_number": 1},
+            ],
+        )
 
         assert result["success"] is True
         assert result["rolled_back_steps"] == 1
@@ -684,7 +712,9 @@ class TestOrchestratorHelpers:
         failed = PlanStep(2, "Edge", "Create network", "Network IoT", "Created")
 
         report = orch.format_execution_failure_report(
-            completed, failed, "Connection refused",
+            completed,
+            failed,
+            "Connection refused",
         )
 
         assert "EXECUTION STOPPED" in report

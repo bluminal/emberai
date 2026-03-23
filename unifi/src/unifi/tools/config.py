@@ -9,18 +9,20 @@ and creating port profiles.
 
 from __future__ import annotations
 
+import contextlib
 import logging
-import os
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.api.response import normalize_response
 from unifi.errors import ValidationError
 from unifi.safety import write_gate
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
+
+if TYPE_CHECKING:
+    from unifi.api.local_gateway_client import LocalGatewayClient
 
 logger = logging.getLogger(__name__)
 
@@ -128,29 +130,35 @@ def _compute_structural_diff(
         # Items in current but not in baseline
         for item_id in sorted(current_ids - baseline_ids):
             item = current_by_id[item_id]
-            added.append({
-                "section": section,
-                "id": item_id,
-                "name": item.get("name", ""),
-            })
+            added.append(
+                {
+                    "section": section,
+                    "id": item_id,
+                    "name": item.get("name", ""),
+                }
+            )
 
         # Items in baseline but not in current
         for item_id in sorted(baseline_ids - current_ids):
             item = baseline_by_id[item_id]
-            removed.append({
-                "section": section,
-                "id": item_id,
-                "name": item.get("name", ""),
-            })
+            removed.append(
+                {
+                    "section": section,
+                    "id": item_id,
+                    "name": item.get("name", ""),
+                }
+            )
 
         # Items in both but changed
         for item_id in sorted(current_ids & baseline_ids):
             if current_by_id[item_id] != baseline_by_id[item_id]:
-                modified.append({
-                    "section": section,
-                    "id": item_id,
-                    "name": current_by_id[item_id].get("name", ""),
-                })
+                modified.append(
+                    {
+                        "section": section,
+                        "id": item_id,
+                        "name": current_by_id[item_id].get("name", ""),
+                    }
+                )
 
     return {
         "added": added,
@@ -407,7 +415,6 @@ async def unifi__config__create_port_profile(
         _validate_vlan_id(tag_int, "tagged_vlans")
 
     # --- Resolve VLAN tag numbers to network ObjectIDs ---
-    from unifi.api.response import normalize_response as _norm_resp
 
     client = _get_client()
     try:
@@ -421,10 +428,8 @@ async def unifi__config__create_port_profile(
         oid = net.get("_id", "")
         tag_val = net.get("vlan")
         if tag_val is not None and oid:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 tag_to_oid[int(tag_val)] = oid
-            except (ValueError, TypeError):
-                pass
         # Default LAN (no vlan tag) → VLAN 1
         if not net.get("vlan_enabled", False) and oid:
             tag_to_oid[1] = oid
@@ -455,8 +460,7 @@ async def unifi__config__create_port_profile(
     profile_id = profile_data.get("_id", "")
 
     logger.info(
-        "Created port profile '%s' (id=%s) for site '%s': "
-        "native_vlan=%d, tagged=%s, poe=%s",
+        "Created port profile '%s' (id=%s) for site '%s': native_vlan=%d, tagged=%s, poe=%s",
         name,
         profile_id,
         site_id,
@@ -698,8 +702,7 @@ async def unifi__config__create_wlan(
     wlan_id = wlan_data.get("_id", "")
 
     logger.info(
-        "Created WLAN '%s' (id=%s) for site '%s': "
-        "network=%s, security=%s, band=%s, enabled=%s",
+        "Created WLAN '%s' (id=%s) for site '%s': network=%s, security=%s, band=%s, enabled=%s",
         name,
         wlan_id,
         site_id,

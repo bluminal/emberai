@@ -14,7 +14,6 @@ import pytest
 
 from opnsense.cache import CacheTTL, TTLCache
 
-
 # ---------------------------------------------------------------------------
 # CacheTTL constants
 # ---------------------------------------------------------------------------
@@ -374,16 +373,11 @@ class TestStampedeProtection:
             return "result"
 
         # Launch 10 concurrent requests for the same key.
-        tasks = [
-            asyncio.create_task(cache.get_or_fetch("key", slow_fetcher))
-            for _ in range(10)
-        ]
+        tasks = [asyncio.create_task(cache.get_or_fetch("key", slow_fetcher)) for _ in range(10)]
         results = await asyncio.gather(*tasks)
 
         assert all(r == "result" for r in results)
-        assert call_count == 1, (
-            f"Fetcher was called {call_count} times, expected 1"
-        )
+        assert call_count == 1, f"Fetcher was called {call_count} times, expected 1"
 
     @pytest.mark.asyncio
     async def test_stampede_fetcher_error_propagates_to_all(self) -> None:
@@ -395,10 +389,7 @@ class TestStampedeProtection:
             await asyncio.sleep(0.05)
             raise ValueError("API down")
 
-        tasks = [
-            asyncio.create_task(cache.get_or_fetch("key", failing_fetcher))
-            for _ in range(5)
-        ]
+        tasks = [asyncio.create_task(cache.get_or_fetch("key", failing_fetcher)) for _ in range(5)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         assert all(isinstance(r, ValueError) for r in results)

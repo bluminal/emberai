@@ -10,12 +10,11 @@ Covers:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from tests.fixtures import load_fixture
-
 
 # ---------------------------------------------------------------------------
 # Helpers -- mock client
@@ -204,24 +203,28 @@ class TestGetVPNStatus:
 
         ipsec_fixture = load_fixture("ipsec_sessions.json")
         wg_fixture = load_fixture("wireguard_peers.json")
-        ovpn_data = {"rows": [
-            {
-                "uuid": "ovpn-1",
-                "role": "server",
-                "proto": "udp",
-                "port": 1194,
-                "enabled": True,
-                "clients": 2,
-                "dev_type": "tun",
-                "description": "VPN Server",
-            },
-        ]}
+        ovpn_data = {
+            "rows": [
+                {
+                    "uuid": "ovpn-1",
+                    "role": "server",
+                    "proto": "udp",
+                    "port": 1194,
+                    "enabled": True,
+                    "clients": 2,
+                    "dev_type": "tun",
+                    "description": "VPN Server",
+                },
+            ]
+        }
 
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): ipsec_fixture,
-            ("openvpn", "instances", "search"): ovpn_data,
-            ("wireguard", "client", "search"): wg_fixture,
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): ipsec_fixture,
+                ("openvpn", "instances", "search"): ovpn_data,
+                ("wireguard", "client", "search"): wg_fixture,
+            }
+        )
 
         status = await opnsense__vpn__get_vpn_status(client)
 
@@ -236,11 +239,13 @@ class TestGetVPNStatus:
         from opnsense.tools.vpn import opnsense__vpn__get_vpn_status
 
         ipsec_fixture = load_fixture("ipsec_sessions.json")
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): ipsec_fixture,
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): ipsec_fixture,
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): {"rows": []},
+            }
+        )
 
         status = await opnsense__vpn__get_vpn_status(client)
 
@@ -254,11 +259,13 @@ class TestGetVPNStatus:
         from opnsense.tools.vpn import opnsense__vpn__get_vpn_status
 
         wg_fixture = load_fixture("wireguard_peers.json")
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): {"rows": []},
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): wg_fixture,
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): {"rows": []},
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): wg_fixture,
+            }
+        )
 
         status = await opnsense__vpn__get_vpn_status(client)
 
@@ -273,11 +280,13 @@ class TestGetVPNStatus:
 
         ipsec_fixture = load_fixture("ipsec_sessions.json")
         wg_fixture = load_fixture("wireguard_peers.json")
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): ipsec_fixture,
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): wg_fixture,
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): ipsec_fixture,
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): wg_fixture,
+            }
+        )
 
         status = await opnsense__vpn__get_vpn_status(client)
 
@@ -289,11 +298,13 @@ class TestGetVPNStatus:
     async def test_all_empty(self) -> None:
         from opnsense.tools.vpn import opnsense__vpn__get_vpn_status
 
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): {"rows": []},
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): {"rows": []},
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): {"rows": []},
+            }
+        )
 
         status = await opnsense__vpn__get_vpn_status(client)
 

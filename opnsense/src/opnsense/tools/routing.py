@@ -122,7 +122,9 @@ async def opnsense__routing__list_routes() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "routes", "routes", "searchRoute",
+            "routes",
+            "routes",
+            "searchRoute",
             cache_key="routing:routes",
             ttl=CacheTTL.ROUTES,
         )
@@ -169,7 +171,9 @@ async def opnsense__routing__list_gateways() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "routes", "gateway", "status",
+            "routes",
+            "gateway",
+            "status",
             cache_key="routing:gateways",
             ttl=CacheTTL.GATEWAYS,
         )
@@ -243,7 +247,9 @@ async def opnsense__routing__add_route(
     client = _get_client()
     try:
         write_result = await client.write(
-            "routes", "routes", "addRoute",
+            "routes",
+            "routes",
+            "addRoute",
             data={
                 "route": {
                     "network": network.strip(),
@@ -270,7 +276,9 @@ async def opnsense__routing__add_route(
 
     logger.info(
         "Added static route: %s via %s (%s)",
-        network, gateway, description,
+        network,
+        gateway,
+        description,
         extra={"component": "routing"},
     )
 

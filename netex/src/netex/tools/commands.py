@@ -45,6 +45,7 @@ logger = logging.getLogger("netex.tools.commands")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_registry() -> PluginRegistry:
     """Build a plugin registry with auto-discovery."""
     return PluginRegistry(auto_discover=True)
@@ -56,18 +57,22 @@ def _build_vlan_change_steps(
     """Convert VLAN definitions into change steps for agent assessment."""
     steps: list[dict[str, Any]] = []
     for vlan in vlans:
-        steps.append({
-            "subsystem": "vlan",
-            "action": "add",
-            "target": vlan.name,
-            "vlan_id": str(vlan.vlan_id),
-        })
-        if vlan.dhcp_enabled:
-            steps.append({
-                "subsystem": "dhcp",
+        steps.append(
+            {
+                "subsystem": "vlan",
                 "action": "add",
-                "target": f"dhcp-{vlan.name}",
-            })
+                "target": vlan.name,
+                "vlan_id": str(vlan.vlan_id),
+            }
+        )
+        if vlan.dhcp_enabled:
+            steps.append(
+                {
+                    "subsystem": "dhcp",
+                    "action": "add",
+                    "target": f"dhcp-{vlan.name}",
+                }
+            )
     return steps
 
 
@@ -86,15 +91,17 @@ def _build_provision_plan_steps(
     # Phase 1: Gateway VLAN interfaces
     for vlan in manifest.vlans:
         step_num += 1
-        steps.append({
-            "system": "gateway",
-            "description": f"Create VLAN interface {vlan.name} (ID {vlan.vlan_id})",
-            "detail": (
-                f"Subnet: {vlan.subnet}"
-                + (f", Gateway: {vlan.gateway}" if vlan.gateway else "")
-                + (f", Parent: {vlan.parent_interface}" if vlan.parent_interface else "")
-            ),
-        })
+        steps.append(
+            {
+                "system": "gateway",
+                "description": f"Create VLAN interface {vlan.name} (ID {vlan.vlan_id})",
+                "detail": (
+                    f"Subnet: {vlan.subnet}"
+                    + (f", Gateway: {vlan.gateway}" if vlan.gateway else "")
+                    + (f", Parent: {vlan.parent_interface}" if vlan.parent_interface else "")
+                ),
+            }
+        )
 
     # Phase 2: DHCP scopes
     for vlan in manifest.vlans:
@@ -103,58 +110,67 @@ def _build_provision_plan_steps(
             dhcp_detail = f"Interface: {vlan.name}"
             if vlan.dhcp_range_start and vlan.dhcp_range_end:
                 dhcp_detail += f", Range: {vlan.dhcp_range_start}-{vlan.dhcp_range_end}"
-            steps.append({
-                "system": "gateway",
-                "description": f"Configure DHCP for {vlan.name}",
-                "detail": dhcp_detail,
-            })
+            steps.append(
+                {
+                    "system": "gateway",
+                    "description": f"Configure DHCP for {vlan.name}",
+                    "detail": dhcp_detail,
+                }
+            )
 
     # Phase 3: Firewall aliases (one per VLAN subnet)
     for vlan in manifest.vlans:
         step_num += 1
-        steps.append({
-            "system": "gateway",
-            "description": f"Create firewall alias for {vlan.name}_net",
-            "detail": f"Type: network, Value: {vlan.subnet}",
-        })
+        steps.append(
+            {
+                "system": "gateway",
+                "description": f"Create firewall alias for {vlan.name}_net",
+                "detail": f"Type: network, Value: {vlan.subnet}",
+            }
+        )
 
     # Phase 4: Firewall rules from access policy
     for rule in manifest.access_policy:
         step_num += 1
         action_label = "Allow" if rule.action == PolicyAction.ALLOW else "Block"
-        steps.append({
-            "system": "gateway",
-            "description": (
-                f"{action_label} {rule.source} -> {rule.destination}"
-                + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
-            ),
-            "detail": (
-                rule.description
-                or f"{action_label} traffic from {rule.source}"
-                f" to {rule.destination}"
-            ),
-        })
+        steps.append(
+            {
+                "system": "gateway",
+                "description": (
+                    f"{action_label} {rule.source} -> {rule.destination}"
+                    + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
+                ),
+                "detail": (
+                    rule.description
+                    or f"{action_label} traffic from {rule.source} to {rule.destination}"
+                ),
+            }
+        )
 
     # Phase 5: Edge networks (VLAN objects on UniFi)
     for vlan in manifest.vlans:
         step_num += 1
-        steps.append({
-            "system": "edge",
-            "description": f"Create network {vlan.name} (VLAN {vlan.vlan_id})",
-            "detail": f"Subnet: {vlan.subnet}, Purpose: {vlan.purpose or 'general'}",
-        })
+        steps.append(
+            {
+                "system": "edge",
+                "description": f"Create network {vlan.name} (VLAN {vlan.vlan_id})",
+                "detail": f"Subnet: {vlan.subnet}, Purpose: {vlan.purpose or 'general'}",
+            }
+        )
 
     # Phase 6: WiFi SSIDs
     for wifi in manifest.wifi:
         step_num += 1
-        steps.append({
-            "system": "edge",
-            "description": f"Create SSID '{wifi.ssid}' bound to {wifi.vlan_name}",
-            "detail": (
-                f"Security: {wifi.security.value}, Band: {wifi.band}"
-                + (", Hidden" if wifi.hidden else "")
-            ),
-        })
+        steps.append(
+            {
+                "system": "edge",
+                "description": f"Create SSID '{wifi.ssid}' bound to {wifi.vlan_name}",
+                "detail": (
+                    f"Security: {wifi.security.value}, Band: {wifi.band}"
+                    + (", Hidden" if wifi.hidden else "")
+                ),
+            }
+        )
 
     # Phase 7: Port profiles
     for profile in manifest.port_profiles:
@@ -165,11 +181,13 @@ def _build_provision_plan_steps(
         if profile.tagged_vlans:
             detail_parts.append(f"Tagged: {', '.join(profile.tagged_vlans)}")
         detail_parts.append(f"PoE: {'on' if profile.poe_enabled else 'off'}")
-        steps.append({
-            "system": "edge",
-            "description": f"Create port profile '{profile.name}'",
-            "detail": ", ".join(detail_parts),
-        })
+        steps.append(
+            {
+                "system": "edge",
+                "description": f"Create port profile '{profile.name}'",
+                "detail": ", ".join(detail_parts),
+            }
+        )
 
     return steps
 
@@ -213,26 +231,30 @@ def _build_full_change_steps(
 
     # Firewall rules from access policy
     for rule in manifest.access_policy:
-        steps.append({
-            "subsystem": "firewall",
-            "action": "add",
-            "target": f"{rule.source}->{rule.destination}",
-            "action_type": "allow" if rule.action == PolicyAction.ALLOW else "deny",
-            "source": rule.source,
-            "destination": rule.destination,
-            "protocol": rule.protocol,
-            "port": rule.port,
-        })
+        steps.append(
+            {
+                "subsystem": "firewall",
+                "action": "add",
+                "target": f"{rule.source}->{rule.destination}",
+                "action_type": "allow" if rule.action == PolicyAction.ALLOW else "deny",
+                "source": rule.source,
+                "destination": rule.destination,
+                "protocol": rule.protocol,
+                "port": rule.port,
+            }
+        )
 
     # WiFi
     for wifi in manifest.wifi:
-        steps.append({
-            "subsystem": "wifi",
-            "action": "add",
-            "target": wifi.ssid,
-            "security": wifi.security.value,
-            "purpose": "",
-        })
+        steps.append(
+            {
+                "subsystem": "wifi",
+                "action": "add",
+                "target": wifi.ssid,
+                "security": wifi.security.value,
+                "purpose": "",
+            }
+        )
 
     return steps
 
@@ -258,18 +280,21 @@ def _security_findings_to_output(
     }
     for f in findings:
         sev = severity_map.get(f.severity.value, Severity.INFORMATIONAL)
-        output.append(Finding(
-            severity=sev,
-            title=f.description,
-            detail=f.why_it_matters or f.description,
-            recommendation=f.recommendation or None,
-        ))
+        output.append(
+            Finding(
+                severity=sev,
+                title=f.description,
+                detail=f.why_it_matters or f.description,
+                recommendation=f.recommendation or None,
+            )
+        )
     return output
 
 
 # ---------------------------------------------------------------------------
 # Task 139: netex network provision-site
 # ---------------------------------------------------------------------------
+
 
 @mcp_server.tool()
 async def netex__network__provision_site(
@@ -372,8 +397,7 @@ async def netex__network__provision_site(
     if dry_run:
         wf.transition(WorkflowState.CANCELLED, "Dry-run mode: plan generated without execution")
         return (
-            plan_output
-            + "\n\n*Dry-run mode: no changes made."
+            plan_output + "\n\n*Dry-run mode: no changes made."
             " Remove --dry-run and add --apply to execute.*"
         )
 
@@ -381,8 +405,7 @@ async def netex__network__provision_site(
     if not check_write_enabled("NETEX"):
         wf.transition(WorkflowState.CANCELLED, "Write operations disabled")
         return (
-            plan_output
-            + "\n\n**Write operations are disabled.** "
+            plan_output + "\n\n**Write operations are disabled.** "
             "Set `NETEX_WRITE_ENABLED=true` to enable."
         )
 
@@ -391,10 +414,7 @@ async def netex__network__provision_site(
             WorkflowState.AWAITING_CONFIRMATION,
             "Plan ready; awaiting --apply flag",
         )
-        return (
-            plan_output
-            + "\n\n**Plan-only mode.** Add `--apply` to execute this plan."
-        )
+        return plan_output + "\n\n**Plan-only mode.** Add `--apply` to execute this plan."
 
     # --- Phase 3: Execute ---
     wf.transition(
@@ -423,13 +443,15 @@ async def netex__network__provision_site(
 
     wf.transition(WorkflowState.COMPLETED, "All steps executed successfully")
 
-    execution_report.extend([
-        "",
-        f"**{len(plan_steps)} steps completed successfully.**",
-        "",
-        "*Suggested next step:* Run `netex verify-policy` with the same "
-        "manifest to confirm the network matches intent.",
-    ])
+    execution_report.extend(
+        [
+            "",
+            f"**{len(plan_steps)} steps completed successfully.**",
+            "",
+            "*Suggested next step:* Run `netex verify-policy` with the same "
+            "manifest to confirm the network matches intent.",
+        ]
+    )
 
     return "\n".join(execution_report)
 
@@ -437,6 +459,7 @@ async def netex__network__provision_site(
 # ---------------------------------------------------------------------------
 # Task 140: netex verify-policy
 # ---------------------------------------------------------------------------
+
 
 @mcp_server.tool()
 async def netex__network__verify_policy(
@@ -463,10 +486,7 @@ async def netex__network__verify_policy(
         Pass/fail report for each connectivity test.
     """
     if manifest_yaml is None and vlan_id is None:
-        return (
-            "**Error:** Provide either a manifest (--manifest) or a VLAN ID "
-            "(--vlan) to verify."
-        )
+        return "**Error:** Provide either a manifest (--manifest) or a VLAN ID (--vlan) to verify."
 
     _build_registry()
 
@@ -491,53 +511,60 @@ async def netex__network__verify_policy(
 
         # Test 1: VLAN existence on both layers
         for vlan in vlans_to_test:
-            test_results.append({
-                "test": f"VLAN {vlan.vlan_id} ({vlan.name}) exists on gateway",
-                "category": "vlan",
-                "status": "PASS",
-                "detail": f"Interface with VLAN ID {vlan.vlan_id}, subnet {vlan.subnet}",
-            })
-            test_results.append({
-                "test": f"VLAN {vlan.vlan_id} ({vlan.name}) exists on edge",
-                "category": "vlan",
-                "status": "PASS",
-                "detail": f"Network object with VLAN ID {vlan.vlan_id}",
-            })
+            test_results.append(
+                {
+                    "test": f"VLAN {vlan.vlan_id} ({vlan.name}) exists on gateway",
+                    "category": "vlan",
+                    "status": "PASS",
+                    "detail": f"Interface with VLAN ID {vlan.vlan_id}, subnet {vlan.subnet}",
+                }
+            )
+            test_results.append(
+                {
+                    "test": f"VLAN {vlan.vlan_id} ({vlan.name}) exists on edge",
+                    "category": "vlan",
+                    "status": "PASS",
+                    "detail": f"Network object with VLAN ID {vlan.vlan_id}",
+                }
+            )
 
         # Test 2: DHCP verification
         for vlan in vlans_to_test:
             if vlan.dhcp_enabled:
-                test_results.append({
-                    "test": f"DHCP active for {vlan.name}",
-                    "category": "dhcp",
-                    "status": "PASS",
-                    "detail": (
-                        f"Range: {vlan.dhcp_range_start or 'auto'}"
-                        f"-{vlan.dhcp_range_end or 'auto'}"
-                    ),
-                })
+                test_results.append(
+                    {
+                        "test": f"DHCP active for {vlan.name}",
+                        "category": "dhcp",
+                        "status": "PASS",
+                        "detail": (
+                            f"Range: {vlan.dhcp_range_start or 'auto'}"
+                            f"-{vlan.dhcp_range_end or 'auto'}"
+                        ),
+                    }
+                )
 
         # Test 3: Access policy tests
         policy_rules = manifest.access_policy
         if vlan_id is not None:
             vlan_names = {v.name for v in vlans_to_test}
             policy_rules = [
-                r for r in policy_rules
-                if r.source in vlan_names or r.destination in vlan_names
+                r for r in policy_rules if r.source in vlan_names or r.destination in vlan_names
             ]
 
         for rule in policy_rules:
             expected = "allowed" if rule.action == PolicyAction.ALLOW else "blocked"
-            test_results.append({
-                "test": (
-                    f"{rule.source} -> {rule.destination}"
-                    + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
-                    + f" is {expected}"
-                ),
-                "category": "connectivity",
-                "status": "PASS",
-                "detail": rule.description or f"Expected: {expected}",
-            })
+            test_results.append(
+                {
+                    "test": (
+                        f"{rule.source} -> {rule.destination}"
+                        + (f" ({rule.protocol}/{rule.port})" if rule.port != "any" else "")
+                        + f" is {expected}"
+                    ),
+                    "category": "connectivity",
+                    "status": "PASS",
+                    "detail": rule.description or f"Expected: {expected}",
+                }
+            )
 
         # Test 4: WiFi SSID-to-VLAN mapping
         wifi_defs = manifest.wifi
@@ -546,27 +573,33 @@ async def netex__network__verify_policy(
             wifi_defs = [w for w in wifi_defs if w.vlan_name in vlan_names]
 
         for wifi in wifi_defs:
-            test_results.append({
-                "test": f"SSID '{wifi.ssid}' bound to VLAN {wifi.vlan_name}",
-                "category": "wifi",
-                "status": "PASS",
-                "detail": f"Security: {wifi.security.value}",
-            })
+            test_results.append(
+                {
+                    "test": f"SSID '{wifi.ssid}' bound to VLAN {wifi.vlan_name}",
+                    "category": "wifi",
+                    "status": "PASS",
+                    "detail": f"Security: {wifi.security.value}",
+                }
+            )
     else:
         # Single VLAN check without manifest
         assert vlan_id is not None
-        test_results.append({
-            "test": f"VLAN {vlan_id} exists on gateway",
-            "category": "vlan",
-            "status": "PASS",
-            "detail": f"Checking VLAN ID {vlan_id}",
-        })
-        test_results.append({
-            "test": f"VLAN {vlan_id} exists on edge",
-            "category": "vlan",
-            "status": "PASS",
-            "detail": f"Checking VLAN ID {vlan_id}",
-        })
+        test_results.append(
+            {
+                "test": f"VLAN {vlan_id} exists on gateway",
+                "category": "vlan",
+                "status": "PASS",
+                "detail": f"Checking VLAN ID {vlan_id}",
+            }
+        )
+        test_results.append(
+            {
+                "test": f"VLAN {vlan_id} exists on edge",
+                "category": "vlan",
+                "status": "PASS",
+                "detail": f"Checking VLAN ID {vlan_id}",
+            }
+        )
 
     # Format results
     pass_count = sum(1 for t in test_results if t["status"] == "PASS")
@@ -624,6 +657,7 @@ async def netex__network__verify_policy(
 # Task 141: netex vlan provision-batch
 # ---------------------------------------------------------------------------
 
+
 @mcp_server.tool()
 async def netex__vlan__provision_batch(
     manifest_yaml: str,
@@ -680,25 +714,30 @@ async def netex__vlan__provision_batch(
     rollback: list[str] = []
 
     for vlan in manifest.vlans:
-        plan_steps.append({
-            "system": "gateway",
-            "description": f"Create VLAN interface {vlan.name} (ID {vlan.vlan_id})",
-            "detail": f"Subnet: {vlan.subnet}",
-        })
-        if vlan.dhcp_enabled:
-            plan_steps.append({
+        plan_steps.append(
+            {
                 "system": "gateway",
-                "description": f"Configure DHCP for {vlan.name}",
-                "detail": (
-                    f"Range: {vlan.dhcp_range_start or 'auto'}"
-                    f"-{vlan.dhcp_range_end or 'auto'}"
-                ),
-            })
-        plan_steps.append({
-            "system": "edge",
-            "description": f"Create network {vlan.name} (VLAN {vlan.vlan_id})",
-            "detail": f"Subnet: {vlan.subnet}",
-        })
+                "description": f"Create VLAN interface {vlan.name} (ID {vlan.vlan_id})",
+                "detail": f"Subnet: {vlan.subnet}",
+            }
+        )
+        if vlan.dhcp_enabled:
+            plan_steps.append(
+                {
+                    "system": "gateway",
+                    "description": f"Configure DHCP for {vlan.name}",
+                    "detail": (
+                        f"Range: {vlan.dhcp_range_start or 'auto'}-{vlan.dhcp_range_end or 'auto'}"
+                    ),
+                }
+            )
+        plan_steps.append(
+            {
+                "system": "edge",
+                "description": f"Create network {vlan.name} (VLAN {vlan.vlan_id})",
+                "detail": f"Subnet: {vlan.subnet}",
+            }
+        )
 
         # Rollback in reverse
         rollback.insert(0, f"Remove network '{vlan.name}' from edge")
@@ -728,8 +767,7 @@ async def netex__vlan__provision_batch(
     if not check_write_enabled("NETEX"):
         wf.transition(WorkflowState.CANCELLED, "Write operations disabled")
         return (
-            plan_output
-            + "\n\n**Write operations are disabled.** "
+            plan_output + "\n\n**Write operations are disabled.** "
             "Set `NETEX_WRITE_ENABLED=true` to enable."
         )
 
@@ -756,10 +794,12 @@ async def netex__vlan__provision_batch(
 
     wf.transition(WorkflowState.COMPLETED, "Batch completed")
 
-    report_lines.extend([
-        "",
-        f"**{len(plan_steps)} steps completed. {len(manifest.vlans)} VLANs provisioned.**",
-    ])
+    report_lines.extend(
+        [
+            "",
+            f"**{len(plan_steps)} steps completed. {len(manifest.vlans)} VLANs provisioned.**",
+        ]
+    )
 
     return "\n".join(report_lines)
 
@@ -767,6 +807,7 @@ async def netex__vlan__provision_batch(
 # ---------------------------------------------------------------------------
 # Task 142: netex dns trace
 # ---------------------------------------------------------------------------
+
 
 @mcp_server.tool()
 async def netex__dns__trace(
@@ -814,21 +855,25 @@ async def netex__dns__trace(
     ]
 
     # Step 1: Resolution path
-    lines.extend([
-        "### Resolution Path",
-        "",
-        f"1. **Query:** Resolve `{hostname}`",
-        "2. **Local overrides:** Checking Unbound host overrides...",
-        "3. **Forwarding:** Checking upstream forwarder configuration...",
-        "4. **Response:** Resolution result",
-        "",
-    ])
+    lines.extend(
+        [
+            "### Resolution Path",
+            "",
+            f"1. **Query:** Resolve `{hostname}`",
+            "2. **Local overrides:** Checking Unbound host overrides...",
+            "3. **Forwarding:** Checking upstream forwarder configuration...",
+            "4. **Response:** Resolution result",
+            "",
+        ]
+    )
 
     # Step 2: Available DNS tools
-    lines.extend([
-        "### Available DNS Tools",
-        "",
-    ])
+    lines.extend(
+        [
+            "### Available DNS Tools",
+            "",
+        ]
+    )
     for tool in svc_tools:
         lines.append(f"- `{tool['tool']}` ({tool['plugin']})")
     lines.append("")
@@ -836,21 +881,27 @@ async def netex__dns__trace(
     # Step 3: Client context
     if client_mac:
         client_tools = registry.tools_for_skill("clients")
-        lines.extend([
-            f"### Client Context (MAC: {client_mac})",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### Client Context (MAC: {client_mac})",
+                "",
+            ]
+        )
         if client_tools:
-            lines.extend([
-                f"- Looking up client `{client_mac}` for VLAN identification",
-                "- Checking firewall rules for DNS access from client's VLAN",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"- Looking up client `{client_mac}` for VLAN identification",
+                    "- Checking firewall rules for DNS access from client's VLAN",
+                    "",
+                ]
+            )
         else:
-            lines.extend([
-                "- *No client tools available -- cannot determine client VLAN.*",
-                "",
-            ])
+            lines.extend(
+                [
+                    "- *No client tools available -- cannot determine client VLAN.*",
+                    "",
+                ]
+            )
 
     lines.append(
         "*Full DNS trace requires tool invocation via the orchestrator. "
@@ -863,6 +914,7 @@ async def netex__dns__trace(
 # ---------------------------------------------------------------------------
 # Task 142: netex vpn status
 # ---------------------------------------------------------------------------
+
 
 @mcp_server.tool()
 async def netex__vpn__status(
@@ -901,10 +953,12 @@ async def netex__vpn__status(
         lines.append("")
 
     # List available VPN tools
-    lines.extend([
-        "### Available VPN Tools",
-        "",
-    ])
+    lines.extend(
+        [
+            "### Available VPN Tools",
+            "",
+        ]
+    )
     for tool in vpn_tools:
         lines.append(f"- `{tool['tool']}` ({tool['plugin']})")
     lines.append("")
@@ -912,13 +966,15 @@ async def netex__vpn__status(
     # Check for edge correlation
     client_tools = registry.tools_for_skill("clients")
     if client_tools:
-        lines.extend([
-            "### Cross-Layer Correlation",
-            "",
-            "Edge client data available -- VPN client IPs will be correlated "
-            "against the switching layer to confirm end-to-end reachability.",
-            "",
-        ])
+        lines.extend(
+            [
+                "### Cross-Layer Correlation",
+                "",
+                "Edge client data available -- VPN client IPs will be correlated "
+                "against the switching layer to confirm end-to-end reachability.",
+                "",
+            ]
+        )
 
     lines.append(
         "*Full VPN status requires tool invocation via the orchestrator. "
@@ -931,6 +987,7 @@ async def netex__vpn__status(
 # ---------------------------------------------------------------------------
 # Task 142: netex policy sync
 # ---------------------------------------------------------------------------
+
 
 @mcp_server.tool()
 async def netex__policy__sync(
@@ -995,8 +1052,7 @@ async def netex__policy__sync(
             lines.append(f"### {domain_name}")
             lines.append("")
             lines.append(
-                f"- Tools available: {len(tools1)}"
-                + (f" + {len(tools2)}" if tools2 else "")
+                f"- Tools available: {len(tools1)}" + (f" + {len(tools2)}" if tools2 else "")
             )
             lines.append("- Status: *Awaiting tool invocation*")
             lines.append("")
@@ -1007,25 +1063,30 @@ async def netex__policy__sync(
             lines.append("")
 
     if dry_run:
-        lines.extend([
-            "---",
-            "",
-            "*Dry-run mode: no changes will be made. "
-            "Remove `--dry-run` and add `--apply` to execute corrections.*",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "*Dry-run mode: no changes will be made. "
+                "Remove `--dry-run` and add `--apply` to execute corrections.*",
+            ]
+        )
     elif not check_write_enabled("NETEX"):
-        lines.extend([
-            "---",
-            "",
-            "**Write operations are disabled.** "
-            "Set `NETEX_WRITE_ENABLED=true` to enable.",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "**Write operations are disabled.** Set `NETEX_WRITE_ENABLED=true` to enable.",
+            ]
+        )
     elif not apply:
-        lines.extend([
-            "---",
-            "",
-            "**Plan-only mode.** Add `--apply` to execute corrections.",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "**Plan-only mode.** Add `--apply` to execute corrections.",
+            ]
+        )
 
     lines.append("")
     lines.append(

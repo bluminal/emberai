@@ -182,7 +182,7 @@ def format_table(
     for row in rows:
         # Pad row to match header count if needed.
         padded_row = list(row) + [""] * max(0, len(headers) - len(row))
-        lines.append(_format_row(padded_row[:len(headers)]))
+        lines.append(_format_row(padded_row[: len(headers)]))
 
     lines.append("")
     return "\n".join(lines)

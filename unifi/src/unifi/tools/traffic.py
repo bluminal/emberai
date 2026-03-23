@@ -9,10 +9,8 @@ historical WAN usage via the Local Gateway API.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
-from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
 
@@ -79,13 +77,15 @@ async def unifi__traffic__get_bandwidth(
     # Build history from hourly stats (limit to requested hours)
     history: list[dict[str, Any]] = []
     for entry in stat_normalized.data[-hours:]:
-        history.append({
-            "timestamp": entry.get("time", entry.get("datetime")),
-            "wan_rx_bytes": entry.get("wan-rx_bytes", 0),
-            "wan_tx_bytes": entry.get("wan-tx_bytes", 0),
-            "lan_rx_bytes": entry.get("lan-rx_bytes", 0),
-            "lan_tx_bytes": entry.get("lan-tx_bytes", 0),
-        })
+        history.append(
+            {
+                "timestamp": entry.get("time", entry.get("datetime")),
+                "wan_rx_bytes": entry.get("wan-rx_bytes", 0),
+                "wan_tx_bytes": entry.get("wan-tx_bytes", 0),
+                "lan_rx_bytes": entry.get("lan-rx_bytes", 0),
+                "lan_tx_bytes": entry.get("lan-tx_bytes", 0),
+            }
+        )
 
     result: dict[str, Any] = {
         "wan": {
@@ -150,31 +150,37 @@ async def unifi__traffic__get_dpi_stats(
 
         if by_app:
             for app_entry in by_app:
-                dpi_entries.append({
-                    "application": app_entry.get("app", app_entry.get("name", "")),
-                    "category": app_entry.get("cat", ""),
-                    "tx_bytes": app_entry.get("tx_bytes", 0),
-                    "rx_bytes": app_entry.get("rx_bytes", 0),
-                    "session_count": app_entry.get("clients", app_entry.get("sessions", 0)),
-                })
+                dpi_entries.append(
+                    {
+                        "application": app_entry.get("app", app_entry.get("name", "")),
+                        "category": app_entry.get("cat", ""),
+                        "tx_bytes": app_entry.get("tx_bytes", 0),
+                        "rx_bytes": app_entry.get("rx_bytes", 0),
+                        "session_count": app_entry.get("clients", app_entry.get("sessions", 0)),
+                    }
+                )
         elif by_cat:
             for cat_entry in by_cat:
-                dpi_entries.append({
-                    "application": "",
-                    "category": cat_entry.get("cat", cat_entry.get("name", "")),
-                    "tx_bytes": cat_entry.get("tx_bytes", 0),
-                    "rx_bytes": cat_entry.get("rx_bytes", 0),
-                    "session_count": cat_entry.get("clients", cat_entry.get("sessions", 0)),
-                })
+                dpi_entries.append(
+                    {
+                        "application": "",
+                        "category": cat_entry.get("cat", cat_entry.get("name", "")),
+                        "tx_bytes": cat_entry.get("tx_bytes", 0),
+                        "rx_bytes": cat_entry.get("rx_bytes", 0),
+                        "session_count": cat_entry.get("clients", cat_entry.get("sessions", 0)),
+                    }
+                )
         elif not by_app and not by_cat:
             # Flat entry format
-            dpi_entries.append({
-                "application": raw.get("app", raw.get("name", "")),
-                "category": raw.get("cat", raw.get("category", "")),
-                "tx_bytes": raw.get("tx_bytes", 0),
-                "rx_bytes": raw.get("rx_bytes", 0),
-                "session_count": raw.get("clients", raw.get("sessions", 0)),
-            })
+            dpi_entries.append(
+                {
+                    "application": raw.get("app", raw.get("name", "")),
+                    "category": raw.get("cat", raw.get("category", "")),
+                    "tx_bytes": raw.get("tx_bytes", 0),
+                    "rx_bytes": raw.get("rx_bytes", 0),
+                    "session_count": raw.get("clients", raw.get("sessions", 0)),
+                }
+            )
 
     logger.info(
         "Retrieved %d DPI entries for site '%s'",
@@ -274,11 +280,13 @@ async def unifi__traffic__get_wan_usage(
         download_bytes = entry.get("wan-rx_bytes", 0)
         upload_bytes = entry.get("wan-tx_bytes", 0)
 
-        usage.append({
-            "date": entry.get("time", entry.get("datetime", "")),
-            "download_gb": round(download_bytes / 1_073_741_824, 2),
-            "upload_gb": round(upload_bytes / 1_073_741_824, 2),
-        })
+        usage.append(
+            {
+                "date": entry.get("time", entry.get("datetime", "")),
+                "download_gb": round(download_bytes / 1_073_741_824, 2),
+                "upload_gb": round(upload_bytes / 1_073_741_824, 2),
+            }
+        )
 
     logger.info(
         "Retrieved %d days of WAN usage for site '%s'",

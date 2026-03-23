@@ -46,7 +46,9 @@ def _classify_snapshot(snapshot: dict[str, Any]) -> list[Finding]:
             Finding(
                 severity=Severity.WARNING,
                 title="No networks configured",
-                detail="No network configurations found. This is unusual and may indicate a problem.",
+                detail=(
+                    "No network configurations found. This is unusual and may indicate a problem."
+                ),
                 recommendation="Verify site configuration and network setup.",
             )
         )
@@ -56,7 +58,9 @@ def _classify_snapshot(snapshot: dict[str, Any]) -> list[Finding]:
             Finding(
                 severity=Severity.WARNING,
                 title="No WLANs configured",
-                detail="No wireless networks configured. Wireless clients will not be able to connect.",
+                detail=(
+                    "No wireless networks configured. Wireless clients will not be able to connect."
+                ),
                 recommendation="Configure at least one WLAN if wireless access is needed.",
             )
         )
@@ -221,8 +225,7 @@ async def config_review(site_id: str = "default", drift: bool = False) -> str:
     diff = await unifi__config__diff_baseline(site_id) if drift else None
 
     logger.info(
-        "Config review data gathered for site '%s': "
-        "networks=%d, wlans=%d, rules=%d",
+        "Config review data gathered for site '%s': networks=%d, wlans=%d, rules=%d",
         site_id,
         snapshot.get("network_count", 0),
         snapshot.get("wlan_count", 0),
@@ -259,9 +262,7 @@ async def config_review(site_id: str = "default", drift: bool = False) -> str:
     if warning_count == 0:
         detail = "Configuration review complete -- no issues detected."
 
-    sections.append(
-        format_summary("Config Review", summary_stats, detail=detail)
-    )
+    sections.append(format_summary("Config Review", summary_stats, detail=detail))
 
     # Severity report (only if there are findings).
     if findings:

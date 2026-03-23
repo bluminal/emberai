@@ -16,6 +16,7 @@ from netex.registry.contract_validator import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def validator() -> ContractValidator:
     return ContractValidator()
@@ -43,6 +44,7 @@ def _valid_plugin_info() -> dict:
 # Valid plugin
 # ---------------------------------------------------------------------------
 
+
 class TestValidPlugin:
     def test_valid_plugin_passes(self, validator: ContractValidator) -> None:
         report = validator.validate(_valid_plugin_info())
@@ -63,6 +65,7 @@ class TestValidPlugin:
 # ---------------------------------------------------------------------------
 # Missing required fields
 # ---------------------------------------------------------------------------
+
 
 class TestMissingRequired:
     def test_missing_name(self, validator: ContractValidator) -> None:
@@ -100,13 +103,16 @@ class TestMissingRequired:
 # Name validation
 # ---------------------------------------------------------------------------
 
+
 class TestNameValidation:
     def test_valid_name(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["name"] = "my-plugin"
         report = validator.validate(info)
-        assert not any(r.field == "name" and r.level == ValidationLevel.ERROR
-                       and "lowercase" in r.message for r in report.results)
+        assert not any(
+            r.field == "name" and r.level == ValidationLevel.ERROR and "lowercase" in r.message
+            for r in report.results
+        )
 
     def test_invalid_name_uppercase(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
@@ -125,14 +131,14 @@ class TestNameValidation:
 # Roles validation
 # ---------------------------------------------------------------------------
 
+
 class TestRolesValidation:
     def test_known_roles(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["roles"] = ["gateway", "edge"]
         report = validator.validate(info)
         assert not any(
-            r.field == "roles" and r.level == ValidationLevel.ERROR
-            for r in report.results
+            r.field == "roles" and r.level == ValidationLevel.ERROR for r in report.results
         )
 
     def test_unknown_role_warning(self, validator: ContractValidator) -> None:
@@ -140,9 +146,7 @@ class TestRolesValidation:
         info["roles"] = ["unknown_role"]
         report = validator.validate(info)
         assert any(
-            r.field == "roles"
-            and r.level == ValidationLevel.WARNING
-            for r in report.results
+            r.field == "roles" and r.level == ValidationLevel.WARNING for r in report.results
         )
 
     def test_roles_not_list_error(self, validator: ContractValidator) -> None:
@@ -156,14 +160,14 @@ class TestRolesValidation:
 # Skills validation
 # ---------------------------------------------------------------------------
 
+
 class TestSkillsValidation:
     def test_known_skills(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["skills"] = ["topology", "firewall"]
         report = validator.validate(info)
         assert not any(
-            r.field == "skills" and r.level == ValidationLevel.ERROR
-            for r in report.results
+            r.field == "skills" and r.level == ValidationLevel.ERROR for r in report.results
         )
 
     def test_unknown_skill_warning(self, validator: ContractValidator) -> None:
@@ -171,9 +175,7 @@ class TestSkillsValidation:
         info["skills"] = ["unknown_skill"]
         report = validator.validate(info)
         assert any(
-            r.field == "skills"
-            and r.level == ValidationLevel.WARNING
-            for r in report.results
+            r.field == "skills" and r.level == ValidationLevel.WARNING for r in report.results
         )
 
 
@@ -181,14 +183,14 @@ class TestSkillsValidation:
 # Write flag validation
 # ---------------------------------------------------------------------------
 
+
 class TestWriteFlagValidation:
     def test_valid_write_flag(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["write_flag"] = "MYPLUGIN_WRITE_ENABLED"
         report = validator.validate(info)
         assert not any(
-            r.field == "write_flag" and r.level == ValidationLevel.ERROR
-            for r in report.results
+            r.field == "write_flag" and r.level == ValidationLevel.ERROR for r in report.results
         )
 
     def test_invalid_write_flag_pattern(self, validator: ContractValidator) -> None:
@@ -196,9 +198,7 @@ class TestWriteFlagValidation:
         info["write_flag"] = "bad_flag"
         report = validator.validate(info)
         assert any(
-            r.field == "write_flag"
-            and r.level == ValidationLevel.WARNING
-            for r in report.results
+            r.field == "write_flag" and r.level == ValidationLevel.WARNING for r in report.results
         )
 
 
@@ -206,14 +206,14 @@ class TestWriteFlagValidation:
 # Contract version validation
 # ---------------------------------------------------------------------------
 
+
 class TestContractVersion:
     def test_valid_contract_version(self, validator: ContractValidator) -> None:
         info = _valid_plugin_info()
         info["contract_version"] = "1.0.0"
         report = validator.validate(info)
         assert not any(
-            r.field == "contract_version"
-            and r.level == ValidationLevel.ERROR
+            r.field == "contract_version" and r.level == ValidationLevel.ERROR
             for r in report.results
         )
 
@@ -222,8 +222,7 @@ class TestContractVersion:
         info["contract_version"] = "not-semver"
         report = validator.validate(info)
         assert any(
-            r.field == "contract_version"
-            and r.level == ValidationLevel.ERROR
+            r.field == "contract_version" and r.level == ValidationLevel.ERROR
             for r in report.results
         )
 
@@ -231,6 +230,7 @@ class TestContractVersion:
 # ---------------------------------------------------------------------------
 # Tool name validation
 # ---------------------------------------------------------------------------
+
 
 class TestToolNameValidation:
     def test_valid_tool_name(self, validator: ContractValidator) -> None:
@@ -257,9 +257,9 @@ class TestToolNameValidation:
         # The hyphen in plugin name is valid in the name field, but the
         # tool name pattern requires lowercase alphanumeric only
         tool_errors = [
-            r for r in report.results
-            if "tool" in r.field.lower()
-            and r.level == ValidationLevel.ERROR
+            r
+            for r in report.results
+            if "tool" in r.field.lower() and r.level == ValidationLevel.ERROR
         ]
         # test-plugin has hyphen, which is invalid in tool names
         assert len(tool_errors) > 0
@@ -268,6 +268,7 @@ class TestToolNameValidation:
 # ---------------------------------------------------------------------------
 # SKILL.md frontmatter validation
 # ---------------------------------------------------------------------------
+
 
 class TestSkillMdValidation:
     def test_valid_frontmatter(self, validator: ContractValidator) -> None:
@@ -313,6 +314,7 @@ class TestSkillMdValidation:
 # Orchestrator validation
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorValidation:
     def test_orchestrator_no_roles_warning(self, validator: ContractValidator) -> None:
         info = {
@@ -332,29 +334,46 @@ class TestOrchestratorValidation:
 # ContractValidationReport
 # ---------------------------------------------------------------------------
 
+
 class TestContractValidationReport:
     def test_is_valid_no_errors(self) -> None:
         report = ContractValidationReport(plugin_name="test")
-        report.results.append(ValidationResult(
-            level=ValidationLevel.WARNING, field="test", message="just a warning",
-        ))
+        report.results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                field="test",
+                message="just a warning",
+            )
+        )
         assert report.is_valid
 
     def test_is_valid_with_errors(self) -> None:
         report = ContractValidationReport(plugin_name="test")
-        report.results.append(ValidationResult(
-            level=ValidationLevel.ERROR, field="test", message="an error",
-        ))
+        report.results.append(
+            ValidationResult(
+                level=ValidationLevel.ERROR,
+                field="test",
+                message="an error",
+            )
+        )
         assert not report.is_valid
 
     def test_errors_property(self) -> None:
         report = ContractValidationReport(plugin_name="test")
-        report.results.append(ValidationResult(
-            level=ValidationLevel.ERROR, field="a", message="err",
-        ))
-        report.results.append(ValidationResult(
-            level=ValidationLevel.WARNING, field="b", message="warn",
-        ))
+        report.results.append(
+            ValidationResult(
+                level=ValidationLevel.ERROR,
+                field="a",
+                message="err",
+            )
+        )
+        report.results.append(
+            ValidationResult(
+                level=ValidationLevel.WARNING,
+                field="b",
+                message="warn",
+            )
+        )
         assert len(report.errors) == 1
         assert len(report.warnings) == 1
 
@@ -362,7 +381,11 @@ class TestContractValidationReport:
         report = ContractValidationReport(plugin_name="test")
         assert "PASS" in report.format_report()
 
-        report.results.append(ValidationResult(
-            level=ValidationLevel.ERROR, field="x", message="fail",
-        ))
+        report.results.append(
+            ValidationResult(
+                level=ValidationLevel.ERROR,
+                field="x",
+                message="fail",
+            )
+        )
         assert "FAIL" in report.format_report()

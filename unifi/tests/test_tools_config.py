@@ -13,13 +13,11 @@ from unifi.errors import APIError, NetworkError
 from unifi.tools.config import (
     _baselines,
     _compute_structural_diff,
-    _fetch_config_data,
     _get_client,
     unifi__config__diff_baseline,
     unifi__config__get_backup_state,
     unifi__config__get_config_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -293,13 +291,9 @@ class TestDiffBaseline:
         async def mock_get_normalized(endpoint: str) -> NormalizedResponse:
             nonlocal call_count
             if "networkconf" in endpoint:
-                return NormalizedResponse(
-                    data=[{"_id": "net1", "name": "LAN"}], count=1, meta={}
-                )
+                return NormalizedResponse(data=[{"_id": "net1", "name": "LAN"}], count=1, meta={})
             elif "wlanconf" in endpoint:
-                return NormalizedResponse(
-                    data=[{"_id": "wlan1", "name": "Home"}], count=1, meta={}
-                )
+                return NormalizedResponse(data=[{"_id": "wlan1", "name": "Home"}], count=1, meta={})
             elif "firewallrule" in endpoint:
                 return NormalizedResponse(data=[], count=0, meta={})
             return NormalizedResponse(data=[], count=0, meta={})
@@ -329,9 +323,7 @@ class TestDiffBaseline:
                 return NormalizedResponse(
                     data=[{"_id": "net1", "name": "NewLAN"}], count=1, meta={}
                 )
-            elif "wlanconf" in endpoint:
-                return NormalizedResponse(data=[], count=0, meta={})
-            elif "firewallrule" in endpoint:
+            elif "wlanconf" in endpoint or "firewallrule" in endpoint:
                 return NormalizedResponse(data=[], count=0, meta={})
             return NormalizedResponse(data=[], count=0, meta={})
 
@@ -357,9 +349,7 @@ class TestDiffBaseline:
         mock_client.close = AsyncMock()
 
         with patch("unifi.tools.config._get_client", return_value=mock_client):
-            result = await unifi__config__diff_baseline(
-                site_id="default", baseline_id="v1.0"
-            )
+            result = await unifi__config__diff_baseline(site_id="default", baseline_id="v1.0")
 
         assert result["added"] == []
         assert result["removed"] == []
@@ -377,9 +367,7 @@ class TestGetBackupState:
     async def test_returns_backup_state(self) -> None:
         fixture = load_fixture("sysinfo.json")
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            return_value=_normalized_from_fixture(fixture)
-        )
+        mock_client.get_normalized = AsyncMock(return_value=_normalized_from_fixture(fixture))
         mock_client.close = AsyncMock()
 
         with patch("unifi.tools.config._get_client", return_value=mock_client):
@@ -390,24 +378,18 @@ class TestGetBackupState:
         assert result["size_mb"] == 12.5
         assert result["cloud_enabled"] is True
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/default/stat/sysinfo"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/stat/sysinfo")
 
     async def test_custom_site_id(self) -> None:
         fixture = load_fixture("sysinfo.json")
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            return_value=_normalized_from_fixture(fixture)
-        )
+        mock_client.get_normalized = AsyncMock(return_value=_normalized_from_fixture(fixture))
         mock_client.close = AsyncMock()
 
         with patch("unifi.tools.config._get_client", return_value=mock_client):
             await unifi__config__get_backup_state(site_id="remote")
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/remote/stat/sysinfo"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/remote/stat/sysinfo")
 
     async def test_empty_sysinfo(self) -> None:
         mock_client = AsyncMock()
@@ -434,9 +416,7 @@ class TestGetBackupState:
             "meta": {"rc": "ok"},
         }
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            return_value=_normalized_from_fixture(fixture)
-        )
+        mock_client.get_normalized = AsyncMock(return_value=_normalized_from_fixture(fixture))
         mock_client.close = AsyncMock()
 
         with patch("unifi.tools.config._get_client", return_value=mock_client):
@@ -447,9 +427,7 @@ class TestGetBackupState:
 
     async def test_client_closed_on_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=NetworkError("timeout")
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=NetworkError("timeout"))
         mock_client.close = AsyncMock()
 
         with (

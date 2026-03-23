@@ -35,7 +35,7 @@ from opnsense.output import (
     format_summary,
     format_table,
 )
-from opnsense.safety import check_write_enabled, describe_write_status, write_gate
+from opnsense.safety import check_write_enabled, describe_write_status
 from opnsense.server import mcp_server
 
 logger = logging.getLogger(__name__)
@@ -71,9 +71,10 @@ def _get_client():
 
 @mcp_server.tool()
 async def opnsense_scan() -> str:
-    """Full OPNsense inventory -- interfaces, VLANs, firewall rules, routes, gateways, VPNs, DNS, DHCP.
+    """Full OPNsense inventory.
 
-    Collects and formats a comprehensive snapshot of the entire OPNsense
+    Covers interfaces, VLANs, firewall rules, routes, gateways,
+    VPNs, DNS, DHCP. Collects and formats a comprehensive snapshot of the entire OPNsense
     configuration and operational state. Useful for initial discovery and
     documentation.
 
@@ -187,35 +188,40 @@ async def opnsense_health() -> str:
         from opnsense.tools.routing import opnsense__routing__list_gateways
 
         gateways = await opnsense__routing__list_gateways()
-        online = [g for g in gateways if g.get("status", "").lower() in ("online", "up")]
         offline = [g for g in gateways if g.get("status", "").lower() in ("offline", "down")]
 
         for gw in offline:
-            findings.append(Finding(
-                severity=Severity.CRITICAL,
-                title=f"Gateway offline: {gw.get('name', '')}",
-                detail=(
-                    f"Gateway {gw.get('name', '')} at {gw.get('gateway', '')} "
-                    f"on {gw.get('interface', '')} is down."
-                ),
-                recommendation="Check physical connectivity and upstream provider.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.CRITICAL,
+                    title=f"Gateway offline: {gw.get('name', '')}",
+                    detail=(
+                        f"Gateway {gw.get('name', '')} at {gw.get('gateway', '')} "
+                        f"on {gw.get('interface', '')} is down."
+                    ),
+                    recommendation="Check physical connectivity and upstream provider.",
+                )
+            )
 
         for gw in gateways:
             rtt = gw.get("rtt_ms")
             if rtt is not None and rtt >= 200.0:
-                findings.append(Finding(
-                    severity=Severity.HIGH,
-                    title=f"High latency on gateway {gw.get('name', '')}",
-                    detail=f"RTT: {rtt:.1f} ms (threshold: 200 ms).",
-                    recommendation="Investigate upstream link quality.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.HIGH,
+                        title=f"High latency on gateway {gw.get('name', '')}",
+                        detail=f"RTT: {rtt:.1f} ms (threshold: 200 ms).",
+                        recommendation="Investigate upstream link quality.",
+                    )
+                )
             elif rtt is not None and rtt >= 50.0:
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"Elevated latency on gateway {gw.get('name', '')}",
-                    detail=f"RTT: {rtt:.1f} ms (warning threshold: 50 ms).",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"Elevated latency on gateway {gw.get('name', '')}",
+                        detail=f"RTT: {rtt:.1f} ms (warning threshold: 50 ms).",
+                    )
+                )
 
         gw_rows = [
             [
@@ -228,25 +234,31 @@ async def opnsense_health() -> str:
             for g in gateways
         ]
         if gw_rows:
-            sections.append(format_table(
-                ["Name", "Address", "Interface", "Status", "RTT (ms)"],
-                gw_rows,
-                title="Gateway Health",
-            ))
+            sections.append(
+                format_table(
+                    ["Name", "Address", "Interface", "Status", "RTT (ms)"],
+                    gw_rows,
+                    title="Gateway Health",
+                )
+            )
 
         if not gateways:
-            findings.append(Finding(
-                severity=Severity.HIGH,
-                title="No gateways found",
-                detail="Could not retrieve gateway status data.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.HIGH,
+                    title="No gateways found",
+                    detail="Could not retrieve gateway status data.",
+                )
+            )
     except Exception as exc:
         logger.warning("Gateway health check failed: %s", exc)
-        findings.append(Finding(
-            severity=Severity.HIGH,
-            title="Gateway health check failed",
-            detail=f"Error: {exc}",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.HIGH,
+                title="Gateway health check failed",
+                detail=f"Error: {exc}",
+            )
+        )
 
     # --- IDS alerts ---
     client = _get_client()
@@ -259,31 +271,41 @@ async def opnsense_health() -> str:
             medium_alerts = [a for a in alerts if a.get("severity") == 2]
 
             if high_alerts:
-                findings.append(Finding(
-                    severity=Severity.HIGH,
-                    title=f"{len(high_alerts)} high-severity IDS alert(s) in last 24h",
-                    detail="Active attack attempts or known-malicious traffic detected.",
-                    recommendation="Review source IPs and consider blocking persistent offenders.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.HIGH,
+                        title=f"{len(high_alerts)} high-severity IDS alert(s) in last 24h",
+                        detail="Active attack attempts or known-malicious traffic detected.",
+                        recommendation=(
+                            "Review source IPs and consider blocking persistent offenders."
+                        ),
+                    )
+                )
             if medium_alerts:
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"{len(medium_alerts)} medium-severity IDS alert(s) in last 24h",
-                    detail="Potential reconnaissance or suspicious activity detected.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"{len(medium_alerts)} medium-severity IDS alert(s) in last 24h",
+                        detail="Potential reconnaissance or suspicious activity detected.",
+                    )
+                )
             if not alerts:
-                findings.append(Finding(
-                    severity=Severity.INFORMATIONAL,
-                    title="No IDS alerts in last 24h",
-                    detail="No Suricata alerts recorded.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.INFORMATIONAL,
+                        title="No IDS alerts in last 24h",
+                        detail="No Suricata alerts recorded.",
+                    )
+                )
         except Exception as exc:
             logger.warning("IDS alert check failed: %s", exc)
-            findings.append(Finding(
-                severity=Severity.WARNING,
-                title="IDS alert check failed",
-                detail=f"Error: {exc}",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.WARNING,
+                    title="IDS alert check failed",
+                    detail=f"Error: {exc}",
+                )
+            )
 
         # --- Firmware status ---
         from opnsense.tools.firmware import opnsense__firmware__get_status
@@ -291,25 +313,31 @@ async def opnsense_health() -> str:
         try:
             fw_status = await opnsense__firmware__get_status(client)
             if fw_status.get("upgrade_available"):
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"Firmware update available: {fw_status.get('latest_version', '?')}",
-                    detail=f"Current: {fw_status.get('current_version', '?')}",
-                    recommendation="Schedule a maintenance window for the upgrade.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"Firmware update available: {fw_status.get('latest_version', '?')}",
+                        detail=f"Current: {fw_status.get('current_version', '?')}",
+                        recommendation="Schedule a maintenance window for the upgrade.",
+                    )
+                )
             else:
-                findings.append(Finding(
-                    severity=Severity.INFORMATIONAL,
-                    title=f"Firmware up to date ({fw_status.get('current_version', '?')})",
-                    detail="No updates available.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.INFORMATIONAL,
+                        title=f"Firmware up to date ({fw_status.get('current_version', '?')})",
+                        detail="No updates available.",
+                    )
+                )
         except Exception as exc:
             logger.warning("Firmware check failed: %s", exc)
-            findings.append(Finding(
-                severity=Severity.WARNING,
-                title="Firmware check failed",
-                detail=f"Error: {exc}",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.WARNING,
+                    title="Firmware check failed",
+                    detail=f"Error: {exc}",
+                )
+            )
 
         # --- WAN reachability ---
         from opnsense.tools.diagnostics import opnsense__diagnostics__run_ping
@@ -319,31 +347,39 @@ async def opnsense_health() -> str:
                 ping = await opnsense__diagnostics__run_ping(client, target, count=3)
                 loss = ping.get("loss", "")
                 if isinstance(loss, str) and "100" in loss:
-                    findings.append(Finding(
-                        severity=Severity.CRITICAL,
-                        title=f"WAN unreachable: {target}",
-                        detail="100% packet loss.",
-                        recommendation="Check WAN interface and upstream connectivity.",
-                    ))
+                    findings.append(
+                        Finding(
+                            severity=Severity.CRITICAL,
+                            title=f"WAN unreachable: {target}",
+                            detail="100% packet loss.",
+                            recommendation="Check WAN interface and upstream connectivity.",
+                        )
+                    )
                 elif loss and str(loss) != "0":
-                    findings.append(Finding(
-                        severity=Severity.WARNING,
-                        title=f"Packet loss to {target}",
-                        detail=f"Loss: {loss}",
-                    ))
+                    findings.append(
+                        Finding(
+                            severity=Severity.WARNING,
+                            title=f"Packet loss to {target}",
+                            detail=f"Loss: {loss}",
+                        )
+                    )
                 else:
-                    findings.append(Finding(
-                        severity=Severity.INFORMATIONAL,
-                        title=f"WAN reachable: {target}",
-                        detail="Ping successful, no packet loss.",
-                    ))
+                    findings.append(
+                        Finding(
+                            severity=Severity.INFORMATIONAL,
+                            title=f"WAN reachable: {target}",
+                            detail="Ping successful, no packet loss.",
+                        )
+                    )
             except Exception as exc:
                 logger.warning("WAN reachability check to %s failed: %s", target, exc)
-                findings.append(Finding(
-                    severity=Severity.HIGH,
-                    title=f"WAN reachability check failed: {target}",
-                    detail=f"Error: {exc}",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.HIGH,
+                        title=f"WAN reachability check failed: {target}",
+                        detail=f"Error: {exc}",
+                    )
+                )
     finally:
         await client.close()
 
@@ -430,11 +466,15 @@ async def opnsense_diagnose(target: str) -> str:
             f"The target `{target_stripped}` matches both interfaces and hosts.\n",
         ]
 
-        iface_names = [f"- Interface: **{i.get('name', '')}** ({i.get('description', '')})"
-                       for i in matched_interfaces]
-        host_names = [f"- Host: **{h.get('hostname', h.get('ip', ''))}** "
-                      f"({h.get('ip', '')}, {h.get('mac', '')})"
-                      for h in matched_hosts]
+        iface_names = [
+            f"- Interface: **{i.get('name', '')}** ({i.get('description', '')})"
+            for i in matched_interfaces
+        ]
+        host_names = [
+            f"- Host: **{h.get('hostname', h.get('ip', ''))}** "
+            f"({h.get('ip', '')}, {h.get('mac', '')})"
+            for h in matched_hosts
+        ]
 
         sections.append("### Matching Interfaces")
         sections.extend(iface_names)
@@ -442,7 +482,9 @@ async def opnsense_diagnose(target: str) -> str:
         sections.append("### Matching Hosts")
         sections.extend(host_names)
         sections.append("")
-        sections.append("Please clarify which one you mean by providing a more specific identifier.")
+        sections.append(
+            "Please clarify which one you mean by providing a more specific identifier."
+        )
 
         return "\n".join(sections)
 
@@ -474,29 +516,41 @@ async def opnsense_diagnose(target: str) -> str:
         sections.append(format_key_value(kv, title=f"Interface: {iface.get('name', '')}"))
 
         # DHCP leases on this interface
-        iface_leases = [l for l in leases if l.get("interface") == iface.get("name")]
+        iface_leases = [le for le in leases if le.get("interface") == iface.get("name")]
         if iface_leases:
             lease_rows = [
-                [l.get("hostname", "") or "(unknown)", l.get("ip", ""), l.get("mac", ""), l.get("state", "")]
-                for l in iface_leases[:10]
+                [
+                    le.get("hostname", "") or "(unknown)",
+                    le.get("ip", ""),
+                    le.get("mac", ""),
+                    le.get("state", ""),
+                ]
+                for le in iface_leases[:10]
             ]
-            sections.append(format_table(
-                ["Hostname", "IP", "MAC", "State"],
-                lease_rows,
-                title=f"DHCP Leases on {iface.get('name', '')} ({len(iface_leases)} total)",
-            ))
+            sections.append(
+                format_table(
+                    ["Hostname", "IP", "MAC", "State"],
+                    lease_rows,
+                    title=f"DHCP Leases on {iface.get('name', '')} ({len(iface_leases)} total)",
+                )
+            )
 
         # VLANs on same parent
         try:
             vlans = await opnsense__interfaces__list_vlan_interfaces()
             related = [v for v in vlans if v.get("parent_if") == iface.get("name")]
             if related:
-                vlan_rows = [[str(v.get("tag", "")), v.get("if_", ""), v.get("description", "")]
-                             for v in related]
-                sections.append(format_table(
-                    ["Tag", "Interface", "Description"], vlan_rows,
-                    title="VLANs on this interface",
-                ))
+                vlan_rows = [
+                    [str(v.get("tag", "")), v.get("if_", ""), v.get("description", "")]
+                    for v in related
+                ]
+                sections.append(
+                    format_table(
+                        ["Tag", "Interface", "Description"],
+                        vlan_rows,
+                        title="VLANs on this interface",
+                    )
+                )
         except Exception:
             pass
 
@@ -540,10 +594,12 @@ async def opnsense_diagnose(target: str) -> str:
         if hostname:
             try:
                 dns_result = await opnsense__diagnostics__dns_lookup(client, hostname)
-                sections.append(format_key_value(
-                    {k: str(v) for k, v in dns_result.items()},
-                    title="DNS Lookup",
-                ))
+                sections.append(
+                    format_key_value(
+                        {k: str(v) for k, v in dns_result.items()},
+                        title="DNS Lookup",
+                    )
+                )
             except Exception:
                 pass
     finally:
@@ -670,18 +726,19 @@ def _parse_access_matrix(matrix_json: str) -> list[dict[str, str]]:
             )
         if action not in valid_actions:
             raise ValidationError(
-                f"Matrix entry {i} has invalid action '{action}'. "
-                f"Must be one of {valid_actions}.",
+                f"Matrix entry {i} has invalid action '{action}'. Must be one of {valid_actions}.",
                 details={"field": "matrix", "index": i, "value": action},
             )
 
-        validated.append({
-            "src": src,
-            "dst": dst,
-            "action": action,
-            "protocol": entry.get("protocol", "any").strip(),
-            "description": entry.get("description", f"Matrix rule {i}").strip(),
-        })
+        validated.append(
+            {
+                "src": src,
+                "dst": dst,
+                "action": action,
+                "protocol": entry.get("protocol", "any").strip(),
+                "description": entry.get("description", f"Matrix rule {i}").strip(),
+            }
+        )
 
     if not validated:
         raise ValidationError(
@@ -721,16 +778,18 @@ def _detect_shadows(
                 and (e_dst == m_dst or e_dst == "any" or m_dst == "any")
                 and e_action != m_rule["action"]
             ):
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"Shadow conflict: {m_rule['src']} -> {m_rule['dst']}",
-                    detail=(
-                        f"Matrix rule ({m_rule['action']}) conflicts with existing "
-                        f"rule '{e_rule.get('description', e_rule.get('uuid', ''))}' "
-                        f"({e_action}). The existing rule may shadow the matrix intent."
-                    ),
-                    recommendation="Review rule ordering and resolve the conflict.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"Shadow conflict: {m_rule['src']} -> {m_rule['dst']}",
+                        detail=(
+                            f"Matrix rule ({m_rule['action']}) conflicts with existing "
+                            f"rule '{e_rule.get('description', e_rule.get('uuid', ''))}' "
+                            f"({e_action}). The existing rule may shadow the matrix intent."
+                        ),
+                        recommendation="Review rule ordering and resolve the conflict.",
+                    )
+                )
 
     return findings
 
@@ -747,8 +806,10 @@ async def opnsense_firewall_policy_from_matrix(
     flows, and either audits existing rules against it or creates the
     corresponding aliases and firewall rules.
 
-    Matrix format (JSON array):
-    ``[{"src": "LAN", "dst": "WAN", "action": "pass", "protocol": "TCP", "description": "Allow LAN out"}]``
+    Matrix format (JSON array)::
+
+        [{"src": "LAN", "dst": "WAN", "action": "pass",
+          "protocol": "TCP", "description": "Allow LAN out"}]
 
     With ``audit=True``: compares the matrix against existing rules and
     reports shadow conflicts.
@@ -790,14 +851,16 @@ async def opnsense_firewall_policy_from_matrix(
                 "No shadow conflicts detected between the matrix and existing rules.\n"
             )
 
-        sections.append(format_summary(
-            "Audit Summary",
-            {
-                "Matrix rules": len(rules),
-                "Existing rules": len(existing),
-                "Shadows detected": len(shadows),
-            },
-        ))
+        sections.append(
+            format_summary(
+                "Audit Summary",
+                {
+                    "Matrix rules": len(rules),
+                    "Existing rules": len(existing),
+                    "Shadows detected": len(shadows),
+                },
+            )
+        )
 
         return "\n".join(sections)
 
@@ -830,13 +893,15 @@ async def opnsense_firewall_policy_from_matrix(
                 errors.append(f"Failed to create rule {rule['src']} -> {rule['dst']}: {exc}")
 
         if results:
-            sections.append(format_summary(
-                "Rules Created",
-                {
-                    "Created": len(results),
-                    "Failed": len(errors),
-                },
-            ))
+            sections.append(
+                format_summary(
+                    "Rules Created",
+                    {
+                        "Created": len(results),
+                        "Failed": len(errors),
+                    },
+                )
+            )
 
         if errors:
             sections.append("### Errors\n\n" + "\n".join(f"- {e}" for e in errors) + "\n")
@@ -845,7 +910,11 @@ async def opnsense_firewall_policy_from_matrix(
 
     # --- Plan-only mode ---
     steps = [
-        {"description": f"{r['action'].upper()} {r['src']} -> {r['dst']} ({r.get('protocol', 'any')})"}
+        {
+            "description": (
+                f"{r['action'].upper()} {r['src']} -> {r['dst']} ({r.get('protocol', 'any')})"
+            ),
+        }
         for r in rules
     ]
     sections.append(format_change_plan(steps))
@@ -909,12 +978,14 @@ async def opnsense_vlan(
 
         for orphan in orphans:
             if orphan:
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"VLAN interface '{orphan}' has no IP address",
-                    detail=f"VLAN {orphan} is defined but has no IP assigned.",
-                    recommendation="Assign an IP to make this VLAN functional.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"VLAN interface '{orphan}' has no IP address",
+                        detail=f"VLAN {orphan} is defined but has no IP assigned.",
+                        recommendation="Assign an IP to make this VLAN functional.",
+                    )
+                )
 
         # Check for VLANs without firewall rules
         try:
@@ -926,24 +997,28 @@ async def opnsense_vlan(
             for vlan in vlans:
                 vlan_if = vlan.get("if_", "")
                 if vlan_if and vlan_if not in interfaces_with_rules:
-                    findings.append(Finding(
-                        severity=Severity.WARNING,
-                        title=f"VLAN '{vlan_if}' has no firewall rules",
-                        detail=(
-                            f"VLAN {vlan_if} (tag {vlan.get('tag', '')}) has "
-                            "no firewall rules. Traffic may be unrestricted."
-                        ),
-                        recommendation="Add firewall rules for this VLAN interface.",
-                    ))
+                    findings.append(
+                        Finding(
+                            severity=Severity.WARNING,
+                            title=f"VLAN '{vlan_if}' has no firewall rules",
+                            detail=(
+                                f"VLAN {vlan_if} (tag {vlan.get('tag', '')}) has "
+                                "no firewall rules. Traffic may be unrestricted."
+                            ),
+                            recommendation="Add firewall rules for this VLAN interface.",
+                        )
+                    )
         except Exception:
             pass
 
         if not findings:
-            findings.append(Finding(
-                severity=Severity.INFORMATIONAL,
-                title="All VLANs healthy",
-                detail="No issues detected with VLAN configuration.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.INFORMATIONAL,
+                    title="All VLANs healthy",
+                    detail="No issues detected with VLAN configuration.",
+                )
+            )
 
         sections.append(format_severity_report("VLAN Audit", findings))
 
@@ -1016,11 +1091,13 @@ def _parse_devices_json(devices_json: str) -> list[dict[str, str]]:
                 details={"field": "devices", "index": i, "value": mac},
             )
 
-        validated.append({
-            "hostname": hostname or f"device-{i}",
-            "mac": mac.lower(),
-            "ip": ip,
-        })
+        validated.append(
+            {
+                "hostname": hostname or f"device-{i}",
+                "mac": mac.lower(),
+                "ip": ip,
+            }
+        )
 
     if not validated:
         raise ValidationError(
@@ -1122,7 +1199,9 @@ async def opnsense_dhcp_reserve_batch(
         for dev in device_list:
             try:
                 result = await client.write(
-                    "dnsmasq", "settings", "addHost",
+                    "dnsmasq",
+                    "settings",
+                    "addHost",
                     data={
                         "host": {
                             "host": dev["hostname"],
@@ -1143,14 +1222,16 @@ async def opnsense_dhcp_reserve_batch(
     finally:
         await client.close()
 
-    sections.append(format_summary(
-        "Batch Reservation Results",
-        {
-            "Created": len(results),
-            "Failed": len(errors),
-            "Total": len(device_list),
-        },
-    ))
+    sections.append(
+        format_summary(
+            "Batch Reservation Results",
+            {
+                "Created": len(results),
+                "Failed": len(errors),
+                "Total": len(device_list),
+            },
+        )
+    )
 
     if errors:
         sections.append("### Errors\n\n" + "\n".join(f"- {e}" for e in errors) + "\n")
@@ -1278,7 +1359,11 @@ async def opnsense_vlan_create(
 
     # --- Plan preview ---
     plan_steps: list[dict[str, str]] = [
-        {"description": f"Create VLAN {tag} on {parent_if}" + (f" ({description})" if description else "")},
+        {
+            "description": (
+                f"Create VLAN {tag} on {parent_if}" + (f" ({description})" if description else "")
+            ),
+        },
         {"description": f"Assign IP {ip}/{subnet}"},
     ]
     if has_dhcp:
@@ -1325,7 +1410,9 @@ async def opnsense_vlan_create(
         f"- **Steps completed:** {', '.join(result.get('completed_steps', []))}",
     ]
     if has_dhcp:
-        lines.append(f"- **DHCP:** {result.get('dhcp_range_from', '')} - {result.get('dhcp_range_to', '')}")
+        dhcp_from = result.get("dhcp_range_from", "")
+        dhcp_to = result.get("dhcp_range_to", "")
+        lines.append(f"- **DHCP:** {dhcp_from} - {dhcp_to}")
         if dns_servers:
             lines.append(f"- **DNS:** {result.get('dns_servers', '')}")
 
@@ -1357,10 +1444,12 @@ async def opnsense_alias_create(
         description: Human-readable description.
         apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
     """
-    plan = format_change_plan(steps=[
-        {"description": f"Create {alias_type} alias '{name}'"},
-        {"description": f"Content: {content[:80]}{'...' if len(content) > 80 else ''}"},
-    ])
+    plan = format_change_plan(
+        steps=[
+            {"description": f"Create {alias_type} alias '{name}'"},
+            {"description": f"Content: {content[:80]}{'...' if len(content) > 80 else ''}"},
+        ]
+    )
 
     if not apply:
         write_status = describe_write_status("OPNSENSE")
@@ -1415,10 +1504,12 @@ async def opnsense_rule_create(
         position: Optional rule sequence/position.
         apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
     """
-    plan = format_change_plan(steps=[
-        {"description": f"{action.upper()} {src} → {dst} on {interface}"},
-        {"description": f"Protocol: {protocol}"},
-    ])
+    plan = format_change_plan(
+        steps=[
+            {"description": f"{action.upper()} {src} → {dst} on {interface}"},
+            {"description": f"Protocol: {protocol}"},
+        ]
+    )
 
     if not apply:
         write_status = describe_write_status("OPNSENSE")
@@ -1504,13 +1595,18 @@ async def opnsense_dhcp_configure(
                     iface_list = [i.strip() for i in iface_field.split(",") if i.strip()]
                 elif isinstance(iface_field, dict):
                     # OPNsense multi-select: {"opt3": {"selected": 1, ...}, ...}
-                    iface_list = [k for k, v in iface_field.items()
-                                  if isinstance(v, dict) and v.get("selected")]
+                    iface_list = [
+                        k
+                        for k, v in iface_field.items()
+                        if isinstance(v, dict) and v.get("selected")
+                    ]
         if interface not in iface_list:
             iface_list.append(interface)
 
         await client.write(
-            "dnsmasq", "settings", "set",
+            "dnsmasq",
+            "settings",
+            "set",
             data={"dnsmasq": {"interface": ",".join(iface_list)}},
         )
 
@@ -1528,7 +1624,9 @@ async def opnsense_dhcp_configure(
             range_data["range"]["domain"] = domain
 
         range_result = await client.write(
-            "dnsmasq", "settings", "add_range",
+            "dnsmasq",
+            "settings",
+            "add_range",
             data=range_data,
         )
 
@@ -1542,7 +1640,10 @@ async def opnsense_dhcp_configure(
 
     logger.info(
         "Configured DHCP on %s: %s-%s (uuid=%s)",
-        interface, start_addr, end_addr, range_uuid,
+        interface,
+        start_addr,
+        end_addr,
+        range_uuid,
         extra={"component": "commands"},
     )
 
@@ -1581,10 +1682,12 @@ async def opnsense_dns_configure(
     """
     new_ifaces = [i.strip() for i in interfaces.split(",") if i.strip()]
 
-    plan = format_change_plan(steps=[
-        {"description": f"Add interfaces to Unbound DNS: {', '.join(new_ifaces)}"},
-        {"description": "Reconfigure Unbound to apply"},
-    ])
+    plan = format_change_plan(
+        steps=[
+            {"description": f"Add interfaces to Unbound DNS: {', '.join(new_ifaces)}"},
+            {"description": "Reconfigure Unbound to apply"},
+        ]
+    )
 
     if not apply:
         write_status = describe_write_status("OPNSENSE")
@@ -1606,8 +1709,11 @@ async def opnsense_dns_configure(
                     if isinstance(iface_field, str):
                         current_list = [i.strip() for i in iface_field.split(",") if i.strip()]
                     elif isinstance(iface_field, dict):
-                        current_list = [k for k, v in iface_field.items()
-                                        if isinstance(v, dict) and v.get("selected")]
+                        current_list = [
+                            k
+                            for k, v in iface_field.items()
+                            if isinstance(v, dict) and v.get("selected")
+                        ]
 
         # Merge new interfaces
         for iface in new_ifaces:
@@ -1616,7 +1722,9 @@ async def opnsense_dns_configure(
 
         # Set updated interfaces + enable DHCP hostname registration
         await client.write(
-            "unbound", "settings", "set",
+            "unbound",
+            "settings",
+            "set",
             data={
                 "unbound": {
                     "general": {
@@ -1676,11 +1784,13 @@ async def opnsense_dns_forward(
         description: Human-readable description.
         apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
     """
-    plan = format_change_plan(steps=[
-        {"description": f"Add DoT forwarder: {server} ({tls_hostname}:{port})"},
-        {"description": "Enable DNS forwarding mode"},
-        {"description": "Reconfigure Unbound"},
-    ])
+    plan = format_change_plan(
+        steps=[
+            {"description": f"Add DoT forwarder: {server} ({tls_hostname}:{port})"},
+            {"description": "Enable DNS forwarding mode"},
+            {"description": "Reconfigure Unbound"},
+        ]
+    )
 
     if not apply:
         write_status = describe_write_status("OPNSENSE")
@@ -1690,7 +1800,9 @@ async def opnsense_dns_forward(
     try:
         # Step 1: Add DoT forwarding entry
         dot_result = await client.write(
-            "unbound", "settings", "addDot",
+            "unbound",
+            "settings",
+            "addDot",
             data={
                 "dot": {
                     "enabled": "1",
@@ -1707,7 +1819,9 @@ async def opnsense_dns_forward(
 
         # Step 2: Enable forwarding mode
         await client.write(
-            "unbound", "settings", "set",
+            "unbound",
+            "settings",
+            "set",
             data={
                 "unbound": {
                     "forwarding": {
@@ -1725,7 +1839,10 @@ async def opnsense_dns_forward(
 
     logger.info(
         "Configured DoT forwarding to %s (%s:%d, uuid=%s)",
-        tls_hostname, server, port, dot_uuid,
+        tls_hostname,
+        server,
+        port,
+        dot_uuid,
         extra={"component": "commands"},
     )
 

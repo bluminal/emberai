@@ -23,6 +23,7 @@ from netex.models.abstract import (
 # VLAN
 # ---------------------------------------------------------------------------
 
+
 class TestVLAN:
     def test_basic_construction(self) -> None:
         vlan = VLAN(vlan_id=50, name="Guest")
@@ -92,6 +93,7 @@ class TestVLAN:
 # FirewallPolicy
 # ---------------------------------------------------------------------------
 
+
 class TestFirewallPolicy:
     def test_basic_construction(self) -> None:
         policy = FirewallPolicy(
@@ -147,7 +149,10 @@ class TestFirewallPolicy:
 
     def test_serialization_roundtrip(self) -> None:
         policy = FirewallPolicy(
-            src_zone="LAN", dst_zone="WAN", action=FirewallAction.ALLOW, protocol="tcp",
+            src_zone="LAN",
+            dst_zone="WAN",
+            action=FirewallAction.ALLOW,
+            protocol="tcp",
         )
         data = policy.model_dump()
         restored = FirewallPolicy.model_validate(data)
@@ -157,6 +162,7 @@ class TestFirewallPolicy:
 # ---------------------------------------------------------------------------
 # Route
 # ---------------------------------------------------------------------------
+
 
 class TestRoute:
     def test_basic_construction(self) -> None:
@@ -204,6 +210,7 @@ class TestRoute:
 # VPNTunnel
 # ---------------------------------------------------------------------------
 
+
 class TestVPNTunnel:
     def test_basic_construction(self) -> None:
         tunnel = VPNTunnel(
@@ -244,8 +251,11 @@ class TestVPNTunnel:
 
     def test_serialization_roundtrip(self) -> None:
         tunnel = VPNTunnel(
-            tunnel_type=VPNType.IPSEC, peer="test", status=VPNStatus.UP,
-            rx_bytes=100, tx_bytes=200,
+            tunnel_type=VPNType.IPSEC,
+            peer="test",
+            status=VPNStatus.UP,
+            rx_bytes=100,
+            tx_bytes=200,
         )
         data = tunnel.model_dump()
         restored = VPNTunnel.model_validate(data)
@@ -255,6 +265,7 @@ class TestVPNTunnel:
 # ---------------------------------------------------------------------------
 # DNSRecord
 # ---------------------------------------------------------------------------
+
 
 class TestDNSRecord:
     def test_basic_construction(self) -> None:
@@ -289,6 +300,7 @@ class TestDNSRecord:
 # ---------------------------------------------------------------------------
 # DHCPLease
 # ---------------------------------------------------------------------------
+
 
 class TestDHCPLease:
     def test_basic_construction(self) -> None:
@@ -345,6 +357,7 @@ class TestDHCPLease:
 # NetworkTopology
 # ---------------------------------------------------------------------------
 
+
 class TestNetworkTopology:
     def test_empty_topology(self) -> None:
         topo = NetworkTopology()
@@ -362,10 +375,13 @@ class TestNetworkTopology:
 
     def test_merge_topologies(self) -> None:
         topo1 = NetworkTopology(
-            nodes=[TopologyNode(
-                node_id="gw-1", name="Gateway",
-                node_type=TopologyNodeType.GATEWAY,
-            )],
+            nodes=[
+                TopologyNode(
+                    node_id="gw-1",
+                    name="Gateway",
+                    node_type=TopologyNodeType.GATEWAY,
+                )
+            ],
             vlans=[VLAN(vlan_id=10, name="LAN", source_plugin="opnsense")],
             source_plugins=["opnsense"],
         )
@@ -373,7 +389,8 @@ class TestNetworkTopology:
             nodes=[
                 TopologyNode(node_id="sw-1", name="Switch", node_type=TopologyNodeType.SWITCH),
                 TopologyNode(
-                    node_id="gw-1", name="Gateway-dup",
+                    node_id="gw-1",
+                    name="Gateway-dup",
                     node_type=TopologyNodeType.GATEWAY,
                 ),
             ],

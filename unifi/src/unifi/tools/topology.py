@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import copy
 import logging
-import os
 from typing import Any
 
 from unifi.api.response import normalize_response
@@ -218,9 +217,7 @@ def _build_uplink_graph(devices: list[dict[str, Any]]) -> list[dict[str, Any]]:
         A list of uplink-relationship dicts, one per non-root device.
     """
     # Index devices by MAC for O(1) parent lookup
-    mac_to_device: dict[str, dict[str, Any]] = {
-        d["mac"]: d for d in devices if "mac" in d
-    }
+    mac_to_device: dict[str, dict[str, Any]] = {d["mac"]: d for d in devices if "mac" in d}
 
     graph: list[dict[str, Any]] = []
 
@@ -240,17 +237,19 @@ def _build_uplink_graph(devices: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
         parent = mac_to_device.get(uplink_mac)
 
-        graph.append({
-            "device_id": device.get("_id", ""),
-            "device_name": device.get("name", ""),
-            "device_mac": device_mac,
-            "uplink_device_id": parent.get("_id", "") if parent else "",
-            "uplink_device_name": parent.get("name", "") if parent else "",
-            "uplink_device_mac": uplink_mac,
-            "uplink_port": uplink.get("uplink_remote_port"),
-            "uplink_type": uplink.get("type", ""),
-            "speed": uplink.get("speed"),
-        })
+        graph.append(
+            {
+                "device_id": device.get("_id", ""),
+                "device_name": device.get("name", ""),
+                "device_mac": device_mac,
+                "uplink_device_id": parent.get("_id", "") if parent else "",
+                "uplink_device_name": parent.get("name", "") if parent else "",
+                "uplink_device_mac": uplink_mac,
+                "uplink_port": uplink.get("uplink_remote_port"),
+                "uplink_type": uplink.get("type", ""),
+                "speed": uplink.get("speed"),
+            }
+        )
 
     return graph
 
@@ -337,16 +336,18 @@ async def unifi__topology__list_hosts() -> list[dict[str, Any]]:
 
     hosts: list[dict[str, Any]] = []
     for raw_host in normalized.data:
-        hosts.append({
-            "host_id": raw_host.get("_id", raw_host.get("id", "")),
-            "name": raw_host.get("hostname", raw_host.get("name", "")),
-            "ip": raw_host.get("ip", raw_host.get("wan_ip", "")),
-            "type": raw_host.get("type", raw_host.get("hardware_type", "")),
-            "firmware_version": raw_host.get(
-                "firmware_version",
-                raw_host.get("version", ""),
-            ),
-        })
+        hosts.append(
+            {
+                "host_id": raw_host.get("_id", raw_host.get("id", "")),
+                "name": raw_host.get("hostname", raw_host.get("name", "")),
+                "ip": raw_host.get("ip", raw_host.get("wan_ip", "")),
+                "type": raw_host.get("type", raw_host.get("hardware_type", "")),
+                "firmware_version": raw_host.get(
+                    "firmware_version",
+                    raw_host.get("version", ""),
+                ),
+            }
+        )
 
     logger.info(
         "Listed %d hosts via Cloud V1 API",
@@ -390,10 +391,12 @@ def _build_port_overrides(
             return overrides
 
     # No existing override for this port -- add a new entry
-    overrides.append({
-        "port_idx": port_idx,
-        "portconf_id": profile_id,
-    })
+    overrides.append(
+        {
+            "port_idx": port_idx,
+            "portconf_id": profile_id,
+        }
+    )
 
     return overrides
 
@@ -483,7 +486,9 @@ async def unifi__topology__assign_port_profile(
         # Step 3: Build updated port_overrides
         existing_overrides = device_raw.get("port_overrides", [])
         updated_overrides = _build_port_overrides(
-            existing_overrides, port_idx, profile_id,
+            existing_overrides,
+            port_idx,
+            profile_id,
         )
 
         # Step 4: PUT the updated device config

@@ -40,7 +40,6 @@ from opnsense.api.response import (
 from opnsense.cache import CacheTTL, TTLCache
 from opnsense.errors import APIError, AuthenticationError, NetworkError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -247,9 +246,7 @@ class TestBasicAuth:
             api_key="key+with/special=chars",
             api_secret="secret&with#special",
         )
-        expected = base64.b64encode(
-            b"key+with/special=chars:secret&with#special"
-        ).decode()
+        expected = base64.b64encode(b"key+with/special=chars:secret&with#special").decode()
         assert client._auth_header == f"Basic {expected}"
 
     def test_accept_header_is_json(self) -> None:
@@ -260,13 +257,19 @@ class TestBasicAuth:
         )
         assert client._client.headers["accept"] == "application/json"
 
-    def test_content_type_header_is_json(self) -> None:
+    def test_content_type_header_not_set_on_default_headers(self) -> None:
+        """Content-Type is NOT set in default headers.
+
+        OPNsense 26.x returns 400 on GET requests that include
+        Content-Type. POST/PUT methods pass Content-Type via the
+        ``json=`` parameter which httpx sets automatically.
+        """
         client = OPNsenseClient(
             host="https://192.168.1.1",
             api_key="k",
             api_secret="s",
         )
-        assert client._client.headers["content-type"] == "application/json"
+        assert "content-type" not in client._client.headers
 
 
 # ---------------------------------------------------------------------------
@@ -437,7 +440,9 @@ class TestPostRequests:
         client._client.request = AsyncMock(return_value=mock_resp)
 
         result = await client.post(
-            "firewall", "filter", "addRule",
+            "firewall",
+            "filter",
+            "addRule",
             data={"action": "pass", "interface": "lan"},
         )
 
@@ -683,9 +688,7 @@ class TestNetworkErrors:
             api_key="k",
             api_secret="s",
         )
-        client._client.request = AsyncMock(
-            side_effect=httpx.TimeoutException("read timed out")
-        )
+        client._client.request = AsyncMock(side_effect=httpx.TimeoutException("read timed out"))
 
         with pytest.raises(NetworkError) as exc_info:
             await client.get("firewall", "filter", "searchRule")
@@ -722,9 +725,7 @@ class TestNetworkErrors:
             api_key="k",
             api_secret="s",
         )
-        client._client.request = AsyncMock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
+        client._client.request = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
         with pytest.raises(NetworkError) as exc_info:
             await client.get("firewall", "filter", "searchRule")
@@ -739,9 +740,7 @@ class TestNetworkErrors:
             api_key="k",
             api_secret="s",
         )
-        client._client.request = AsyncMock(
-            side_effect=httpx.HTTPError("DNS resolution failed")
-        )
+        client._client.request = AsyncMock(side_effect=httpx.HTTPError("DNS resolution failed"))
 
         with pytest.raises(NetworkError) as exc_info:
             await client.get("firewall", "filter", "searchRule")
@@ -769,7 +768,9 @@ class TestWriteMethod:
         client._client.request = AsyncMock(return_value=mock_resp)
 
         result = await client.write(
-            "firewall", "filter", "addRule",
+            "firewall",
+            "filter",
+            "addRule",
             data={"action": "pass"},
         )
 
@@ -865,13 +866,13 @@ class TestReconfigureMethod:
 
         saved_resp = _mock_response(200, json_data=ACTION_RESPONSE_SAVED)
         reconf_resp = _mock_response(200, json_data=ACTION_RESPONSE_STATUS)
-        client._client.request = AsyncMock(
-            side_effect=[saved_resp, reconf_resp]
-        )
+        client._client.request = AsyncMock(side_effect=[saved_resp, reconf_resp])
 
         # Step 1: Write (save config).
         write_result = await client.write(
-            "firewall", "filter", "addRule",
+            "firewall",
+            "filter",
+            "addRule",
             data={"action": "pass"},
         )
         assert write_result["result"] == "saved"
@@ -909,7 +910,9 @@ class TestCacheIntegration:
         client._client.request = AsyncMock(return_value=mock_resp)
 
         result = await client.get_cached(
-            "firewall", "filter", "searchRule",
+            "firewall",
+            "filter",
+            "searchRule",
             cache_key="firewall:rules",
             ttl=CacheTTL.FIREWALL_RULES,
         )
@@ -934,7 +937,9 @@ class TestCacheIntegration:
         client._client.request = AsyncMock()
 
         result = await client.get_cached(
-            "firewall", "filter", "searchRule",
+            "firewall",
+            "filter",
+            "searchRule",
             cache_key="firewall:rules",
         )
 
@@ -955,7 +960,9 @@ class TestCacheIntegration:
         client._client.request = AsyncMock(return_value=mock_resp)
 
         await client.get_cached(
-            "firewall", "filter", "searchRule",
+            "firewall",
+            "filter",
+            "searchRule",
             cache_key="firewall:rules",
             ttl=CacheTTL.FIREWALL_RULES,
         )
@@ -1034,14 +1041,18 @@ class TestCacheIntegration:
 
         # Interfaces: 5 min TTL.
         await client.get_cached(
-            "interfaces", "overview", "export",
+            "interfaces",
+            "overview",
+            "export",
             cache_key="interfaces:list",
             ttl=CacheTTL.INTERFACES,
         )
 
         # DHCP leases: 1 min TTL.
         await client.get_cached(
-            "kea", "leases4", "search",
+            "kea",
+            "leases4",
+            "search",
             cache_key="dhcp:leases",
             ttl=CacheTTL.DHCP_LEASES,
         )

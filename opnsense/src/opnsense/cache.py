@@ -33,12 +33,15 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import OrderedDict
-from typing import Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 # ---------------------------------------------------------------------------
 # Default TTLs for OPNsense data types
 # ---------------------------------------------------------------------------
+
 
 class CacheTTL:
     """Default TTL values (in seconds) for OPNsense data types.
@@ -48,25 +51,25 @@ class CacheTTL:
     to ensure consistent caching behaviour across the plugin.
     """
 
-    INTERFACES: float = 300.0       # 5 minutes -- interfaces change rarely
+    INTERFACES: float = 300.0  # 5 minutes -- interfaces change rarely
     VLAN_INTERFACES: float = 300.0  # 5 minutes -- VLAN definitions are stable
-    FIREWALL_RULES: float = 120.0   # 2 minutes -- may change during sessions
-    FIREWALL_ALIASES: float = 120.0 # 2 minutes -- alias definitions
-    NAT_RULES: float = 120.0        # 2 minutes -- NAT configuration
-    DHCP_LEASES: float = 60.0       # 1 minute -- dynamic lease data
-    DNS_OVERRIDES: float = 120.0    # 2 minutes -- DNS host overrides
-    ROUTES: float = 120.0           # 2 minutes -- routing table
-    GATEWAYS: float = 120.0         # 2 minutes -- gateway status
-    VPN_SESSIONS: float = 60.0      # 1 minute -- VPN tunnel status changes
-    IDS_ALERTS: float = 30.0        # 30 seconds -- real-time security data
-    CERTIFICATES: float = 300.0     # 5 minutes -- certificate inventory
-    FIRMWARE: float = 600.0         # 10 minutes -- very stable data
+    FIREWALL_RULES: float = 120.0  # 2 minutes -- may change during sessions
+    FIREWALL_ALIASES: float = 120.0  # 2 minutes -- alias definitions
+    NAT_RULES: float = 120.0  # 2 minutes -- NAT configuration
+    DHCP_LEASES: float = 60.0  # 1 minute -- dynamic lease data
+    DNS_OVERRIDES: float = 120.0  # 2 minutes -- DNS host overrides
+    ROUTES: float = 120.0  # 2 minutes -- routing table
+    GATEWAYS: float = 120.0  # 2 minutes -- gateway status
+    VPN_SESSIONS: float = 60.0  # 1 minute -- VPN tunnel status changes
+    IDS_ALERTS: float = 30.0  # 30 seconds -- real-time security data
+    CERTIFICATES: float = 300.0  # 5 minutes -- certificate inventory
+    FIRMWARE: float = 600.0  # 10 minutes -- very stable data
 
 
 class _CacheEntry:
     """Internal container for a cached value and its expiration timestamp."""
 
-    __slots__ = ("value", "expires_at")
+    __slots__ = ("expires_at", "value")
 
     def __init__(self, value: Any, expires_at: float) -> None:
         self.value = value

@@ -19,6 +19,7 @@ from netex.errors import (
 # NetexError (base)
 # ---------------------------------------------------------------------------
 
+
 class TestNetexError:
     def test_minimal_construction(self) -> None:
         err = NetexError("something went wrong")
@@ -86,6 +87,7 @@ class TestNetexError:
 # Inheritance
 # ---------------------------------------------------------------------------
 
+
 class TestInheritance:
     @pytest.mark.parametrize(
         "error_class, kwargs",
@@ -110,6 +112,7 @@ class TestInheritance:
 # ---------------------------------------------------------------------------
 # PluginNotFoundError
 # ---------------------------------------------------------------------------
+
 
 class TestPluginNotFoundError:
     def test_basic(self) -> None:
@@ -136,6 +139,7 @@ class TestPluginNotFoundError:
 # ---------------------------------------------------------------------------
 # ContractViolationError
 # ---------------------------------------------------------------------------
+
 
 class TestContractViolationError:
     def test_basic(self) -> None:
@@ -164,6 +168,7 @@ class TestContractViolationError:
 # WorkflowError
 # ---------------------------------------------------------------------------
 
+
 class TestWorkflowError:
     def test_basic(self) -> None:
         err = WorkflowError("bad transition")
@@ -187,6 +192,7 @@ class TestWorkflowError:
 # ---------------------------------------------------------------------------
 # WriteGateError
 # ---------------------------------------------------------------------------
+
 
 class TestWriteGateError:
     def test_env_var_disabled(self) -> None:
@@ -235,6 +241,7 @@ class TestWriteGateError:
 # ---------------------------------------------------------------------------
 # WriteGateReason enum
 # ---------------------------------------------------------------------------
+
 
 class TestWriteGateReason:
     def test_is_str_enum(self) -> None:

@@ -103,19 +103,23 @@ async def _resolve_target(
     # Multiple matches: ambiguous.
     all_matches: list[dict[str, Any]] = []
     for d in device_matches:
-        all_matches.append({
-            "kind": "device",
-            "name": d.get("name", ""),
-            "mac": d.get("mac", ""),
-            "ip": d.get("ip", ""),
-        })
+        all_matches.append(
+            {
+                "kind": "device",
+                "name": d.get("name", ""),
+                "mac": d.get("mac", ""),
+                "ip": d.get("ip", ""),
+            }
+        )
     for c in client_matches:
-        all_matches.append({
-            "kind": "client",
-            "name": c.get("hostname", ""),
-            "mac": c.get("client_mac", ""),
-            "ip": c.get("ip", ""),
-        })
+        all_matches.append(
+            {
+                "kind": "client",
+                "name": c.get("hostname", ""),
+                "mac": c.get("client_mac", ""),
+                "ip": c.get("ip", ""),
+            }
+        )
 
     return {"type": "ambiguous", "matches": all_matches, "item": None}
 
@@ -175,97 +179,106 @@ def _analyze_client(
         rssi = client.get("rssi")
         if rssi is not None:
             if rssi < 20:
-                findings.append(Finding(
-                    severity=Severity.CRITICAL,
-                    title="Very poor signal quality",
-                    detail=(
-                        f"RSSI is {rssi}, indicating extremely weak signal. "
-                        "The client may experience frequent disconnections and very slow speeds."
-                    ),
-                    recommendation=(
-                        "Move the client closer to the AP, reduce obstructions, "
-                        "or add an AP closer to the client's location."
-                    ),
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.CRITICAL,
+                        title="Very poor signal quality",
+                        detail=(
+                            f"RSSI is {rssi}, indicating extremely weak signal. "
+                            "The client may experience frequent disconnections "
+                            "and very slow speeds."
+                        ),
+                        recommendation=(
+                            "Move the client closer to the AP, reduce obstructions, "
+                            "or add an AP closer to the client's location."
+                        ),
+                    )
+                )
             elif rssi < 35:
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title="Fair signal quality",
-                    detail=(
-                        f"RSSI is {rssi}, indicating marginal signal. "
-                        "The client may experience intermittent issues."
-                    ),
-                    recommendation=(
-                        "Consider repositioning the AP or client, "
-                        "or adding an additional AP for better coverage."
-                    ),
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title="Fair signal quality",
+                        detail=(
+                            f"RSSI is {rssi}, indicating marginal signal. "
+                            "The client may experience intermittent issues."
+                        ),
+                        recommendation=(
+                            "Consider repositioning the AP or client, "
+                            "or adding an additional AP for better coverage."
+                        ),
+                    )
+                )
 
     # --- AP health check ---
     if ap_health:
         ap_status = ap_health.get("status", "")
         if ap_status != "connected":
-            findings.append(Finding(
-                severity=Severity.CRITICAL,
-                title=f"Associated AP is {ap_status}",
-                detail=(
-                    f"The access point '{ap_health.get('name', 'unknown')}' "
-                    f"is reporting status '{ap_status}' instead of 'connected'."
-                ),
-                recommendation="Investigate the AP status immediately.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.CRITICAL,
+                    title=f"Associated AP is {ap_status}",
+                    detail=(
+                        f"The access point '{ap_health.get('name', 'unknown')}' "
+                        f"is reporting status '{ap_status}' instead of 'connected'."
+                    ),
+                    recommendation="Investigate the AP status immediately.",
+                )
+            )
 
         cpu = ap_health.get("cpu_usage_pct")
         if cpu is not None and cpu > 80:
-            findings.append(Finding(
-                severity=Severity.WARNING,
-                title="AP CPU usage is high",
-                detail=(
-                    f"The associated AP has CPU usage at {cpu:.1f}%. "
-                    "This may impact wireless performance."
-                ),
-                recommendation="Check for excessive client count or firmware issues on the AP.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.WARNING,
+                    title="AP CPU usage is high",
+                    detail=(
+                        f"The associated AP has CPU usage at {cpu:.1f}%. "
+                        "This may impact wireless performance."
+                    ),
+                    recommendation="Check for excessive client count or firmware issues on the AP.",
+                )
+            )
 
         mem = ap_health.get("mem_usage_pct")
         if mem is not None and mem > 85:
-            findings.append(Finding(
-                severity=Severity.WARNING,
-                title="AP memory usage is high",
-                detail=(
-                    f"The associated AP has memory usage at {mem:.1f}%. "
-                    "This may cause instability."
-                ),
-                recommendation="Consider rebooting the AP during a maintenance window.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.WARNING,
+                    title="AP memory usage is high",
+                    detail=(
+                        f"The associated AP has memory usage at {mem:.1f}%. "
+                        "This may cause instability."
+                    ),
+                    recommendation="Consider rebooting the AP during a maintenance window.",
+                )
+            )
 
     # --- Related events ---
-    client_events = [
-        e for e in events
-        if e.get("client_mac") == client_mac
-    ]
-    disconnect_count = sum(
-        1 for e in client_events
-        if "disconnect" in e.get("type", "").lower()
-    )
+    client_events = [e for e in events if e.get("client_mac") == client_mac]
+    disconnect_count = sum(1 for e in client_events if "disconnect" in e.get("type", "").lower())
     if disconnect_count > 0:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title=f"{disconnect_count} disconnect event(s) in the last 24 hours",
-            detail=(
-                f"The client has disconnected {disconnect_count} time(s) recently. "
-                "This may indicate signal issues, roaming problems, or AP instability."
-            ),
-            recommendation="Check signal strength at the client's location and AP logs.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.WARNING,
+                title=f"{disconnect_count} disconnect event(s) in the last 24 hours",
+                detail=(
+                    f"The client has disconnected {disconnect_count} time(s) recently. "
+                    "This may indicate signal issues, roaming problems, or AP instability."
+                ),
+                recommendation="Check signal strength at the client's location and AP logs.",
+            )
+        )
 
     # If no issues found, add an informational finding.
     if not findings:
-        findings.append(Finding(
-            severity=Severity.INFORMATIONAL,
-            title="No issues detected",
-            detail="The client appears to be operating normally with no recent problems.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.INFORMATIONAL,
+                title="No issues detected",
+                detail="The client appears to be operating normally with no recent problems.",
+            )
+        )
 
     return findings
 
@@ -289,94 +302,100 @@ def _analyze_device(
     # --- Device status ---
     status = device_health.get("status", "")
     if status != "connected":
-        findings.append(Finding(
-            severity=Severity.CRITICAL,
-            title=f"Device is {status}",
-            detail=(
-                f"Device '{device_health.get('name', 'unknown')}' "
-                f"is reporting status '{status}' instead of 'connected'."
-            ),
-            recommendation="Check power and physical connections to the device.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.CRITICAL,
+                title=f"Device is {status}",
+                detail=(
+                    f"Device '{device_health.get('name', 'unknown')}' "
+                    f"is reporting status '{status}' instead of 'connected'."
+                ),
+                recommendation="Check power and physical connections to the device.",
+            )
+        )
 
     # --- CPU usage ---
     cpu = device_health.get("cpu_usage_pct")
     if cpu is not None and cpu > 80:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title=f"High CPU usage ({cpu:.1f}%)",
-            detail=(
-                "CPU usage exceeds 80%. This may impact device performance "
-                "and cause packet processing delays."
-            ),
-            recommendation="Check for excessive traffic or firmware issues.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.WARNING,
+                title=f"High CPU usage ({cpu:.1f}%)",
+                detail=(
+                    "CPU usage exceeds 80%. This may impact device performance "
+                    "and cause packet processing delays."
+                ),
+                recommendation="Check for excessive traffic or firmware issues.",
+            )
+        )
 
     # --- Memory usage ---
     mem = device_health.get("mem_usage_pct")
     if mem is not None and mem > 85:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title=f"High memory usage ({mem:.1f}%)",
-            detail=(
-                "Memory usage exceeds 85%. This may cause instability "
-                "or crashes under load."
-            ),
-            recommendation="Consider rebooting during a maintenance window.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.WARNING,
+                title=f"High memory usage ({mem:.1f}%)",
+                detail=(
+                    "Memory usage exceeds 85%. This may cause instability or crashes under load."
+                ),
+                recommendation="Consider rebooting during a maintenance window.",
+            )
+        )
 
     # --- Temperature ---
     temp = device_health.get("temperature_c")
     if temp is not None and temp > 75:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title=f"High temperature ({temp:.0f}C)",
-            detail=(
-                "Device temperature exceeds 75C. Sustained high temperatures "
-                "can reduce hardware lifespan."
-            ),
-            recommendation="Ensure adequate ventilation and check fan status.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.WARNING,
+                title=f"High temperature ({temp:.0f}C)",
+                detail=(
+                    "Device temperature exceeds 75C. Sustained high temperatures "
+                    "can reduce hardware lifespan."
+                ),
+                recommendation="Ensure adequate ventilation and check fan status.",
+            )
+        )
 
     # --- Firmware upgrade available ---
     if device_health.get("upgrade_available"):
         current = device_health.get("current_firmware", "")
         upgrade = device_health.get("upgrade_firmware", "")
-        findings.append(Finding(
-            severity=Severity.INFORMATIONAL,
-            title="Firmware upgrade available",
-            detail=f"Current: {current}, Available: {upgrade}.",
-            recommendation="Schedule firmware upgrade during a maintenance window.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.INFORMATIONAL,
+                title="Firmware upgrade available",
+                detail=f"Current: {current}, Available: {upgrade}.",
+                recommendation="Schedule firmware upgrade during a maintenance window.",
+            )
+        )
 
     # --- Related events ---
-    device_events = [
-        e for e in events
-        if e.get("device_id") == device_mac
-    ]
-    warning_events = [
-        e for e in device_events
-        if e.get("severity") in ("warning", "critical")
-    ]
+    device_events = [e for e in events if e.get("device_id") == device_mac]
+    warning_events = [e for e in device_events if e.get("severity") in ("warning", "critical")]
     if warning_events:
         event_summaries = "; ".join(
-            f"{e.get('type', 'unknown')}: {e.get('message', '')}"
-            for e in warning_events[:3]
+            f"{e.get('type', 'unknown')}: {e.get('message', '')}" for e in warning_events[:3]
         )
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title=f"{len(warning_events)} warning/critical event(s) in the last 24 hours",
-            detail=f"Recent events: {event_summaries}",
-            recommendation="Investigate the events for potential issues.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.WARNING,
+                title=f"{len(warning_events)} warning/critical event(s) in the last 24 hours",
+                detail=f"Recent events: {event_summaries}",
+                recommendation="Investigate the events for potential issues.",
+            )
+        )
 
     # If no issues found, add an informational finding.
     if not findings:
-        findings.append(Finding(
-            severity=Severity.INFORMATIONAL,
-            title="No issues detected",
-            detail="The device appears to be operating normally with no recent problems.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.INFORMATIONAL,
+                title="No issues detected",
+                detail="The device appears to be operating normally with no recent problems.",
+            )
+        )
 
     return findings
 
@@ -485,14 +504,16 @@ async def _diagnose_client(client: dict[str, Any], site_id: str) -> str:
 
     # Summary.
     conn_type = "Wired" if client_detail.get("is_wired") else "Wireless"
-    sections.append(format_summary(
-        f"Diagnosis: {display_name}",
-        {
-            "Type": "Client",
-            "Connection": conn_type,
-            "IP": client_detail.get("ip", "N/A"),
-        },
-    ))
+    sections.append(
+        format_summary(
+            f"Diagnosis: {display_name}",
+            {
+                "Type": "Client",
+                "Connection": conn_type,
+                "IP": client_detail.get("ip", "N/A"),
+            },
+        )
+    )
 
     # Client details.
     detail_data: dict[str, str] = {
@@ -554,9 +575,7 @@ async def _diagnose_device(device: dict[str, Any], site_id: str) -> str:
 
     # Fetch device health.
     try:
-        device_health = await unifi__health__get_device_health(
-            device_mac, site_id=site_id
-        )
+        device_health = await unifi__health__get_device_health(device_mac, site_id=site_id)
     except Exception:
         logger.warning(
             "Could not fetch device health for %s, using search result",
@@ -583,14 +602,16 @@ async def _diagnose_device(device: dict[str, Any], site_id: str) -> str:
     sections: list[str] = []
 
     # Summary.
-    sections.append(format_summary(
-        f"Diagnosis: {display_name}",
-        {
-            "Type": "Device",
-            "Model": device_health.get("model", "N/A"),
-            "Status": device_health.get("status", "N/A"),
-        },
-    ))
+    sections.append(
+        format_summary(
+            f"Diagnosis: {display_name}",
+            {
+                "Type": "Device",
+                "Model": device_health.get("model", "N/A"),
+                "Status": device_health.get("status", "N/A"),
+            },
+        )
+    )
 
     # Device details.
     detail_data: dict[str, str] = {

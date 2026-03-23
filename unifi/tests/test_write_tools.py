@@ -79,10 +79,12 @@ def _mock_client_for_snapshot() -> AsyncMock:
 def _mock_client_for_portconf_create(profile_id: str = "prof001") -> AsyncMock:
     """Create a mock client that returns a success response for POST portconf."""
     mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value={
-        "data": [{"_id": profile_id, "name": "Trunk-AP"}],
-        "meta": {"rc": "ok"},
-    })
+    mock_client.post = AsyncMock(
+        return_value={
+            "data": [{"_id": profile_id, "name": "Trunk-AP"}],
+            "meta": {"rc": "ok"},
+        }
+    )
     mock_client.close = AsyncMock()
     return mock_client
 
@@ -113,13 +115,17 @@ def _mock_client_for_port_assign(
     )
     mock_client.get_normalized = AsyncMock(return_value=portconf_data)
 
-    mock_client.put = AsyncMock(return_value={
-        "data": [{
-            "_id": "dev123",
-            "port_overrides": [{"port_idx": 5, "portconf_id": profile_id}],
-        }],
-        "meta": {"rc": "ok"},
-    })
+    mock_client.put = AsyncMock(
+        return_value={
+            "data": [
+                {
+                    "_id": "dev123",
+                    "port_overrides": [{"port_idx": 5, "portconf_id": profile_id}],
+                }
+            ],
+            "meta": {"rc": "ok"},
+        }
+    )
     mock_client.close = AsyncMock()
     return mock_client
 
@@ -269,7 +275,9 @@ class TestCreatePortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, apply=True,
+                name="Test",
+                native_vlan=10,
+                apply=True,
             )
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
 
@@ -279,7 +287,8 @@ class TestCreatePortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10,
+                name="Test",
+                native_vlan=10,
             )
         assert exc_info.value.reason == WriteBlockReason.APPLY_FLAG_MISSING
 
@@ -289,7 +298,9 @@ class TestCreatePortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, apply=True,
+                name="Test",
+                native_vlan=10,
+                apply=True,
             )
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
 
@@ -303,7 +314,9 @@ class TestCreatePortProfileValidation:
             pytest.raises(ValidationError, match="name must not be empty"),
         ):
             await unifi__config__create_port_profile(
-                name="", native_vlan=10, apply=True,
+                name="",
+                native_vlan=10,
+                apply=True,
             )
 
     async def test_whitespace_name_raises_validation_error(self) -> None:
@@ -312,7 +325,9 @@ class TestCreatePortProfileValidation:
             pytest.raises(ValidationError, match="name must not be empty"),
         ):
             await unifi__config__create_port_profile(
-                name="   ", native_vlan=10, apply=True,
+                name="   ",
+                native_vlan=10,
+                apply=True,
             )
 
     async def test_native_vlan_zero_raises_validation_error(self) -> None:
@@ -321,7 +336,9 @@ class TestCreatePortProfileValidation:
             pytest.raises(ValidationError, match="Invalid native_vlan"),
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=0, apply=True,
+                name="Test",
+                native_vlan=0,
+                apply=True,
             )
 
     async def test_native_vlan_above_4094_raises_validation_error(self) -> None:
@@ -330,7 +347,9 @@ class TestCreatePortProfileValidation:
             pytest.raises(ValidationError, match="Invalid native_vlan"),
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=4095, apply=True,
+                name="Test",
+                native_vlan=4095,
+                apply=True,
             )
 
     async def test_invalid_tagged_vlan_raises_validation_error(self) -> None:
@@ -339,7 +358,10 @@ class TestCreatePortProfileValidation:
             pytest.raises(ValidationError, match="Invalid tagged VLAN ID"),
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, tagged_vlans="abc", apply=True,
+                name="Test",
+                native_vlan=10,
+                tagged_vlans="abc",
+                apply=True,
             )
 
     async def test_tagged_vlan_out_of_range_raises_validation_error(self) -> None:
@@ -348,7 +370,10 @@ class TestCreatePortProfileValidation:
             pytest.raises(ValidationError, match="Invalid tagged_vlans"),
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, tagged_vlans="5000", apply=True,
+                name="Test",
+                native_vlan=10,
+                tagged_vlans="5000",
+                apply=True,
             )
 
 
@@ -363,7 +388,9 @@ class TestCreatePortProfileSuccess:
             patch("unifi.tools.config._get_client", return_value=mock_client),
         ):
             result = await unifi__config__create_port_profile(
-                name="Trunk-AP", native_vlan=1, apply=True,
+                name="Trunk-AP",
+                native_vlan=1,
+                apply=True,
             )
 
         assert result["profile_id"] == "prof001"
@@ -410,7 +437,10 @@ class TestCreatePortProfileSuccess:
             patch("unifi.tools.config._get_client", return_value=mock_client),
         ):
             result = await unifi__config__create_port_profile(
-                name="PoE-AP", native_vlan=10, poe=True, apply=True,
+                name="PoE-AP",
+                native_vlan=10,
+                poe=True,
+                apply=True,
             )
 
         assert result["poe"] is True
@@ -427,7 +457,10 @@ class TestCreatePortProfileSuccess:
             patch("unifi.tools.config._get_client", return_value=mock_client),
         ):
             result = await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, site_id="branch", apply=True,
+                name="Test",
+                native_vlan=10,
+                site_id="branch",
+                apply=True,
             )
 
         assert result["site_id"] == "branch"
@@ -436,9 +469,7 @@ class TestCreatePortProfileSuccess:
 
     async def test_api_error_propagates(self) -> None:
         mock_client = AsyncMock()
-        mock_client.post = AsyncMock(
-            side_effect=APIError("Server error", status_code=500)
-        )
+        mock_client.post = AsyncMock(side_effect=APIError("Server error", status_code=500))
         mock_client.close = AsyncMock()
 
         with (
@@ -447,7 +478,9 @@ class TestCreatePortProfileSuccess:
             pytest.raises(APIError, match="Server error"),
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, apply=True,
+                name="Test",
+                native_vlan=10,
+                apply=True,
             )
 
         mock_client.close.assert_called_once()
@@ -460,7 +493,9 @@ class TestCreatePortProfileSuccess:
             patch("unifi.tools.config._get_client", return_value=mock_client),
         ):
             await unifi__config__create_port_profile(
-                name="Test", native_vlan=10, apply=True,
+                name="Test",
+                native_vlan=10,
+                apply=True,
             )
 
         mock_client.close.assert_called_once()
@@ -480,7 +515,9 @@ class TestAssignPortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
@@ -491,7 +528,9 @@ class TestAssignPortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
             )
         assert exc_info.value.reason == WriteBlockReason.APPLY_FLAG_MISSING
 
@@ -501,7 +540,9 @@ class TestAssignPortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
@@ -516,7 +557,9 @@ class TestAssignPortProfileValidation:
             pytest.raises(ValidationError, match="port_idx"),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=0, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=0,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -526,7 +569,9 @@ class TestAssignPortProfileValidation:
             pytest.raises(ValidationError, match="port_idx"),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=-1, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=-1,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -536,20 +581,27 @@ class TestAssignPortProfileValidation:
             pytest.raises(ValidationError, match="name must not be empty"),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="",
                 apply=True,
             )
 
     async def test_profile_not_found_raises_validation_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_single = AsyncMock(return_value={
-            "_id": "dev123", "port_overrides": [],
-        })
-        mock_client.get_normalized = AsyncMock(return_value=NormalizedResponse(
-            data=[{"_id": "prof001", "name": "Other-Profile"}],
-            count=1,
-            meta={"rc": "ok"},
-        ))
+        mock_client.get_single = AsyncMock(
+            return_value={
+                "_id": "dev123",
+                "port_overrides": [],
+            }
+        )
+        mock_client.get_normalized = AsyncMock(
+            return_value=NormalizedResponse(
+                data=[{"_id": "prof001", "name": "Other-Profile"}],
+                count=1,
+                meta={"rc": "ok"},
+            )
+        )
         mock_client.close = AsyncMock()
 
         with (
@@ -558,7 +610,9 @@ class TestAssignPortProfileValidation:
             pytest.raises(ValidationError, match="not found"),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Nonexistent",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Nonexistent",
                 apply=True,
             )
 
@@ -576,7 +630,9 @@ class TestAssignPortProfileSuccess:
             patch("unifi.tools.topology._get_client", return_value=mock_client),
         ):
             result = await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -590,8 +646,7 @@ class TestAssignPortProfileSuccess:
         put_args = mock_client.put.call_args
         body = put_args[1]["data"] if "data" in put_args[1] else put_args[0][1]
         assert any(
-            o["port_idx"] == 5 and o["portconf_id"] == "prof001"
-            for o in body["port_overrides"]
+            o["port_idx"] == 5 and o["portconf_id"] == "prof001" for o in body["port_overrides"]
         )
 
     async def test_assigns_profile_to_existing_overrides(self) -> None:
@@ -607,7 +662,9 @@ class TestAssignPortProfileSuccess:
             patch("unifi.tools.topology._get_client", return_value=mock_client),
         ):
             result = await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -634,7 +691,9 @@ class TestAssignPortProfileSuccess:
             patch("unifi.tools.topology._get_client", return_value=mock_client),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -654,8 +713,11 @@ class TestAssignPortProfileSuccess:
             patch("unifi.tools.topology._get_client", return_value=mock_client),
         ):
             result = await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
-                site_id="branch", apply=True,
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
+                site_id="branch",
+                apply=True,
             )
 
         assert result["site_id"] == "branch"
@@ -680,7 +742,9 @@ class TestAssignPortProfileSuccess:
             pytest.raises(APIError, match="Device not found"),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="bad-id", port_idx=5, profile_name="Trunk-AP",
+                device_id="bad-id",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -688,9 +752,7 @@ class TestAssignPortProfileSuccess:
 
     async def test_api_error_on_put_propagates(self) -> None:
         mock_client = _mock_client_for_port_assign()
-        mock_client.put = AsyncMock(
-            side_effect=APIError("Internal error", status_code=500)
-        )
+        mock_client.put = AsyncMock(side_effect=APIError("Internal error", status_code=500))
 
         with (
             patch.dict(os.environ, {"UNIFI_WRITE_ENABLED": "true"}),
@@ -698,7 +760,9 @@ class TestAssignPortProfileSuccess:
             pytest.raises(APIError, match="Internal error"),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 
@@ -712,7 +776,9 @@ class TestAssignPortProfileSuccess:
             patch("unifi.tools.topology._get_client", return_value=mock_client),
         ):
             await unifi__topology__assign_port_profile(
-                device_id="dev123", port_idx=5, profile_name="Trunk-AP",
+                device_id="dev123",
+                port_idx=5,
+                profile_name="Trunk-AP",
                 apply=True,
             )
 

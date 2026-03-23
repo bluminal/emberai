@@ -37,6 +37,7 @@ logger = logging.getLogger("netex.agents.outage_risk")
 # Risk tier enum
 # ---------------------------------------------------------------------------
 
+
 class RiskTier(StrEnum):
     """Outage risk classification tiers, ordered most to least severe."""
 
@@ -47,24 +48,29 @@ class RiskTier(StrEnum):
 
 
 # Subsystem categories that map change steps to risk assessment.
-_SESSION_PATH_SUBSYSTEMS = frozenset({
-    "interface",
-    "vlan",
-    "route",
-    "firewall",
-})
+_SESSION_PATH_SUBSYSTEMS = frozenset(
+    {
+        "interface",
+        "vlan",
+        "route",
+        "firewall",
+    }
+)
 
-_INDIRECT_SUBSYSTEMS = frozenset({
-    "dns",
-    "dhcp",
-    "routing",
-    "services",
-})
+_INDIRECT_SUBSYSTEMS = frozenset(
+    {
+        "dns",
+        "dhcp",
+        "routing",
+        "services",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Session path resolution
 # ---------------------------------------------------------------------------
+
 
 def resolve_operator_ip(
     *,
@@ -122,6 +128,7 @@ def resolve_operator_ip(
 # ---------------------------------------------------------------------------
 # OutageRiskAgent
 # ---------------------------------------------------------------------------
+
 
 class OutageRiskAgent:
     """Read-only agent that assesses whether proposed changes could sever
@@ -236,8 +243,11 @@ class OutageRiskAgent:
         """
         if operator_ip is None:
             return {
-                "known": False, "interfaces": [], "vlans": [],
-                "routes": [], "firewall_rules": [],
+                "known": False,
+                "interfaces": [],
+                "vlans": [],
+                "routes": [],
+                "firewall_rules": [],
             }
 
         # Check what tools are available
@@ -253,8 +263,11 @@ class OutageRiskAgent:
                 "session path cannot be determined"
             )
             return {
-                "known": False, "interfaces": [], "vlans": [],
-                "routes": [], "firewall_rules": [],
+                "known": False,
+                "interfaces": [],
+                "vlans": [],
+                "routes": [],
+                "firewall_rules": [],
             }
 
         # In a production implementation, this would call the actual MCP
@@ -310,7 +323,10 @@ class OutageRiskAgent:
             action = step.get("action", "")
 
             step_risk, step_desc, step_path = self._classify_step(
-                subsystem, target, action, session_path,
+                subsystem,
+                target,
+                action,
+                session_path,
             )
 
             if _risk_order(step_risk) < _risk_order(highest_risk):
@@ -427,6 +443,7 @@ class OutageRiskAgent:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _risk_order(tier: RiskTier) -> int:
     """Return sort order for risk tiers (lower = more severe)."""

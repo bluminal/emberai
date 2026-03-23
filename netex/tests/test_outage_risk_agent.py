@@ -23,6 +23,7 @@ from netex.registry.plugin_registry import PluginRegistry
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_registry(
     *,
     has_diagnostics: bool = True,
@@ -46,13 +47,15 @@ def _make_registry(
         tools["clients"] = ["unifi__clients__list_clients"]
 
     if skills:
-        registry.register({
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "roles": ["gateway", "edge"],
-            "skills": skills,
-            "tools": tools,
-        })
+        registry.register(
+            {
+                "name": "test-plugin",
+                "version": "1.0.0",
+                "roles": ["gateway", "edge"],
+                "skills": skills,
+                "tools": tools,
+            }
+        )
 
     return registry
 
@@ -77,6 +80,7 @@ def empty_registry() -> PluginRegistry:
 # ---------------------------------------------------------------------------
 # Session path resolution (4-step fallback)
 # ---------------------------------------------------------------------------
+
 
 class TestResolveOperatorIP:
     def test_step1_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -162,9 +166,12 @@ class TestResolveOperatorIP:
 # Risk tier: LOW
 # ---------------------------------------------------------------------------
 
+
 class TestRiskTierLow:
     async def test_empty_change_steps(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Empty change list returns LOW risk."""
         result = await agent.assess([], full_registry, operator_ip="10.0.0.1")
@@ -172,20 +179,26 @@ class TestRiskTierLow:
         assert result["affected_path"] is None
 
     async def test_unrelated_subsystem(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Changes to unrelated subsystems (e.g. wifi) are LOW risk."""
         steps = [
             {"subsystem": "wifi", "action": "modify", "target": "guest-ssid"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.LOW
         assert result["session_path_known"] is True
 
     async def test_multiple_unrelated_steps(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Multiple unrelated steps still produce LOW risk."""
         steps = [
@@ -194,7 +207,9 @@ class TestRiskTierLow:
             {"subsystem": "ssid", "action": "add", "target": "iot-network"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.LOW
 
@@ -203,46 +218,61 @@ class TestRiskTierLow:
 # Risk tier: MEDIUM
 # ---------------------------------------------------------------------------
 
+
 class TestRiskTierMedium:
     async def test_dns_change(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """DNS changes are classified as MEDIUM (indirect disruption)."""
         steps = [
             {"subsystem": "dns", "action": "modify", "target": "forwarder"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.MEDIUM
         assert "indirect disruption" in result["description"]
 
     async def test_dhcp_change(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """DHCP changes are MEDIUM risk."""
         steps = [
             {"subsystem": "dhcp", "action": "modify", "target": "pool-10"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.MEDIUM
 
     async def test_routing_change(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Routing (services) changes are MEDIUM risk."""
         steps = [
             {"subsystem": "routing", "action": "add", "target": "new-route"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.MEDIUM
 
     async def test_medium_trumps_low(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Batch with LOW + MEDIUM steps results in MEDIUM overall."""
         steps = [
@@ -250,7 +280,9 @@ class TestRiskTierMedium:
             {"subsystem": "dns", "action": "modify", "target": "resolver"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.MEDIUM
 
@@ -259,58 +291,77 @@ class TestRiskTierMedium:
 # Risk tier: HIGH
 # ---------------------------------------------------------------------------
 
+
 class TestRiskTierHigh:
     async def test_interface_change_same_subsystem(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Interface changes are HIGH when not directly on session path."""
         steps = [
             {"subsystem": "interface", "action": "modify", "target": "igb2"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
         assert "same subsystem" in result["description"]
 
     async def test_vlan_change_same_subsystem(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """VLAN changes are HIGH when not intersecting session path."""
         steps = [
             {"subsystem": "vlan", "action": "add", "target": "99"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
 
     async def test_firewall_change_same_subsystem(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Firewall changes are HIGH when not matching session rules."""
         steps = [
             {"subsystem": "firewall", "action": "add", "target": "new-rule"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
 
     async def test_route_change_same_subsystem(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Route changes are HIGH when not on session path."""
         steps = [
             {"subsystem": "route", "action": "modify", "target": "10.99.0.0/24"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
 
     async def test_undetermined_ip_defaults_to_high(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """When operator IP cannot be determined, default to HIGH."""
         steps = [
@@ -323,20 +374,26 @@ class TestRiskTierHigh:
         assert "could not be determined" in result["description"]
 
     async def test_no_tools_defaults_to_high(
-        self, agent: OutageRiskAgent, empty_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        empty_registry: PluginRegistry,
     ) -> None:
         """When no diagnostic tools are available, default to HIGH."""
         steps = [
             {"subsystem": "vlan", "action": "add", "target": "50"},
         ]
         result = await agent.assess(
-            steps, empty_registry, operator_ip="10.0.0.1",
+            steps,
+            empty_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
         assert result["session_path_known"] is False
 
     async def test_high_trumps_medium(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Batch with MEDIUM + HIGH steps results in HIGH overall."""
         steps = [
@@ -344,7 +401,9 @@ class TestRiskTierHigh:
             {"subsystem": "interface", "action": "modify", "target": "igb3"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
 
@@ -353,9 +412,11 @@ class TestRiskTierHigh:
 # Risk tier: CRITICAL
 # ---------------------------------------------------------------------------
 
+
 class TestRiskTierCritical:
     async def test_interface_on_session_path(
-        self, agent: OutageRiskAgent,
+        self,
+        agent: OutageRiskAgent,
     ) -> None:
         """Modifying an interface in the session path is CRITICAL."""
         # Create registry with session path knowledge
@@ -380,7 +441,9 @@ class TestRiskTierCritical:
             {"subsystem": "interface", "action": "modify", "target": "igb0"},
         ]
         result = await agent.assess(
-            steps, registry, operator_ip="10.0.0.1",
+            steps,
+            registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.CRITICAL
         assert "directly modifies" in result["description"]
@@ -408,12 +471,15 @@ class TestRiskTierCritical:
             {"subsystem": "vlan", "action": "modify", "target": "10"},
         ]
         result = await agent.assess(
-            steps, registry, operator_ip="10.0.0.1",
+            steps,
+            registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.CRITICAL
 
     async def test_firewall_rule_on_session_path(
-        self, agent: OutageRiskAgent,
+        self,
+        agent: OutageRiskAgent,
     ) -> None:
         """Modifying a firewall rule permitting the session is CRITICAL."""
         registry = _make_registry()
@@ -433,7 +499,9 @@ class TestRiskTierCritical:
             {"subsystem": "firewall", "action": "delete", "target": "rule-abc-123"},
         ]
         result = await agent.assess(
-            steps, registry, operator_ip="10.0.0.1",
+            steps,
+            registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.CRITICAL
 
@@ -456,7 +524,9 @@ class TestRiskTierCritical:
             {"subsystem": "route", "action": "modify", "target": "0.0.0.0/0"},
         ]
         result = await agent.assess(
-            steps, registry, operator_ip="10.0.0.1",
+            steps,
+            registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.CRITICAL
         assert result["affected_path"] == "0.0.0.0/0"
@@ -482,7 +552,9 @@ class TestRiskTierCritical:
             {"subsystem": "interface", "action": "modify", "target": "igb0"},  # CRITICAL
         ]
         result = await agent.assess(
-            steps, registry, operator_ip="10.0.0.1",
+            steps,
+            registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.CRITICAL
 
@@ -491,9 +563,12 @@ class TestRiskTierCritical:
 # Batch assessment (single pass)
 # ---------------------------------------------------------------------------
 
+
 class TestBatchAssessment:
     async def test_single_assessment_per_batch(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """One assessment is produced for the entire batch."""
         steps = [
@@ -502,7 +577,9 @@ class TestBatchAssessment:
             {"subsystem": "dns", "action": "modify", "target": "resolver"},
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         # Result is a single dict, not a list
         assert isinstance(result, dict)
@@ -510,7 +587,9 @@ class TestBatchAssessment:
         assert "description" in result
 
     async def test_batch_takes_highest_risk(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Batch risk tier is the highest risk from any individual step."""
         steps = [
@@ -518,12 +597,16 @@ class TestBatchAssessment:
             {"subsystem": "interface", "action": "modify", "target": "igb5"},  # HIGH
         ]
         result = await agent.assess(
-            steps, full_registry, operator_ip="10.0.0.1",
+            steps,
+            full_registry,
+            operator_ip="10.0.0.1",
         )
         assert result["risk_tier"] == RiskTier.HIGH
 
     async def test_operator_ip_in_result(
-        self, agent: OutageRiskAgent, full_registry: PluginRegistry,
+        self,
+        agent: OutageRiskAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """The resolved operator IP is included in the result."""
         result = await agent.assess(
@@ -537,6 +620,7 @@ class TestBatchAssessment:
 # ---------------------------------------------------------------------------
 # RiskTier enum
 # ---------------------------------------------------------------------------
+
 
 class TestRiskTierEnum:
     def test_values(self) -> None:

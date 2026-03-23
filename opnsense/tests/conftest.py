@@ -8,7 +8,6 @@ import pytest
 
 from tests.fixtures import load_fixture
 
-
 # ---------------------------------------------------------------------------
 # Fixture data loaders -- provide parsed JSON from fixture files
 # ---------------------------------------------------------------------------

@@ -24,7 +24,6 @@ from unifi.tools.topology import (
     unifi__topology__list_sites,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -78,7 +77,8 @@ class TestGetCloudClient:
             _get_cloud_client()
 
     def test_raises_when_api_key_whitespace_only(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("UNIFI_API_KEY", "   ")
 
@@ -86,7 +86,8 @@ class TestGetCloudClient:
             _get_cloud_client()
 
     def test_strips_whitespace_from_api_key(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("UNIFI_API_KEY", "  my-key  ")
 
@@ -230,7 +231,8 @@ class TestListSites:
         mock_client = AsyncMock()
         mock_client.get_normalized = AsyncMock(
             side_effect=AuthenticationError(
-                "Authentication failed", env_var="UNIFI_API_KEY",
+                "Authentication failed",
+                env_var="UNIFI_API_KEY",
             ),
         )
         mock_client.close = AsyncMock()
@@ -467,8 +469,20 @@ class TestListHosts:
     async def test_multiple_hosts(self) -> None:
         """Verify parsing of multiple hosts with varying field sets."""
         raw_hosts = [
-            {"_id": "h1", "hostname": "UDM-Pro", "ip": "192.168.1.1", "type": "udm", "firmware_version": "4.0.6"},
-            {"id": "h2", "name": "UCK-G2", "wan_ip": "10.0.0.1", "hardware_type": "uck", "version": "3.1.15"},
+            {
+                "_id": "h1",
+                "hostname": "UDM-Pro",
+                "ip": "192.168.1.1",
+                "type": "udm",
+                "firmware_version": "4.0.6",
+            },
+            {
+                "id": "h2",
+                "name": "UCK-G2",
+                "wan_ip": "10.0.0.1",
+                "hardware_type": "uck",
+                "version": "3.1.15",
+            },
             {"_id": "h3"},
         ]
         mock_client = _mock_cloud_client(raw_hosts)

@@ -95,6 +95,7 @@ FULL_MANIFEST = textwrap.dedent("""\
 # VLANDefinition tests
 # ---------------------------------------------------------------------------
 
+
 class TestVLANDefinition:
     def test_valid_vlan(self) -> None:
         vlan = VLANDefinition(
@@ -138,6 +139,7 @@ class TestVLANDefinition:
 # AccessPolicyRule tests
 # ---------------------------------------------------------------------------
 
+
 class TestAccessPolicyRule:
     def test_allow_rule(self) -> None:
         rule = AccessPolicyRule(
@@ -172,6 +174,7 @@ class TestAccessPolicyRule:
 # WiFiDefinition tests
 # ---------------------------------------------------------------------------
 
+
 class TestWiFiDefinition:
     def test_defaults(self) -> None:
         wifi = WiFiDefinition(ssid="Test", vlan_name="trusted")
@@ -191,6 +194,7 @@ class TestWiFiDefinition:
 # ---------------------------------------------------------------------------
 # PortProfileDefinition tests
 # ---------------------------------------------------------------------------
+
 
 class TestPortProfileDefinition:
     def test_trunk_profile(self) -> None:
@@ -214,6 +218,7 @@ class TestPortProfileDefinition:
 # ---------------------------------------------------------------------------
 # SiteManifest tests
 # ---------------------------------------------------------------------------
+
 
 class TestSiteManifest:
     def test_minimal_manifest(self) -> None:
@@ -283,6 +288,7 @@ class TestSiteManifest:
 # parse_manifest tests
 # ---------------------------------------------------------------------------
 
+
 class TestParseManifest:
     def test_minimal_yaml(self) -> None:
         manifest = parse_manifest(MINIMAL_MANIFEST)
@@ -307,10 +313,7 @@ class TestParseManifest:
 
     def test_full_yaml_policy(self) -> None:
         manifest = parse_manifest(FULL_MANIFEST)
-        block_rules = [
-            r for r in manifest.access_policy
-            if r.action == PolicyAction.BLOCK
-        ]
+        block_rules = [r for r in manifest.access_policy if r.action == PolicyAction.BLOCK]
         assert len(block_rules) == 1
         assert block_rules[0].source == "guest"
         assert block_rules[0].destination == "trusted"
@@ -332,12 +335,14 @@ class TestParseManifest:
 
     def test_invalid_vlan_id_raises(self) -> None:
         with pytest.raises(ValidationError):
-            parse_manifest(textwrap.dedent("""\
+            parse_manifest(
+                textwrap.dedent("""\
                 vlans:
                   - vlan_id: 9999
                     name: bad
                     subnet: 10.0.0.0/24
-            """))
+            """)
+            )
 
 
 class TestParseManifestFile:

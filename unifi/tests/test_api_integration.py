@@ -24,7 +24,7 @@ from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.api.response import NormalizedResponse, normalize_response
 from unifi.cache import TTLCache
 from unifi.errors import APIError, AuthenticationError, NetworkError
-from unifi.models import Client, Device, Event, FirmwareStatus, HealthStatus, VLAN
+from unifi.models import VLAN, Client, Device, Event, FirmwareStatus, HealthStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -439,7 +439,7 @@ class TestCachedFlowIntegration:
 
         async with _make_gateway_client() as raw_client:
             raw_client._client.request = AsyncMock(return_value=mock_resp)
-            cached_client, cache = _make_cached_client(raw_client)
+            cached_client, _cache = _make_cached_client(raw_client)
 
             result = await cached_client.get("/api/s/default/stat/device")
 
@@ -454,7 +454,7 @@ class TestCachedFlowIntegration:
 
         async with _make_gateway_client() as raw_client:
             raw_client._client.request = AsyncMock(return_value=mock_resp)
-            cached_client, cache = _make_cached_client(raw_client)
+            cached_client, _cache = _make_cached_client(raw_client)
 
             result1 = await cached_client.get("/api/s/default/stat/sta")
             result2 = await cached_client.get("/api/s/default/stat/sta")
@@ -670,7 +670,7 @@ class TestErrorFlowIntegration:
 
             # get_normalized() detects the error envelope and raises
             raw_client._client.request = AsyncMock(return_value=mock_resp)
-            with pytest.raises(APIError, match="api.err.Invalid"):
+            with pytest.raises(APIError, match=r"api.err.Invalid"):
                 await raw_client.get_normalized("/api/s/default/stat/device")
 
     @pytest.mark.asyncio
@@ -692,7 +692,7 @@ class TestErrorFlowIntegration:
             assert result["meta"]["rc"] == "error"
 
             # But normalization catches the error
-            with pytest.raises(APIError, match="api.err.NoSite"):
+            with pytest.raises(APIError, match=r"api.err.NoSite"):
                 normalize_response(result)
 
     @pytest.mark.asyncio
@@ -739,9 +739,7 @@ class TestErrorFlowIntegration:
     async def test_read_timeout_raises_network_error(self) -> None:
         """Read timeout raises NetworkError."""
         async with _make_gateway_client() as raw_client:
-            raw_client._client.request = AsyncMock(
-                side_effect=httpx.ReadTimeout("Read timed out")
-            )
+            raw_client._client.request = AsyncMock(side_effect=httpx.ReadTimeout("Read timed out"))
 
             with pytest.raises(NetworkError):
                 await raw_client.get("/api/s/default/stat/device")
@@ -754,9 +752,7 @@ class TestErrorFlowIntegration:
         mock_resp_err = _mock_response(500, text="Internal Server Error")
 
         async with _make_gateway_client() as raw_client:
-            raw_client._client.request = AsyncMock(
-                side_effect=[mock_resp_ok, mock_resp_err]
-            )
+            raw_client._client.request = AsyncMock(side_effect=[mock_resp_ok, mock_resp_err])
             cached_client, _ = _make_cached_client(raw_client)
 
             # First call succeeds and gets cached

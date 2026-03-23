@@ -93,8 +93,7 @@ def _classify_rf_neighbors(
 
     # Count non-own SSIDs with strong signal
     strong_neighbors = [
-        n for n in neighbors
-        if not n.get("is_own", False) and (n.get("rssi") or 0) > -60
+        n for n in neighbors if not n.get("is_own", False) and (n.get("rssi") or 0) > -60
     ]
 
     if len(strong_neighbors) > 5:
@@ -106,9 +105,7 @@ def _classify_rf_neighbors(
                     f"Detected {len(strong_neighbors)} non-own SSIDs with RSSI > -60 dBm "
                     f"near {ap_name}, indicating a dense RF environment."
                 ),
-                recommendation=(
-                    "Review channel assignments to minimize co-channel interference."
-                ),
+                recommendation=("Review channel assignments to minimize co-channel interference."),
             )
         )
 

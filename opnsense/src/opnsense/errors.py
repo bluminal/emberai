@@ -30,12 +30,12 @@ Subclasses add domain-specific fields (see each class's docstring).
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
-
+from typing import Any, ClassVar
 
 # ---------------------------------------------------------------------------
 # WriteGateReason enum
 # ---------------------------------------------------------------------------
+
 
 class WriteGateReason(StrEnum):
     """Reason a write operation was blocked by the safety gate."""
@@ -47,6 +47,7 @@ class WriteGateReason(StrEnum):
 # ---------------------------------------------------------------------------
 # Base error
 # ---------------------------------------------------------------------------
+
 
 class NetexError(Exception):
     """Base exception for all Netex / opnsense plugin errors.
@@ -110,6 +111,7 @@ class NetexError(Exception):
 # Authentication
 # ---------------------------------------------------------------------------
 
+
 class AuthenticationError(NetexError):
     """Raised when authentication fails (HTTP 401 or missing credentials).
 
@@ -156,6 +158,7 @@ class AuthenticationError(NetexError):
 # Rate limiting
 # ---------------------------------------------------------------------------
 
+
 class RateLimitError(NetexError):
     """Raised when the API returns HTTP 429 (quota exceeded).
 
@@ -200,6 +203,7 @@ class RateLimitError(NetexError):
 # Network / connectivity
 # ---------------------------------------------------------------------------
 
+
 class NetworkError(NetexError):
     """Raised for transport-level failures (timeout, DNS, SSL, connection refused).
 
@@ -226,6 +230,7 @@ class NetworkError(NetexError):
 # ---------------------------------------------------------------------------
 # API response errors (4xx / 5xx)
 # ---------------------------------------------------------------------------
+
 
 class APIError(NetexError):
     """Raised for non-401/429 HTTP error responses from the API.
@@ -275,6 +280,7 @@ class APIError(NetexError):
 # Validation
 # ---------------------------------------------------------------------------
 
+
 class ValidationError(NetexError):
     """Raised when input validation or schema conformance fails.
 
@@ -303,6 +309,7 @@ class ValidationError(NetexError):
 # Write gate
 # ---------------------------------------------------------------------------
 
+
 class WriteGateError(NetexError):
     """Raised when a write operation is blocked by the safety gate.
 
@@ -321,13 +328,11 @@ class WriteGateError(NetexError):
         ``--apply`` flag is missing.
     """
 
-    _REASON_MESSAGES: dict[WriteGateReason, str] = {
+    _REASON_MESSAGES: ClassVar[dict[WriteGateReason, str]] = {
         WriteGateReason.ENV_VAR_DISABLED: (
             "Set OPNSENSE_WRITE_ENABLED=true to allow write operations"
         ),
-        WriteGateReason.APPLY_FLAG_MISSING: (
-            "Add the --apply flag to execute write operations"
-        ),
+        WriteGateReason.APPLY_FLAG_MISSING: ("Add the --apply flag to execute write operations"),
     }
 
     def __init__(

@@ -138,14 +138,16 @@ def _build_vlan_dicts() -> list[dict[str, Any]]:
     for network in raw_fixture["data"]:
         if not _is_vlan_network(network):
             continue
-        vlans.append({
-            "vlan_id": network["_id"],
-            "name": network["name"],
-            "subnet": network.get("ip_subnet", ""),
-            "purpose": network.get("purpose", "corporate"),
-            "dhcp_enabled": network.get("dhcpd_enabled", False),
-            "domain_name": network.get("domain_name"),
-        })
+        vlans.append(
+            {
+                "vlan_id": network["_id"],
+                "name": network["name"],
+                "subnet": network.get("ip_subnet", ""),
+                "purpose": network.get("purpose", "corporate"),
+                "dhcp_enabled": network.get("dhcpd_enabled", False),
+                "domain_name": network.get("domain_name"),
+            }
+        )
     return vlans
 
 

@@ -22,7 +22,6 @@ from unifi.tools.health import (
     unifi__health__get_firmware_status,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -110,7 +109,8 @@ class TestGetCloudClientHealth:
         assert client._api_key == "my-cloud-key"
 
     def test_empty_key_creates_client_with_empty_key(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The health module's _get_cloud_client does not raise on empty key --
         it's only called after _has_cloud_api_key() returns True."""
@@ -128,7 +128,8 @@ class TestFirmwareStatusRouting:
     """Verify firmware status routes to cloud or local based on UNIFI_API_KEY."""
 
     async def test_routes_to_cloud_when_key_present(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """With UNIFI_API_KEY set, should use Cloud V1 /v1/devices."""
         monkeypatch.setenv("UNIFI_API_KEY", "cloud-key")
@@ -147,7 +148,8 @@ class TestFirmwareStatusRouting:
         assert result == [{"device_id": "d1"}]
 
     async def test_routes_to_local_when_key_absent(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Without UNIFI_API_KEY, should fall back to local API."""
         monkeypatch.delenv("UNIFI_API_KEY", raising=False)
@@ -166,7 +168,8 @@ class TestFirmwareStatusRouting:
         assert result == [{"device_id": "d2"}]
 
     async def test_routes_to_local_with_custom_site_id(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Custom site_id should be passed to the local fallback."""
         monkeypatch.delenv("UNIFI_API_KEY", raising=False)
@@ -179,7 +182,8 @@ class TestFirmwareStatusRouting:
         mock_local.assert_called_once_with("branch")
 
     async def test_routes_to_local_when_key_empty(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Empty UNIFI_API_KEY should route to local."""
         monkeypatch.setenv("UNIFI_API_KEY", "")

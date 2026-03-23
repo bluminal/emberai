@@ -32,6 +32,7 @@ from netex.errors import WorkflowError
 # States
 # ---------------------------------------------------------------------------
 
+
 class WorkflowState(StrEnum):
     """Valid states in the workflow state machine.
 
@@ -56,36 +57,50 @@ class WorkflowState(StrEnum):
 
 # Valid state transitions -- maps current state to allowed next states.
 VALID_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = {
-    WorkflowState.CREATED: frozenset({
-        WorkflowState.RESOLVING,
-        WorkflowState.CANCELLED,
-    }),
-    WorkflowState.RESOLVING: frozenset({
-        WorkflowState.PLANNING,
-        WorkflowState.CANCELLED,
-        WorkflowState.FAILED,
-    }),
-    WorkflowState.PLANNING: frozenset({
-        WorkflowState.AWAITING_CONFIRMATION,
-        WorkflowState.CANCELLED,
-        WorkflowState.FAILED,
-    }),
-    WorkflowState.AWAITING_CONFIRMATION: frozenset({
-        WorkflowState.EXECUTING,
-        WorkflowState.PLANNING,  # Re-plan after operator modification
-        WorkflowState.CANCELLED,
-    }),
-    WorkflowState.EXECUTING: frozenset({
-        WorkflowState.COMPLETED,
-        WorkflowState.FAILED,
-    }),
-    WorkflowState.FAILED: frozenset({
-        WorkflowState.ROLLING_BACK,
-    }),
-    WorkflowState.ROLLING_BACK: frozenset({
-        WorkflowState.ROLLED_BACK,
-        WorkflowState.ROLLBACK_FAILED,
-    }),
+    WorkflowState.CREATED: frozenset(
+        {
+            WorkflowState.RESOLVING,
+            WorkflowState.CANCELLED,
+        }
+    ),
+    WorkflowState.RESOLVING: frozenset(
+        {
+            WorkflowState.PLANNING,
+            WorkflowState.CANCELLED,
+            WorkflowState.FAILED,
+        }
+    ),
+    WorkflowState.PLANNING: frozenset(
+        {
+            WorkflowState.AWAITING_CONFIRMATION,
+            WorkflowState.CANCELLED,
+            WorkflowState.FAILED,
+        }
+    ),
+    WorkflowState.AWAITING_CONFIRMATION: frozenset(
+        {
+            WorkflowState.EXECUTING,
+            WorkflowState.PLANNING,  # Re-plan after operator modification
+            WorkflowState.CANCELLED,
+        }
+    ),
+    WorkflowState.EXECUTING: frozenset(
+        {
+            WorkflowState.COMPLETED,
+            WorkflowState.FAILED,
+        }
+    ),
+    WorkflowState.FAILED: frozenset(
+        {
+            WorkflowState.ROLLING_BACK,
+        }
+    ),
+    WorkflowState.ROLLING_BACK: frozenset(
+        {
+            WorkflowState.ROLLED_BACK,
+            WorkflowState.ROLLBACK_FAILED,
+        }
+    ),
     # Terminal states -- no transitions out
     WorkflowState.COMPLETED: frozenset(),
     WorkflowState.ROLLED_BACK: frozenset(),
@@ -94,17 +109,20 @@ VALID_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = {
 }
 
 # States that are considered terminal (workflow is finished).
-TERMINAL_STATES: frozenset[WorkflowState] = frozenset({
-    WorkflowState.COMPLETED,
-    WorkflowState.ROLLED_BACK,
-    WorkflowState.ROLLBACK_FAILED,
-    WorkflowState.CANCELLED,
-})
+TERMINAL_STATES: frozenset[WorkflowState] = frozenset(
+    {
+        WorkflowState.COMPLETED,
+        WorkflowState.ROLLED_BACK,
+        WorkflowState.ROLLBACK_FAILED,
+        WorkflowState.CANCELLED,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Step log entry
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StepLogEntry:
@@ -150,6 +168,7 @@ class StepLogEntry:
 # ---------------------------------------------------------------------------
 # Workflow instance
 # ---------------------------------------------------------------------------
+
 
 class Workflow:
     """A single workflow instance with state machine enforcement.

@@ -29,16 +29,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from opnsense.errors import ValidationError, WriteGateError
+from opnsense.errors import ValidationError
 from opnsense.output import Severity
-from opnsense.safety import WriteBlockReason
 from opnsense.tools.commands import (
     _detect_shadows,
     _parse_access_matrix,
     _parse_devices_json,
 )
 from tests.fixtures import load_fixture
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -80,21 +78,42 @@ class TestOpnsenseScan:
         """Scan should produce a report with all subsections."""
         mock_client = _make_mock_client()
         with (
-            patch("opnsense.agents.interfaces.run_interface_report", new_callable=AsyncMock,
-                  return_value="## Interface Report\ndata"),
-            patch("opnsense.agents.firewall.run_firewall_audit", new_callable=AsyncMock,
-                  return_value="## Firewall Report\ndata"),
-            patch("opnsense.agents.routing.run_routing_report", new_callable=AsyncMock,
-                  return_value="## Routing Report\ndata"),
+            patch(
+                "opnsense.agents.interfaces.run_interface_report",
+                new_callable=AsyncMock,
+                return_value="## Interface Report\ndata",
+            ),
+            patch(
+                "opnsense.agents.firewall.run_firewall_audit",
+                new_callable=AsyncMock,
+                return_value="## Firewall Report\ndata",
+            ),
+            patch(
+                "opnsense.agents.routing.run_routing_report",
+                new_callable=AsyncMock,
+                return_value="## Routing Report\ndata",
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.vpn.vpn_status_report", new_callable=AsyncMock,
-                  return_value="## VPN\ndata"),
-            patch("opnsense.agents.security.security_audit_report", new_callable=AsyncMock,
-                  return_value="## Security\ndata"),
-            patch("opnsense.agents.services.services_report", new_callable=AsyncMock,
-                  return_value="## Services\ndata"),
-            patch("opnsense.agents.firmware.firmware_report", new_callable=AsyncMock,
-                  return_value="## Firmware\ndata"),
+            patch(
+                "opnsense.agents.vpn.vpn_status_report",
+                new_callable=AsyncMock,
+                return_value="## VPN\ndata",
+            ),
+            patch(
+                "opnsense.agents.security.security_audit_report",
+                new_callable=AsyncMock,
+                return_value="## Security\ndata",
+            ),
+            patch(
+                "opnsense.agents.services.services_report",
+                new_callable=AsyncMock,
+                return_value="## Services\ndata",
+            ),
+            patch(
+                "opnsense.agents.firmware.firmware_report",
+                new_callable=AsyncMock,
+                return_value="## Firmware\ndata",
+            ),
         ):
             from opnsense.tools.commands import opnsense_scan
 
@@ -109,21 +128,42 @@ class TestOpnsenseScan:
         """Scan should continue if one subsystem fails."""
         mock_client = _make_mock_client()
         with (
-            patch("opnsense.agents.interfaces.run_interface_report", new_callable=AsyncMock,
-                  side_effect=Exception("API error")),
-            patch("opnsense.agents.firewall.run_firewall_audit", new_callable=AsyncMock,
-                  return_value="## Firewall OK"),
-            patch("opnsense.agents.routing.run_routing_report", new_callable=AsyncMock,
-                  return_value="## Routing OK"),
+            patch(
+                "opnsense.agents.interfaces.run_interface_report",
+                new_callable=AsyncMock,
+                side_effect=Exception("API error"),
+            ),
+            patch(
+                "opnsense.agents.firewall.run_firewall_audit",
+                new_callable=AsyncMock,
+                return_value="## Firewall OK",
+            ),
+            patch(
+                "opnsense.agents.routing.run_routing_report",
+                new_callable=AsyncMock,
+                return_value="## Routing OK",
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.vpn.vpn_status_report", new_callable=AsyncMock,
-                  return_value="## VPN OK"),
-            patch("opnsense.agents.security.security_audit_report", new_callable=AsyncMock,
-                  return_value="## Security OK"),
-            patch("opnsense.agents.services.services_report", new_callable=AsyncMock,
-                  return_value="## Services OK"),
-            patch("opnsense.agents.firmware.firmware_report", new_callable=AsyncMock,
-                  return_value="## Firmware OK"),
+            patch(
+                "opnsense.agents.vpn.vpn_status_report",
+                new_callable=AsyncMock,
+                return_value="## VPN OK",
+            ),
+            patch(
+                "opnsense.agents.security.security_audit_report",
+                new_callable=AsyncMock,
+                return_value="## Security OK",
+            ),
+            patch(
+                "opnsense.agents.services.services_report",
+                new_callable=AsyncMock,
+                return_value="## Services OK",
+            ),
+            patch(
+                "opnsense.agents.firmware.firmware_report",
+                new_callable=AsyncMock,
+                return_value="## Firmware OK",
+            ),
         ):
             from opnsense.tools.commands import opnsense_scan
 
@@ -136,21 +176,40 @@ class TestOpnsenseScan:
         """Scan should always close the client."""
         mock_client = _make_mock_client()
         with (
-            patch("opnsense.agents.interfaces.run_interface_report", new_callable=AsyncMock,
-                  return_value="ok"),
-            patch("opnsense.agents.firewall.run_firewall_audit", new_callable=AsyncMock,
-                  return_value="ok"),
-            patch("opnsense.agents.routing.run_routing_report", new_callable=AsyncMock,
-                  return_value="ok"),
+            patch(
+                "opnsense.agents.interfaces.run_interface_report",
+                new_callable=AsyncMock,
+                return_value="ok",
+            ),
+            patch(
+                "opnsense.agents.firewall.run_firewall_audit",
+                new_callable=AsyncMock,
+                return_value="ok",
+            ),
+            patch(
+                "opnsense.agents.routing.run_routing_report",
+                new_callable=AsyncMock,
+                return_value="ok",
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.vpn.vpn_status_report", new_callable=AsyncMock,
-                  return_value="ok"),
-            patch("opnsense.agents.security.security_audit_report", new_callable=AsyncMock,
-                  return_value="ok"),
-            patch("opnsense.agents.services.services_report", new_callable=AsyncMock,
-                  return_value="ok"),
-            patch("opnsense.agents.firmware.firmware_report", new_callable=AsyncMock,
-                  return_value="ok"),
+            patch(
+                "opnsense.agents.vpn.vpn_status_report", new_callable=AsyncMock, return_value="ok"
+            ),
+            patch(
+                "opnsense.agents.security.security_audit_report",
+                new_callable=AsyncMock,
+                return_value="ok",
+            ),
+            patch(
+                "opnsense.agents.services.services_report",
+                new_callable=AsyncMock,
+                return_value="ok",
+            ),
+            patch(
+                "opnsense.agents.firmware.firmware_report",
+                new_callable=AsyncMock,
+                return_value="ok",
+            ),
         ):
             from opnsense.tools.commands import opnsense_scan
 
@@ -171,17 +230,27 @@ class TestOpnsenseHealth:
         """Health check should produce a severity-tiered report."""
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.routing.opnsense__routing__list_gateways",
-                  new_callable=AsyncMock,
-                  return_value=[{"name": "WAN_GW", "status": "online", "rtt_ms": 5.0}]),
+            patch(
+                "opnsense.tools.routing.opnsense__routing__list_gateways",
+                new_callable=AsyncMock,
+                return_value=[{"name": "WAN_GW", "status": "online", "rtt_ms": 5.0}],
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.security.opnsense__security__get_ids_alerts",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.firmware.opnsense__firmware__get_status",
-                  new_callable=AsyncMock,
-                  return_value={"upgrade_available": False, "current_version": "25.1"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.security.opnsense__security__get_ids_alerts",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.firmware.opnsense__firmware__get_status",
+                new_callable=AsyncMock,
+                return_value={"upgrade_available": False, "current_version": "25.1"},
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_health
 
@@ -194,20 +263,34 @@ class TestOpnsenseHealth:
         """Offline gateways should produce CRITICAL findings."""
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.routing.opnsense__routing__list_gateways",
-                  new_callable=AsyncMock,
-                  return_value=[{
-                      "name": "WAN_GW", "status": "offline",
-                      "gateway": "1.2.3.4", "interface": "igb0",
-                  }]),
+            patch(
+                "opnsense.tools.routing.opnsense__routing__list_gateways",
+                new_callable=AsyncMock,
+                return_value=[
+                    {
+                        "name": "WAN_GW",
+                        "status": "offline",
+                        "gateway": "1.2.3.4",
+                        "interface": "igb0",
+                    }
+                ],
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.security.opnsense__security__get_ids_alerts",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.firmware.opnsense__firmware__get_status",
-                  new_callable=AsyncMock,
-                  return_value={"upgrade_available": False, "current_version": "25.1"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.security.opnsense__security__get_ids_alerts",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.firmware.opnsense__firmware__get_status",
+                new_callable=AsyncMock,
+                return_value={"upgrade_available": False, "current_version": "25.1"},
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_health
 
@@ -220,17 +303,31 @@ class TestOpnsenseHealth:
         """Firmware updates should produce WARNING findings."""
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.routing.opnsense__routing__list_gateways",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.routing.opnsense__routing__list_gateways",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.security.opnsense__security__get_ids_alerts",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.firmware.opnsense__firmware__get_status",
-                  new_callable=AsyncMock,
-                  return_value={"upgrade_available": True, "latest_version": "25.2",
-                                "current_version": "25.1"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.security.opnsense__security__get_ids_alerts",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.firmware.opnsense__firmware__get_status",
+                new_callable=AsyncMock,
+                return_value={
+                    "upgrade_available": True,
+                    "latest_version": "25.2",
+                    "current_version": "25.1",
+                },
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_health
 
@@ -242,17 +339,27 @@ class TestOpnsenseHealth:
         """High-severity IDS alerts should produce HIGH findings."""
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.routing.opnsense__routing__list_gateways",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.routing.opnsense__routing__list_gateways",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.security.opnsense__security__get_ids_alerts",
-                  new_callable=AsyncMock,
-                  return_value=[{"severity": 1, "signature": "ET MALWARE"}]),
-            patch("opnsense.tools.firmware.opnsense__firmware__get_status",
-                  new_callable=AsyncMock,
-                  return_value={"upgrade_available": False, "current_version": "25.1"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.security.opnsense__security__get_ids_alerts",
+                new_callable=AsyncMock,
+                return_value=[{"severity": 1, "signature": "ET MALWARE"}],
+            ),
+            patch(
+                "opnsense.tools.firmware.opnsense__firmware__get_status",
+                new_callable=AsyncMock,
+                return_value={"upgrade_available": False, "current_version": "25.1"},
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_health
 
@@ -264,16 +371,27 @@ class TestOpnsenseHealth:
         """WAN unreachable should produce CRITICAL findings."""
         mock_client = _make_mock_client()
         with (
-            patch("opnsense.tools.routing.opnsense__routing__list_gateways",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.routing.opnsense__routing__list_gateways",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.security.opnsense__security__get_ids_alerts",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.firmware.opnsense__firmware__get_status",
-                  new_callable=AsyncMock,
-                  return_value={"upgrade_available": False, "current_version": "25.1"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "100%"}),
+            patch(
+                "opnsense.tools.security.opnsense__security__get_ids_alerts",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.firmware.opnsense__firmware__get_status",
+                new_callable=AsyncMock,
+                return_value={"upgrade_available": False, "current_version": "25.1"},
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "100%"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_health
 
@@ -285,16 +403,27 @@ class TestOpnsenseHealth:
         """Health check should always close the client."""
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.routing.opnsense__routing__list_gateways",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.routing.opnsense__routing__list_gateways",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.security.opnsense__security__get_ids_alerts",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.firmware.opnsense__firmware__get_status",
-                  new_callable=AsyncMock,
-                  return_value={"upgrade_available": False, "current_version": "25.1"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.security.opnsense__security__get_ids_alerts",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.firmware.opnsense__firmware__get_status",
+                new_callable=AsyncMock,
+                return_value={"upgrade_available": False, "current_version": "25.1"},
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_health
 
@@ -328,10 +457,16 @@ class TestOpnsenseDiagnose:
     async def test_diagnose_not_found(self) -> None:
         """Non-matching target should return 'not found' message."""
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -341,15 +476,32 @@ class TestOpnsenseDiagnose:
 
     async def test_diagnose_interface_match(self) -> None:
         """Matching an interface name should show interface diagnostics."""
-        interfaces = [{"name": "igb0", "description": "WAN", "ip": "203.0.113.5",
-                        "subnet": "24", "if_type": "physical", "enabled": True}]
+        interfaces = [
+            {
+                "name": "igb0",
+                "description": "WAN",
+                "ip": "203.0.113.5",
+                "subnet": "24",
+                "if_type": "physical",
+                "enabled": True,
+            }
+        ]
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=interfaces),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=interfaces,
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -360,19 +512,38 @@ class TestOpnsenseDiagnose:
 
     async def test_diagnose_host_by_ip(self) -> None:
         """Matching a host by IP should show host diagnostics."""
-        leases = [{"ip": "192.168.1.100", "mac": "aa:bb:cc:dd:ee:ff",
-                    "hostname": "my-laptop", "state": "active", "interface": "igb1"}]
+        leases = [
+            {
+                "ip": "192.168.1.100",
+                "mac": "aa:bb:cc:dd:ee:ff",
+                "hostname": "my-laptop",
+                "state": "active",
+                "interface": "igb1",
+            }
+        ]
         mock_client = _make_mock_client(post_response={"loss": "0", "avg": "1.2"})
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=leases),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=leases,
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0", "avg": "1.2"}),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__dns_lookup",
-                  new_callable=AsyncMock, return_value={"answer": "192.168.1.100"}),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0", "avg": "1.2"},
+            ),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__dns_lookup",
+                new_callable=AsyncMock,
+                return_value={"answer": "192.168.1.100"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -383,17 +554,33 @@ class TestOpnsenseDiagnose:
 
     async def test_diagnose_host_by_mac(self) -> None:
         """Matching a host by MAC should show host diagnostics."""
-        leases = [{"ip": "192.168.1.100", "mac": "aa:bb:cc:dd:ee:ff",
-                    "hostname": "my-laptop", "state": "active", "interface": "igb1"}]
+        leases = [
+            {
+                "ip": "192.168.1.100",
+                "mac": "aa:bb:cc:dd:ee:ff",
+                "hostname": "my-laptop",
+                "state": "active",
+                "interface": "igb1",
+            }
+        ]
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=leases),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=leases,
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -403,15 +590,36 @@ class TestOpnsenseDiagnose:
 
     async def test_diagnose_ambiguous_target(self) -> None:
         """Target matching both interface and host should prompt for clarification."""
-        interfaces = [{"name": "igb1", "description": "LAN", "ip": "192.168.1.1",
-                        "subnet": "24", "if_type": "physical", "enabled": True}]
-        leases = [{"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff",
-                    "hostname": "router", "state": "active", "interface": "igb1"}]
+        interfaces = [
+            {
+                "name": "igb1",
+                "description": "LAN",
+                "ip": "192.168.1.1",
+                "subnet": "24",
+                "if_type": "physical",
+                "enabled": True,
+            }
+        ]
+        leases = [
+            {
+                "ip": "192.168.1.1",
+                "mac": "aa:bb:cc:dd:ee:ff",
+                "hostname": "router",
+                "state": "active",
+                "interface": "igb1",
+            }
+        ]
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=interfaces),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=leases),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=interfaces,
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=leases,
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -423,17 +631,33 @@ class TestOpnsenseDiagnose:
 
     async def test_diagnose_closes_client_on_host(self) -> None:
         """Diagnose should close client after host diagnosis."""
-        leases = [{"ip": "10.0.0.5", "mac": "11:22:33:44:55:66",
-                    "hostname": "test", "state": "active", "interface": "igb1"}]
+        leases = [
+            {
+                "ip": "10.0.0.5",
+                "mac": "11:22:33:44:55:66",
+                "hostname": "test",
+                "state": "active",
+                "interface": "igb1",
+            }
+        ]
         mock_client = _make_mock_client(post_response={"loss": "0"})
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=leases),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=leases,
+            ),
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
-                  new_callable=AsyncMock, return_value={"loss": "0"}),
+            patch(
+                "opnsense.tools.diagnostics.opnsense__diagnostics__run_ping",
+                new_callable=AsyncMock,
+                return_value={"loss": "0"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -453,12 +677,22 @@ class TestOpnsenseFirewall:
     async def test_firewall_list_mode(self) -> None:
         """Without audit, should list rules in a table."""
         rules = [
-            {"position": 1, "action": "pass", "interface": "lan",
-             "source": "any", "destination": "any", "protocol": "any",
-             "log": False, "enabled": True},
+            {
+                "position": 1,
+                "action": "pass",
+                "interface": "lan",
+                "source": "any",
+                "destination": "any",
+                "protocol": "any",
+                "log": False,
+                "enabled": True,
+            },
         ]
-        with patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                    new_callable=AsyncMock, return_value=rules):
+        with patch(
+            "opnsense.tools.firewall.opnsense__firewall__list_rules",
+            new_callable=AsyncMock,
+            return_value=rules,
+        ):
             from opnsense.tools.commands import opnsense_firewall
 
             result = await opnsense_firewall(audit=False)
@@ -469,8 +703,11 @@ class TestOpnsenseFirewall:
 
     async def test_firewall_empty_rules(self) -> None:
         """No rules should show a message."""
-        with patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                    new_callable=AsyncMock, return_value=[]):
+        with patch(
+            "opnsense.tools.firewall.opnsense__firewall__list_rules",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
             from opnsense.tools.commands import opnsense_firewall
 
             result = await opnsense_firewall(audit=False)
@@ -479,9 +716,11 @@ class TestOpnsenseFirewall:
 
     async def test_firewall_audit_mode(self) -> None:
         """With audit=True, should delegate to firewall audit agent."""
-        with patch("opnsense.agents.firewall.run_firewall_audit",
-                    new_callable=AsyncMock,
-                    return_value="## Firewall Audit\nFindings here"):
+        with patch(
+            "opnsense.agents.firewall.run_firewall_audit",
+            new_callable=AsyncMock,
+            return_value="## Firewall Audit\nFindings here",
+        ):
             from opnsense.tools.commands import opnsense_firewall
 
             result = await opnsense_firewall(audit=True)
@@ -491,15 +730,32 @@ class TestOpnsenseFirewall:
     async def test_firewall_list_shows_summary(self) -> None:
         """List mode should include summary stats."""
         rules = [
-            {"position": 1, "action": "pass", "interface": "lan",
-             "source": "any", "destination": "any", "protocol": "any",
-             "log": False, "enabled": True},
-            {"position": 2, "action": "block", "interface": "wan",
-             "source": "any", "destination": "any", "protocol": "any",
-             "log": True, "enabled": False},
+            {
+                "position": 1,
+                "action": "pass",
+                "interface": "lan",
+                "source": "any",
+                "destination": "any",
+                "protocol": "any",
+                "log": False,
+                "enabled": True,
+            },
+            {
+                "position": 2,
+                "action": "block",
+                "interface": "wan",
+                "source": "any",
+                "destination": "any",
+                "protocol": "any",
+                "log": True,
+                "enabled": False,
+            },
         ]
-        with patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                    new_callable=AsyncMock, return_value=rules):
+        with patch(
+            "opnsense.tools.firewall.opnsense__firewall__list_rules",
+            new_callable=AsyncMock,
+            return_value=rules,
+        ):
             from opnsense.tools.commands import opnsense_firewall
 
             result = await opnsense_firewall()
@@ -516,10 +772,12 @@ class TestParseAccessMatrix:
     """_parse_access_matrix() -- JSON parsing and validation."""
 
     def test_valid_matrix(self) -> None:
-        matrix = json.dumps([
-            {"src": "LAN", "dst": "WAN", "action": "pass"},
-            {"src": "IoT", "dst": "LAN", "action": "block"},
-        ])
+        matrix = json.dumps(
+            [
+                {"src": "LAN", "dst": "WAN", "action": "pass"},
+                {"src": "IoT", "dst": "LAN", "action": "block"},
+            ]
+        )
         result = _parse_access_matrix(matrix)
         assert len(result) == 2
         assert result[0]["src"] == "LAN"
@@ -570,9 +828,11 @@ class TestParseAccessMatrix:
         assert result[0]["protocol"] == "TCP"
 
     def test_custom_description(self) -> None:
-        matrix = json.dumps([
-            {"src": "LAN", "dst": "WAN", "action": "pass", "description": "Allow LAN out"},
-        ])
+        matrix = json.dumps(
+            [
+                {"src": "LAN", "dst": "WAN", "action": "pass", "description": "Allow LAN out"},
+            ]
+        )
         result = _parse_access_matrix(matrix)
         assert result[0]["description"] == "Allow LAN out"
 
@@ -596,8 +856,13 @@ class TestDetectShadows:
     def test_direct_shadow(self) -> None:
         matrix = [{"src": "LAN", "dst": "WAN", "action": "pass"}]
         existing = [
-            {"source": "LAN", "destination": "WAN", "action": "block",
-             "enabled": True, "description": "Block LAN"},
+            {
+                "source": "LAN",
+                "destination": "WAN",
+                "action": "block",
+                "enabled": True,
+                "description": "Block LAN",
+            },
         ]
         findings = _detect_shadows(matrix, existing)
         assert len(findings) == 1
@@ -607,8 +872,13 @@ class TestDetectShadows:
     def test_any_source_shadow(self) -> None:
         matrix = [{"src": "LAN", "dst": "WAN", "action": "pass"}]
         existing = [
-            {"source": "any", "destination": "WAN", "action": "block",
-             "enabled": True, "description": "Block all to WAN"},
+            {
+                "source": "any",
+                "destination": "WAN",
+                "action": "block",
+                "enabled": True,
+                "description": "Block all to WAN",
+            },
         ]
         findings = _detect_shadows(matrix, existing)
         assert len(findings) >= 1
@@ -616,8 +886,13 @@ class TestDetectShadows:
     def test_disabled_rules_ignored(self) -> None:
         matrix = [{"src": "LAN", "dst": "WAN", "action": "pass"}]
         existing = [
-            {"source": "LAN", "destination": "WAN", "action": "block",
-             "enabled": False, "description": "Disabled block"},
+            {
+                "source": "LAN",
+                "destination": "WAN",
+                "action": "block",
+                "enabled": False,
+                "description": "Disabled block",
+            },
         ]
         findings = _detect_shadows(matrix, existing)
         assert len(findings) == 0
@@ -625,8 +900,13 @@ class TestDetectShadows:
     def test_same_action_no_shadow(self) -> None:
         matrix = [{"src": "LAN", "dst": "WAN", "action": "pass"}]
         existing = [
-            {"source": "LAN", "destination": "WAN", "action": "pass",
-             "enabled": True, "description": "Pass LAN"},
+            {
+                "source": "LAN",
+                "destination": "WAN",
+                "action": "pass",
+                "enabled": True,
+                "description": "Pass LAN",
+            },
         ]
         findings = _detect_shadows(matrix, existing)
         assert len(findings) == 0
@@ -648,11 +928,20 @@ class TestPolicyFromMatrix:
     async def test_audit_mode(self) -> None:
         """Audit mode should compare against existing rules."""
         existing_rules = [
-            {"source": "LAN", "destination": "WAN", "action": "block",
-             "enabled": True, "uuid": "test", "description": "Test"},
+            {
+                "source": "LAN",
+                "destination": "WAN",
+                "action": "block",
+                "enabled": True,
+                "uuid": "test",
+                "description": "Test",
+            },
         ]
-        with patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                    new_callable=AsyncMock, return_value=existing_rules):
+        with patch(
+            "opnsense.tools.firewall.opnsense__firewall__list_rules",
+            new_callable=AsyncMock,
+            return_value=existing_rules,
+        ):
             from opnsense.tools.commands import opnsense_firewall_policy_from_matrix
 
             matrix = json.dumps([{"src": "LAN", "dst": "WAN", "action": "pass"}])
@@ -663,8 +952,11 @@ class TestPolicyFromMatrix:
 
     async def test_audit_no_shadows(self) -> None:
         """Audit with no conflicts should report clean."""
-        with patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                    new_callable=AsyncMock, return_value=[]):
+        with patch(
+            "opnsense.tools.firewall.opnsense__firewall__list_rules",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
             from opnsense.tools.commands import opnsense_firewall_policy_from_matrix
 
             matrix = json.dumps([{"src": "LAN", "dst": "WAN", "action": "pass"}])
@@ -686,9 +978,11 @@ class TestPolicyFromMatrix:
         """Apply with write enabled should create rules."""
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
-            patch("opnsense.tools.firewall.opnsense__firewall__add_rule",
-                  new_callable=AsyncMock,
-                  return_value={"status": "created", "uuid": "new-uuid"}),
+            patch(
+                "opnsense.tools.firewall.opnsense__firewall__add_rule",
+                new_callable=AsyncMock,
+                return_value={"status": "created", "uuid": "new-uuid"},
+            ),
         ):
             from opnsense.tools.commands import opnsense_firewall_policy_from_matrix
 
@@ -717,10 +1011,16 @@ class TestOpnsenseVlan:
         """Default mode should list VLANs."""
         vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
-                  new_callable=AsyncMock, return_value=vlans),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
+                new_callable=AsyncMock,
+                return_value=vlans,
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_vlan
 
@@ -732,10 +1032,16 @@ class TestOpnsenseVlan:
     async def test_vlan_empty(self) -> None:
         """No VLANs should report empty."""
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_vlan
 
@@ -748,12 +1054,21 @@ class TestOpnsenseVlan:
         vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
         interfaces = [{"name": "igb0", "ip": "1.2.3.4"}]  # No VLAN interface has IP
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
-                  new_callable=AsyncMock, return_value=vlans),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=interfaces),
-            patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
+                new_callable=AsyncMock,
+                return_value=vlans,
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=interfaces,
+            ),
+            patch(
+                "opnsense.tools.firewall.opnsense__firewall__list_rules",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_vlan
 
@@ -766,10 +1081,16 @@ class TestOpnsenseVlan:
         """Configure mode should show guidance."""
         vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
-                  new_callable=AsyncMock, return_value=vlans),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
+                new_callable=AsyncMock,
+                return_value=vlans,
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_vlan
 
@@ -788,10 +1109,12 @@ class TestParseDevicesJson:
     """_parse_devices_json() -- JSON parsing and validation."""
 
     def test_valid_devices(self) -> None:
-        devices = json.dumps([
-            {"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"},
-            {"hostname": "camera", "mac": "11:22:33:44:55:66", "ip": "192.168.1.51"},
-        ])
+        devices = json.dumps(
+            [
+                {"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"},
+                {"hostname": "camera", "mac": "11:22:33:44:55:66", "ip": "192.168.1.51"},
+            ]
+        )
         result = _parse_devices_json(devices)
         assert len(result) == 2
         assert result[0]["hostname"] == "printer"
@@ -851,51 +1174,61 @@ class TestDhcpReserveBatch:
 
     async def test_plan_only_mode(self) -> None:
         """Without apply, should show plan."""
-        with patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                    new_callable=AsyncMock, return_value=[]):
+        with patch(
+            "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
             result = await opnsense_dhcp_reserve_batch(
                 interface="igb1",
-                devices='[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]',
+                devices=(
+                    '[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]'
+                ),
             )
 
         assert "Planned DHCP Reservations" in result
         assert "Plan-only mode" in result
 
     async def test_mac_verified_against_leases(self) -> None:
-        """MACs found in leases should be marked as verified."""
-        leases = [{"mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50", "interface": "igb1"}]
-        with patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                    new_callable=AsyncMock, return_value=leases):
+        """MACs found in dnsmasq leases should be marked as verified."""
+        mock_client = _make_mock_client(
+            get_response={"rows": [{"hwaddr": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]},
+        )
+        with patch("opnsense.tools.commands._get_client", return_value=mock_client):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
             result = await opnsense_dhcp_reserve_batch(
                 interface="igb1",
-                devices='[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]',
+                devices=(
+                    '[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]'
+                ),
             )
 
         assert "1 device(s) verified" in result
 
     async def test_mac_not_verified(self) -> None:
         """MACs not in leases should be flagged."""
-        with patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                    new_callable=AsyncMock, return_value=[]):
+        mock_client = _make_mock_client(get_response={"rows": []})
+        with patch("opnsense.tools.commands._get_client", return_value=mock_client):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
             result = await opnsense_dhcp_reserve_batch(
                 interface="igb1",
-                devices='[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]',
+                devices=(
+                    '[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]'
+                ),
             )
 
         assert "not found" in result
 
     async def test_apply_without_write_enabled(self) -> None:
         """Apply without OPNSENSE_WRITE_ENABLED should report disabled."""
+        mock_client = _make_mock_client(get_response={"rows": []})
         with (
             patch.dict(os.environ, {}, clear=True),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
+            patch("opnsense.tools.commands._get_client", return_value=mock_client),
         ):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
@@ -909,19 +1242,24 @@ class TestDhcpReserveBatch:
 
     async def test_apply_creates_reservations(self) -> None:
         """Apply with write enabled should create reservations."""
+        # First _get_client() call is for lease verification,
+        # second is for apply mode.
+        mock_verify_client = _make_mock_client(get_response={"rows": []})
+        mock_apply_client = _make_mock_client()
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__add_dhcp_reservation",
-                  new_callable=AsyncMock,
-                  return_value={"status": "created", "uuid": "test-uuid"}),
+            patch(
+                "opnsense.tools.commands._get_client",
+                side_effect=[mock_verify_client, mock_apply_client],
+            ),
         ):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
             result = await opnsense_dhcp_reserve_batch(
                 interface="igb1",
-                devices='[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]',
+                devices=(
+                    '[{"hostname": "printer", "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.50"}]'
+                ),
                 apply=True,
             )
 
@@ -929,23 +1267,31 @@ class TestDhcpReserveBatch:
 
     async def test_apply_batch_with_errors(self) -> None:
         """Partial failures should be reported."""
+        # First _get_client() call is for lease verification (plan mode),
+        # second is for apply mode.
+        mock_verify_client = _make_mock_client(get_response={"rows": []})
+        mock_apply_client = _make_mock_client()
+        mock_apply_client.write = AsyncMock(
+            side_effect=[
+                {"result": "saved", "uuid": "uuid-1"},
+                Exception("API Error"),
+            ],
+        )
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__add_dhcp_reservation",
-                  new_callable=AsyncMock,
-                  side_effect=[
-                      {"status": "created", "uuid": "uuid-1"},
-                      Exception("API Error"),
-                  ]),
+            patch(
+                "opnsense.tools.commands._get_client",
+                side_effect=[mock_verify_client, mock_apply_client],
+            ),
         ):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
-            devices = json.dumps([
-                {"hostname": "ok-device", "mac": "aa:bb:cc:dd:ee:ff", "ip": "1.2.3.4"},
-                {"hostname": "fail-device", "mac": "11:22:33:44:55:66", "ip": "1.2.3.5"},
-            ])
+            devices = json.dumps(
+                [
+                    {"hostname": "ok-device", "mac": "aa:bb:cc:dd:ee:ff", "ip": "1.2.3.4"},
+                    {"hostname": "fail-device", "mac": "11:22:33:44:55:66", "ip": "1.2.3.5"},
+                ]
+            )
             result = await opnsense_dhcp_reserve_batch(
                 interface="igb1",
                 devices=devices,
@@ -980,8 +1326,11 @@ class TestOpnsenseVpn:
         mock_client = _make_mock_client()
         with (
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.vpn.vpn_status_report",
-                  new_callable=AsyncMock, return_value="## VPN Report\ndata"),
+            patch(
+                "opnsense.agents.vpn.vpn_status_report",
+                new_callable=AsyncMock,
+                return_value="## VPN Report\ndata",
+            ),
         ):
             from opnsense.tools.commands import opnsense_vpn
 
@@ -995,8 +1344,11 @@ class TestOpnsenseVpn:
         mock_client = _make_mock_client()
         with (
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.vpn.vpn_status_report",
-                  new_callable=AsyncMock, side_effect=Exception("API error")),
+            patch(
+                "opnsense.agents.vpn.vpn_status_report",
+                new_callable=AsyncMock,
+                side_effect=Exception("API error"),
+            ),
         ):
             from opnsense.tools.commands import opnsense_vpn
 
@@ -1014,8 +1366,11 @@ class TestOpnsenseDns:
         mock_client = _make_mock_client()
         with (
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.services.services_report",
-                  new_callable=AsyncMock, return_value="## Services\nDNS data"),
+            patch(
+                "opnsense.agents.services.services_report",
+                new_callable=AsyncMock,
+                return_value="## Services\nDNS data",
+            ),
         ):
             from opnsense.tools.commands import opnsense_dns
 
@@ -1033,8 +1388,11 @@ class TestOpnsenseSecure:
         mock_client = _make_mock_client()
         with (
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.security.security_audit_report",
-                  new_callable=AsyncMock, return_value="## Security Audit\nfindings"),
+            patch(
+                "opnsense.agents.security.security_audit_report",
+                new_callable=AsyncMock,
+                return_value="## Security Audit\nfindings",
+            ),
         ):
             from opnsense.tools.commands import opnsense_secure
 
@@ -1052,8 +1410,11 @@ class TestOpnsenseFirmware:
         mock_client = _make_mock_client()
         with (
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.firmware.firmware_report",
-                  new_callable=AsyncMock, return_value="## Firmware\nstatus"),
+            patch(
+                "opnsense.agents.firmware.firmware_report",
+                new_callable=AsyncMock,
+                return_value="## Firmware\nstatus",
+            ),
         ):
             from opnsense.tools.commands import opnsense_firmware
 
@@ -1067,8 +1428,11 @@ class TestOpnsenseFirmware:
         mock_client = _make_mock_client()
         with (
             patch("opnsense.tools.commands._get_client", return_value=mock_client),
-            patch("opnsense.agents.firmware.firmware_report",
-                  new_callable=AsyncMock, side_effect=Exception("Connection error")),
+            patch(
+                "opnsense.agents.firmware.firmware_report",
+                new_callable=AsyncMock,
+                side_effect=Exception("Connection error"),
+            ),
         ):
             from opnsense.tools.commands import opnsense_firmware
 
@@ -1090,8 +1454,11 @@ class TestWriteGateEnforcement:
         """DHCP batch without OPNSENSE_WRITE_ENABLED returns disabled message."""
         with (
             patch.dict(os.environ, {}, clear=True),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
@@ -1126,10 +1493,16 @@ class TestParameterPassthrough:
     async def test_diagnose_passes_target(self) -> None:
         """Target parameter should be used for searching."""
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_diagnose
 
@@ -1138,8 +1511,11 @@ class TestParameterPassthrough:
 
     async def test_firewall_audit_flag(self) -> None:
         """audit=True should trigger audit agent."""
-        with patch("opnsense.agents.firewall.run_firewall_audit",
-                    new_callable=AsyncMock, return_value="audit-output"):
+        with patch(
+            "opnsense.agents.firewall.run_firewall_audit",
+            new_callable=AsyncMock,
+            return_value="audit-output",
+        ):
             from opnsense.tools.commands import opnsense_firewall
 
             result = await opnsense_firewall(audit=True)
@@ -1147,8 +1523,11 @@ class TestParameterPassthrough:
 
     async def test_firewall_no_audit_flag(self) -> None:
         """audit=False should trigger simple listing."""
-        with patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                    new_callable=AsyncMock, return_value=[]):
+        with patch(
+            "opnsense.tools.firewall.opnsense__firewall__list_rules",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
             from opnsense.tools.commands import opnsense_firewall
 
             result = await opnsense_firewall(audit=False)
@@ -1158,12 +1537,21 @@ class TestParameterPassthrough:
         """audit=True on vlan should include findings report."""
         vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
         with (
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
-                  new_callable=AsyncMock, return_value=vlans),
-            patch("opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
-                  new_callable=AsyncMock, return_value=[]),
-            patch("opnsense.tools.firewall.opnsense__firewall__list_rules",
-                  new_callable=AsyncMock, return_value=[]),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
+                new_callable=AsyncMock,
+                return_value=vlans,
+            ),
+            patch(
+                "opnsense.tools.interfaces.opnsense__interfaces__list_interfaces",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "opnsense.tools.firewall.opnsense__firewall__list_rules",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             from opnsense.tools.commands import opnsense_vlan
 
@@ -1171,15 +1559,17 @@ class TestParameterPassthrough:
             assert "VLAN Audit" in result
 
     async def test_dhcp_batch_interface_passed(self) -> None:
-        """Interface parameter should be used for lease lookup."""
-        mock_get_leases = AsyncMock(return_value=[])
-        with patch("opnsense.tools.interfaces.opnsense__interfaces__get_dhcp_leases",
-                    mock_get_leases):
+        """Interface parameter should appear in the output plan."""
+        mock_client = _make_mock_client(get_response={"rows": []})
+        with patch("opnsense.tools.commands._get_client", return_value=mock_client):
             from opnsense.tools.commands import opnsense_dhcp_reserve_batch
 
-            await opnsense_dhcp_reserve_batch(
+            result = await opnsense_dhcp_reserve_batch(
                 interface="igb1_vlan20",
                 devices='[{"hostname": "x", "mac": "aa:bb:cc:dd:ee:ff", "ip": "1.2.3.4"}]',
             )
 
-        mock_get_leases.assert_awaited_once_with(interface="igb1_vlan20")
+        # The interface should appear in the planned reservations table
+        assert "igb1_vlan20" in result
+        # The dnsmasq leases endpoint should have been queried
+        mock_client.get.assert_awaited_once_with("dnsmasq", "leases", "search")

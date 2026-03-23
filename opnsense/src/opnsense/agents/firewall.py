@@ -106,21 +106,32 @@ async def run_firewall_audit() -> str:
 
     # --- Rule inventory table ---
     if rules:
-        rule_headers = ["Pos", "Action", "Interface", "Source", "Destination", "Proto", "Log", "Description"]
+        rule_headers = [
+            "Pos",
+            "Action",
+            "Interface",
+            "Source",
+            "Destination",
+            "Proto",
+            "Log",
+            "Description",
+        ]
         rule_rows: list[list[str]] = []
         for rule in rules:
             enabled_marker = "" if rule.get("enabled", True) else "[disabled] "
             log_marker = "yes" if rule.get("log", False) else "no"
-            rule_rows.append([
-                str(rule.get("position", "")),
-                rule.get("action", ""),
-                rule.get("interface", ""),
-                rule.get("source", ""),
-                rule.get("destination", ""),
-                rule.get("protocol", ""),
-                log_marker,
-                f"{enabled_marker}{rule.get('description', '')}",
-            ])
+            rule_rows.append(
+                [
+                    str(rule.get("position", "")),
+                    rule.get("action", ""),
+                    rule.get("interface", ""),
+                    rule.get("source", ""),
+                    rule.get("destination", ""),
+                    rule.get("protocol", ""),
+                    log_marker,
+                    f"{enabled_marker}{rule.get('description', '')}",
+                ]
+            )
 
             # Run security checks
             finding = _check_overly_permissive(rule)
@@ -150,23 +161,27 @@ async def run_firewall_audit() -> str:
                 for r in rules
             )
             if not has_block:
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"Interface '{iface}' has no block/reject rules",
-                    detail=(
-                        f"Interface '{iface}' has {count} rule(s) but none of them "
-                        "block or reject traffic. This may indicate a missing "
-                        "default deny policy."
-                    ),
-                    recommendation="Add a default deny rule at the end of the chain.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"Interface '{iface}' has no block/reject rules",
+                        detail=(
+                            f"Interface '{iface}' has {count} rule(s) but none of them "
+                            "block or reject traffic. This may indicate a missing "
+                            "default deny policy."
+                        ),
+                        recommendation="Add a default deny rule at the end of the chain.",
+                    )
+                )
     else:
-        findings.append(Finding(
-            severity=Severity.HIGH,
-            title="No firewall rules found",
-            detail="The API returned no firewall rules. This is unusual.",
-            recommendation="Verify API connectivity and permissions.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.HIGH,
+                title="No firewall rules found",
+                detail="The API returned no firewall rules. This is unusual.",
+                recommendation="Verify API connectivity and permissions.",
+            )
+        )
 
     # --- Alias inventory table ---
     if aliases:
@@ -177,12 +192,14 @@ async def run_firewall_audit() -> str:
             # Truncate long content for table display
             if len(content) > 40:
                 content = content[:37] + "..."
-            alias_rows.append([
-                alias.get("name", ""),
-                alias.get("alias_type", ""),
-                content.replace("\n", ", "),
-                alias.get("description", ""),
-            ])
+            alias_rows.append(
+                [
+                    alias.get("name", ""),
+                    alias.get("alias_type", ""),
+                    content.replace("\n", ", "),
+                    alias.get("description", ""),
+                ]
+            )
 
         sections.append(format_table(alias_headers, alias_rows, title="Firewall Aliases"))
 
@@ -191,14 +208,16 @@ async def run_firewall_audit() -> str:
         nat_headers = ["Interface", "Source", "Destination", "Target", "Proto", "Description"]
         nat_rows: list[list[str]] = []
         for nat_rule in nat_rules:
-            nat_rows.append([
-                nat_rule.get("interface", ""),
-                nat_rule.get("source", ""),
-                nat_rule.get("destination", ""),
-                nat_rule.get("target", ""),
-                nat_rule.get("protocol", ""),
-                nat_rule.get("description", ""),
-            ])
+            nat_rows.append(
+                [
+                    nat_rule.get("interface", ""),
+                    nat_rule.get("source", ""),
+                    nat_rule.get("destination", ""),
+                    nat_rule.get("target", ""),
+                    nat_rule.get("protocol", ""),
+                    nat_rule.get("description", ""),
+                ]
+            )
 
         sections.append(format_table(nat_headers, nat_rows, title="NAT Rules"))
 
@@ -221,7 +240,10 @@ async def run_firewall_audit() -> str:
 
     logger.info(
         "Generated firewall audit: %d rules, %d aliases, %d NAT rules, %d findings",
-        len(rules), len(aliases), len(nat_rules), len(findings),
+        len(rules),
+        len(aliases),
+        len(nat_rules),
+        len(findings),
         extra={"component": "agents.firewall"},
     )
 

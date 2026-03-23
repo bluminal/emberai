@@ -34,11 +34,13 @@ from __future__ import annotations
 
 import functools
 import os
-from collections.abc import Callable
 from enum import StrEnum
-from typing import ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from opnsense.errors import WriteGateError
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -90,19 +92,11 @@ def describe_write_status(plugin_name: str = "OPNSENSE") -> str:
     """
     env_var = _env_var_name(plugin_name)
     if check_write_enabled(plugin_name):
-        return (
-            "Write operations are enabled. "
-            "Use --apply flag to execute changes."
-        )
-    return (
-        "Write operations are disabled. "
-        f"Set {env_var}=true to enable."
-    )
+        return "Write operations are enabled. Use --apply flag to execute changes."
+    return f"Write operations are disabled. Set {env_var}=true to enable."
 
 
-def write_gate(plugin_name: str = "OPNSENSE") -> Callable[
-    [Callable[P, T]], Callable[P, T]
-]:
+def write_gate(plugin_name: str = "OPNSENSE") -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator that enforces the write safety gate (steps 1 and 2).
 
     Wraps an async function and checks two conditions before allowing
@@ -185,9 +179,7 @@ def write_gate(plugin_name: str = "OPNSENSE") -> Callable[
     return decorator
 
 
-def reconfigure_gate(plugin_name: str = "OPNSENSE") -> Callable[
-    [Callable[P, T]], Callable[P, T]
-]:
+def reconfigure_gate(plugin_name: str = "OPNSENSE") -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator for OPNsense reconfigure operations.
 
     Reconfigure operations push saved configuration to the live system.

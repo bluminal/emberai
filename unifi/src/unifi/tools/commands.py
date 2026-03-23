@@ -206,10 +206,8 @@ async def _verify_vlans_exist(
         # Try "vlan" first (actual tag number), then "vlan_id"
         tag = v.get("vlan") or v.get("vlan_id")
         if tag is not None:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 vlan_by_id[int(tag)] = v
-            except (ValueError, TypeError):
-                pass  # Skip non-numeric IDs (MongoDB ObjectIDs)
         # Default LAN (no VLAN tag) is conventionally VLAN 1
         if not v.get("vlan_enabled", False):
             vlan_by_id[1] = v
@@ -319,7 +317,9 @@ async def unifi_port_profile_create(
 
     # --- Phase 1: Verify VLANs exist ---
     existing_vlans, missing_vlans = await _verify_vlans_exist(
-        native_vlan, tagged_vlans, site_id,
+        native_vlan,
+        tagged_vlans,
+        site_id,
     )
 
     if missing_vlans:
@@ -736,9 +736,7 @@ async def unifi_wlan_create(
                 f"Security: {security}, Band: {wlan_band}, "
                 f"Enabled: {'yes' if enabled else 'no'}"
             ),
-            expected_outcome=(
-                f"WLAN '{name}' broadcasting on network '{network_name}'."
-            ),
+            expected_outcome=(f"WLAN '{name}' broadcasting on network '{network_name}'."),
         ),
     ]
 

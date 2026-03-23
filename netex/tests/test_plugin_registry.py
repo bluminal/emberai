@@ -11,6 +11,7 @@ from netex.registry.plugin_registry import PluginMetadata, PluginRegistry
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _unifi_info() -> dict:
     """Mock unifi plugin_info() return value."""
     return {
@@ -38,8 +39,13 @@ def _opnsense_info() -> dict:
         "description": "OPNsense gateway intelligence",
         "roles": ["gateway"],
         "skills": [
-            "interfaces", "firewall", "routing", "vpn",
-            "security", "services", "diagnostics",
+            "interfaces",
+            "firewall",
+            "routing",
+            "vpn",
+            "security",
+            "services",
+            "diagnostics",
         ],
         "write_flag": "OPNSENSE_WRITE_ENABLED",
         "contract_version": "1.0.0",
@@ -80,6 +86,7 @@ def populated_registry(registry: PluginRegistry) -> PluginRegistry:
 # Registration
 # ---------------------------------------------------------------------------
 
+
 class TestRegistration:
     def test_register_plugin(self, registry: PluginRegistry) -> None:
         metadata = registry.register(_unifi_info())
@@ -115,6 +122,7 @@ class TestRegistration:
 # list_plugins
 # ---------------------------------------------------------------------------
 
+
 class TestListPlugins:
     def test_list_empty(self, registry: PluginRegistry) -> None:
         assert registry.list_plugins() == []
@@ -138,6 +146,7 @@ class TestListPlugins:
 # ---------------------------------------------------------------------------
 # plugins_with_role
 # ---------------------------------------------------------------------------
+
 
 class TestPluginsWithRole:
     def test_gateway_role(self, populated_registry: PluginRegistry) -> None:
@@ -164,6 +173,7 @@ class TestPluginsWithRole:
 # plugins_with_skill
 # ---------------------------------------------------------------------------
 
+
 class TestPluginsWithSkill:
     def test_security_skill_multiple(self, populated_registry: PluginRegistry) -> None:
         plugins = populated_registry.plugins_with_skill("security")
@@ -189,6 +199,7 @@ class TestPluginsWithSkill:
 # ---------------------------------------------------------------------------
 # tools_for_skill
 # ---------------------------------------------------------------------------
+
 
 class TestToolsForSkill:
     def test_firewall_tools(self, populated_registry: PluginRegistry) -> None:
@@ -218,6 +229,7 @@ class TestToolsForSkill:
 # Properties
 # ---------------------------------------------------------------------------
 
+
 class TestProperties:
     def test_plugin_count(self, populated_registry: PluginRegistry) -> None:
         assert populated_registry.plugin_count == 2  # excludes orchestrator
@@ -239,6 +251,7 @@ class TestProperties:
 # get_plugin
 # ---------------------------------------------------------------------------
 
+
 class TestGetPlugin:
     def test_existing(self, populated_registry: PluginRegistry) -> None:
         p = populated_registry.get_plugin("unifi")
@@ -252,6 +265,7 @@ class TestGetPlugin:
 # ---------------------------------------------------------------------------
 # PluginMetadata
 # ---------------------------------------------------------------------------
+
 
 class TestPluginMetadata:
     def test_to_dict(self) -> None:

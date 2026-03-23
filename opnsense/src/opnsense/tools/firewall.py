@@ -93,7 +93,9 @@ async def opnsense__firewall__list_rules(
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "firewall", "filter", "searchRule",
+            "firewall",
+            "filter",
+            "searchRule",
             cache_key="firewall:rules",
             ttl=CacheTTL.FIREWALL_RULES,
         )
@@ -176,7 +178,9 @@ async def opnsense__firewall__list_aliases() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "firewall", "alias", "searchItem",
+            "firewall",
+            "alias",
+            "searchItem",
             cache_key="firewall:aliases",
             ttl=CacheTTL.FIREWALL_ALIASES,
         )
@@ -219,7 +223,9 @@ async def opnsense__firewall__list_nat_rules() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "firewall", "source_nat", "searchRule",
+            "firewall",
+            "source_nat",
+            "searchRule",
             cache_key="firewall:nat_rules",
             ttl=CacheTTL.NAT_RULES,
         )
@@ -317,7 +323,9 @@ async def opnsense__firewall__add_rule(
     client = _get_client()
     try:
         write_result = await client.write(
-            "firewall", "filter", "addRule",
+            "firewall",
+            "filter",
+            "addRule",
             data=rule_data,
         )
 
@@ -334,15 +342,21 @@ async def opnsense__firewall__add_rule(
 
         # OPNsense 26.x uses savepoint/apply/cancelRollback for firewall
         savepoint_result = await client.post(
-            "firewall", "filter", "savepoint",
+            "firewall",
+            "filter",
+            "savepoint",
         )
         revision = savepoint_result.get("revision", "")
         if revision:
             await client.post(
-                "firewall", "filter", f"apply/{revision}",
+                "firewall",
+                "filter",
+                f"apply/{revision}",
             )
             await client.post(
-                "firewall", "filter", f"cancelRollback/{revision}",
+                "firewall",
+                "filter",
+                f"cancelRollback/{revision}",
             )
 
     finally:
@@ -350,7 +364,11 @@ async def opnsense__firewall__add_rule(
 
     logger.info(
         "Added firewall rule: %s %s -> %s on %s (protocol=%s)",
-        action, src, dst, interface, protocol,
+        action,
+        src,
+        dst,
+        interface,
+        protocol,
         extra={"component": "firewall"},
     )
 
@@ -395,7 +413,9 @@ async def opnsense__firewall__toggle_rule(
     client = _get_client()
     try:
         write_result = await client.write(
-            "firewall", "filter", f"toggleRule/{uuid.strip()}/{state}",
+            "firewall",
+            "filter",
+            f"toggleRule/{uuid.strip()}/{state}",
         )
 
         if not is_action_success(write_result):
@@ -415,7 +435,8 @@ async def opnsense__firewall__toggle_rule(
     action_str = "enabled" if enabled else "disabled"
     logger.info(
         "Toggled firewall rule %s: %s",
-        uuid, action_str,
+        uuid,
+        action_str,
         extra={"component": "firewall"},
     )
 
@@ -471,7 +492,9 @@ async def opnsense__firewall__add_alias(
     client = _get_client()
     try:
         write_result = await client.write(
-            "firewall", "alias", "addItem",
+            "firewall",
+            "alias",
+            "addItem",
             data={
                 "alias": {
                     "name": name.strip(),
@@ -484,8 +507,7 @@ async def opnsense__firewall__add_alias(
 
         if not is_action_success(write_result):
             raise APIError(
-                f"Failed to add alias '{name}': "
-                f"{write_result.get('result', 'unknown error')}",
+                f"Failed to add alias '{name}': {write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint="/api/firewall/alias/addItem",
                 response_body=str(write_result),
@@ -498,7 +520,8 @@ async def opnsense__firewall__add_alias(
 
     logger.info(
         "Added firewall alias: name='%s', type='%s'",
-        name, alias_type,
+        name,
+        alias_type,
         extra={"component": "firewall"},
     )
 

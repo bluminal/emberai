@@ -8,9 +8,8 @@ report pattern to highlight update availability and version drift.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
-from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.output import (
     Finding,
     Severity,
@@ -22,6 +21,9 @@ from opnsense.tools.firmware import (
     opnsense__firmware__get_status,
     opnsense__firmware__list_packages,
 )
+
+if TYPE_CHECKING:
+    from opnsense.api.opnsense_client import OPNsenseClient
 
 
 async def firmware_report(client: OPNsenseClient) -> str:
@@ -67,25 +69,29 @@ async def firmware_report(client: OPNsenseClient) -> str:
 
     # --- Findings ---
     if upgrade_available:
-        findings.append(Finding(
-            severity=Severity.WARNING,
-            title=f"Firmware update available: {latest_version}",
-            detail=(
-                f"Current version {current_version} can be upgraded to "
-                f"{latest_version}. Review the changelog before upgrading."
-            ),
-            recommendation=(
-                "Schedule a maintenance window and upgrade via the OPNsense "
-                "web UI (System > Firmware > Updates). Ensure you have a "
-                "configuration backup before upgrading."
-            ),
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.WARNING,
+                title=f"Firmware update available: {latest_version}",
+                detail=(
+                    f"Current version {current_version} can be upgraded to "
+                    f"{latest_version}. Review the changelog before upgrading."
+                ),
+                recommendation=(
+                    "Schedule a maintenance window and upgrade via the OPNsense "
+                    "web UI (System > Firmware > Updates). Ensure you have a "
+                    "configuration backup before upgrading."
+                ),
+            )
+        )
     else:
-        findings.append(Finding(
-            severity=Severity.INFORMATIONAL,
-            title=f"Firmware is up to date ({current_version})",
-            detail="No firmware updates available at this time.",
-        ))
+        findings.append(
+            Finding(
+                severity=Severity.INFORMATIONAL,
+                title=f"Firmware is up to date ({current_version})",
+                detail="No firmware updates available at this time.",
+            )
+        )
 
     # --- Package inventory ---
     if packages and isinstance(packages[0], dict):
@@ -95,24 +101,30 @@ async def firmware_report(client: OPNsenseClient) -> str:
             name = pkg.get("name", pkg.get("n", ""))
             version = pkg.get("version", pkg.get("v", ""))
             if name:
-                pkg_rows.append([
-                    name,
-                    version,
-                    pkg.get("comment", pkg.get("description", "")),
-                ])
+                pkg_rows.append(
+                    [
+                        name,
+                        version,
+                        pkg.get("comment", pkg.get("description", "")),
+                    ]
+                )
 
         if pkg_rows:
-            sections.append(format_table(
-                headers=["Package", "Version", "Description"],
-                rows=pkg_rows[:20],  # Limit to first 20 for readability
-                title=f"Installed Packages ({len(pkg_rows)} total)",
-            ))
+            sections.append(
+                format_table(
+                    headers=["Package", "Version", "Description"],
+                    rows=pkg_rows[:20],  # Limit to first 20 for readability
+                    title=f"Installed Packages ({len(pkg_rows)} total)",
+                )
+            )
 
-            findings.append(Finding(
-                severity=Severity.INFORMATIONAL,
-                title=f"{len(pkg_rows)} package(s) installed",
-                detail="Package inventory retrieved successfully.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.INFORMATIONAL,
+                    title=f"{len(pkg_rows)} package(s) installed",
+                    detail="Package inventory retrieved successfully.",
+                )
+            )
 
     # Build final report
     report_parts: list[str] = []

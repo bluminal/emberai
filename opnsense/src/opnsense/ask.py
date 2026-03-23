@@ -24,10 +24,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Assumption:
@@ -80,6 +80,7 @@ class PlanStep:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _format_step(step: PlanStep) -> str:
     """Render a single plan step as a numbered markdown line."""
     return (
@@ -103,6 +104,7 @@ def _collect_systems(steps: list[PlanStep]) -> list[str]:
 # ---------------------------------------------------------------------------
 # Scenario 1: Assumption resolution (Phase 1)
 # ---------------------------------------------------------------------------
+
 
 def format_assumption_resolution(
     assumptions: list[Assumption],
@@ -139,17 +141,14 @@ def format_assumption_resolution(
     for assumption in assumptions:
         if assumption.determined_value is not None:
             resolved_items.append(
-                f"{assumption.question} -- **{assumption.determined_value}** "
-                f"(determined from API)"
+                f"{assumption.question} -- **{assumption.determined_value}** (determined from API)"
             )
         else:
             unresolved.append(assumption)
 
     if resolved_items:
         sections.append("### Already Determined")
-        sections.append(
-            "The following were resolved from the current system state:"
-        )
+        sections.append("The following were resolved from the current system state:")
         sections.append("")
         for item in resolved_items:
             sections.append(f"- {item}")
@@ -158,9 +157,7 @@ def format_assumption_resolution(
     if unresolved:
         sections.append("")
         sections.append("### Questions")
-        sections.append(
-            "I need your input on the following before building the plan:"
-        )
+        sections.append("I need your input on the following before building the plan:")
         sections.append("")
         for i, assumption in enumerate(unresolved, start=1):
             sections.append(f"**{i}. {assumption.question}**")
@@ -168,9 +165,7 @@ def format_assumption_resolution(
             sections.append("")
     else:
         sections.append("")
-        sections.append(
-            "All assumptions resolved from the API.  No questions needed."
-        )
+        sections.append("All assumptions resolved from the API.  No questions needed.")
 
     return "\n".join(sections)
 
@@ -178,6 +173,7 @@ def format_assumption_resolution(
 # ---------------------------------------------------------------------------
 # Scenario 2: Plan presentation with single confirmation (Phase 2 -> 3)
 # ---------------------------------------------------------------------------
+
 
 def format_plan_confirmation(
     steps: list[PlanStep],
@@ -235,9 +231,7 @@ def format_plan_confirmation(
     if rollback_steps:
         sections.append("### Rollback Plan")
         sections.append("")
-        sections.append(
-            "If any step fails, the following rollback procedure is available:"
-        )
+        sections.append("If any step fails, the following rollback procedure is available:")
         sections.append("")
         for i, rollback in enumerate(rollback_steps, start=1):
             sections.append(f"{i}. {rollback}")
@@ -259,6 +253,7 @@ def format_plan_confirmation(
 # ---------------------------------------------------------------------------
 # Scenario 3: CRITICAL outage risk confirmation
 # ---------------------------------------------------------------------------
+
 
 def format_critical_risk_confirmation(
     risk_description: str,
@@ -298,7 +293,7 @@ def format_critical_risk_confirmation(
         "misconfigures the path, you may lose connectivity to the device and "
         "be unable to roll back remotely.",
         "",
-        "**A generic \"yes\" is NOT sufficient to proceed.**",
+        '**A generic "yes" is NOT sufficient to proceed.**',
         "",
         "Please describe your out-of-band access method (serial console, "
         "IPMI, physical access, separate management VLAN on a different "
@@ -312,6 +307,7 @@ def format_critical_risk_confirmation(
 # ---------------------------------------------------------------------------
 # Scenario 4: Mid-execution failure
 # ---------------------------------------------------------------------------
+
 
 def format_execution_failure(
     completed_steps: list[PlanStep],
@@ -341,8 +337,7 @@ def format_execution_failure(
     sections: list[str] = [
         "> **EXECUTION STOPPED**",
         ">",
-        f"> Step {failed_step.number} failed.  "
-        "All subsequent steps have been skipped.",
+        f"> Step {failed_step.number} failed.  All subsequent steps have been skipped.",
     ]
 
     # --- Completed steps ---
@@ -351,9 +346,7 @@ def format_execution_failure(
         sections.append("### Completed Steps")
         sections.append("")
         for step in completed_steps:
-            sections.append(
-                f"- [x] Step {step.number}: **[{step.system}]** {step.action}"
-            )
+            sections.append(f"- [x] Step {step.number}: **[{step.system}]** {step.action}")
     else:
         sections.append("")
         sections.append("No steps completed before the failure.")
@@ -363,8 +356,7 @@ def format_execution_failure(
     sections.append("### Failed Step")
     sections.append("")
     sections.append(
-        f"- [ ] Step {failed_step.number}: "
-        f"**[{failed_step.system}]** {failed_step.action}"
+        f"- [ ] Step {failed_step.number}: **[{failed_step.system}]** {failed_step.action}"
     )
     sections.append(f"  {failed_step.detail}")
     sections.append("")
@@ -385,6 +377,7 @@ def format_execution_failure(
 # ---------------------------------------------------------------------------
 # Scenario 5: Plan modification re-confirmation
 # ---------------------------------------------------------------------------
+
 
 def format_plan_modification(
     original_steps: list[PlanStep],
@@ -417,9 +410,7 @@ def format_plan_modification(
     sections.append(f"**Reason for modification:** {reason}")
 
     # --- Build lookup of original steps by number for diffing ---
-    original_by_number: dict[int, PlanStep] = {
-        step.number: step for step in original_steps
-    }
+    original_by_number: dict[int, PlanStep] = {step.number: step for step in original_steps}
 
     # --- Identify changes ---
     added: list[PlanStep] = []
@@ -455,31 +446,22 @@ def format_plan_modification(
 
         for original, modified in changed:
             sections.append(
-                f"- **Step {modified.number} (modified):** "
-                f"[{modified.system}] {modified.action}"
+                f"- **Step {modified.number} (modified):** [{modified.system}] {modified.action}"
             )
             sections.append(f"  Was: {original.detail}")
             sections.append(f"  Now: {modified.detail}")
 
         for step in added:
-            sections.append(
-                f"- **Step {step.number} (added):** "
-                f"[{step.system}] {step.action}"
-            )
+            sections.append(f"- **Step {step.number} (added):** [{step.system}] {step.action}")
             sections.append(f"  {step.detail}")
 
         for step in removed:
-            sections.append(
-                f"- **Step {step.number} (removed):** "
-                f"[{step.system}] {step.action}"
-            )
+            sections.append(f"- **Step {step.number} (removed):** [{step.system}] {step.action}")
             sections.append(f"  Was: {step.detail}")
 
     if unchanged:
         sections.append("")
-        sections.append(
-            f"*{len(unchanged)} step(s) unchanged from the original plan.*"
-        )
+        sections.append(f"*{len(unchanged)} step(s) unchanged from the original plan.*")
 
     # --- Full updated plan ---
     sections.append("")

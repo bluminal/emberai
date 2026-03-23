@@ -14,13 +14,10 @@ import pytest
 
 from unifi.agents.topology import (
     _format_site_list,
-    _format_speed,
-    _format_uptime,
     _has_cloud_api_key,
     scan_site,
 )
 from unifi.errors import AuthenticationError
-
 
 # ---------------------------------------------------------------------------
 # _has_cloud_api_key
@@ -90,7 +87,13 @@ class TestFormatSiteList:
 
     def test_contains_usage_hint(self) -> None:
         sites: list[dict[str, object]] = [
-            {"name": "Site A", "site_id": "s1", "description": "", "device_count": 1, "client_count": 0},
+            {
+                "name": "Site A",
+                "site_id": "s1",
+                "description": "",
+                "device_count": 1,
+                "client_count": 0,
+            },
         ]
         result = _format_site_list(sites)
 
@@ -98,7 +101,13 @@ class TestFormatSiteList:
 
     def test_table_headers_present(self) -> None:
         sites: list[dict[str, object]] = [
-            {"name": "Site", "site_id": "s1", "description": "D", "device_count": 1, "client_count": 2},
+            {
+                "name": "Site",
+                "site_id": "s1",
+                "description": "D",
+                "device_count": 1,
+                "client_count": 2,
+            },
         ]
         result = _format_site_list(sites)
 
@@ -125,8 +134,20 @@ class TestScanSiteMultiSite:
         """When multiple sites are discovered, return a site list instead of scanning."""
         mock_list_sites = AsyncMock(
             return_value=[
-                {"name": "Main", "site_id": "s1", "description": "", "device_count": 5, "client_count": 20},
-                {"name": "Branch", "site_id": "s2", "description": "", "device_count": 3, "client_count": 10},
+                {
+                    "name": "Main",
+                    "site_id": "s1",
+                    "description": "",
+                    "device_count": 5,
+                    "client_count": 20,
+                },
+                {
+                    "name": "Branch",
+                    "site_id": "s2",
+                    "description": "",
+                    "device_count": 3,
+                    "client_count": 10,
+                },
             ],
         )
 
@@ -142,7 +163,13 @@ class TestScanSiteMultiSite:
         """When only one site is discovered, scan it automatically."""
         mock_list_sites = AsyncMock(
             return_value=[
-                {"name": "OnlySite", "site_id": "only1", "description": "", "device_count": 3, "client_count": 10},
+                {
+                    "name": "OnlySite",
+                    "site_id": "only1",
+                    "description": "",
+                    "device_count": 3,
+                    "client_count": 10,
+                },
             ],
         )
         mock_list_devices = AsyncMock(return_value=[])
@@ -188,7 +215,8 @@ class TestScanSiteMultiSite:
         """When Cloud V1 auth fails, fall back to single-site scan gracefully."""
         mock_list_sites = AsyncMock(
             side_effect=AuthenticationError(
-                "Authentication failed", env_var="UNIFI_API_KEY",
+                "Authentication failed",
+                env_var="UNIFI_API_KEY",
             ),
         )
         mock_list_devices = AsyncMock(return_value=[])
@@ -231,9 +259,27 @@ class TestScanSiteMultiSite:
         """When 3+ sites are found, all should appear in the site list."""
         mock_list_sites = AsyncMock(
             return_value=[
-                {"name": "HQ", "site_id": "s1", "description": "Headquarters", "device_count": 20, "client_count": 100},
-                {"name": "Branch A", "site_id": "s2", "description": "Branch A", "device_count": 5, "client_count": 15},
-                {"name": "Branch B", "site_id": "s3", "description": "Branch B", "device_count": 3, "client_count": 8},
+                {
+                    "name": "HQ",
+                    "site_id": "s1",
+                    "description": "Headquarters",
+                    "device_count": 20,
+                    "client_count": 100,
+                },
+                {
+                    "name": "Branch A",
+                    "site_id": "s2",
+                    "description": "Branch A",
+                    "device_count": 5,
+                    "client_count": 15,
+                },
+                {
+                    "name": "Branch B",
+                    "site_id": "s3",
+                    "description": "Branch B",
+                    "device_count": 3,
+                    "client_count": 8,
+                },
             ],
         )
 
@@ -301,14 +347,24 @@ class TestScanSiteSingleSite:
         """The scan report should maintain the same structure as before."""
         devices = [
             {
-                "device_id": "d1", "name": "Gateway", "model": "UXG-Max",
-                "mac": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.1",
-                "status": "connected", "uptime": 86400, "firmware": "4.0.6",
+                "device_id": "d1",
+                "name": "Gateway",
+                "model": "UXG-Max",
+                "mac": "aa:bb:cc:dd:ee:ff",
+                "ip": "192.168.1.1",
+                "status": "connected",
+                "uptime": 86400,
+                "firmware": "4.0.6",
             },
         ]
         vlans = [
-            {"name": "Default", "vlan_id": "v1", "subnet": "192.168.1.0/24",
-             "dhcp_enabled": True, "purpose": "corporate"},
+            {
+                "name": "Default",
+                "vlan_id": "v1",
+                "subnet": "192.168.1.0/24",
+                "dhcp_enabled": True,
+                "purpose": "corporate",
+            },
         ]
         uplinks: list[dict[str, Any]] = []
 

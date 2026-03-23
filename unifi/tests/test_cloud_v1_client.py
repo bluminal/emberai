@@ -134,9 +134,7 @@ class TestAuthHeader:
         assert client._client.headers["accept"] == "application/json"
 
     @pytest.mark.asyncio
-    async def test_api_key_redacted_in_debug_logs(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_api_key_redacted_in_debug_logs(self, caplog: pytest.LogCaptureFixture) -> None:
         envelope = _cloud_v1_envelope(data=[])
         mock_resp = _mock_response(200, json_data=envelope)
 
@@ -561,9 +559,7 @@ class TestRateLimitTracking:
         assert "rate-limit quota low" in caplog.text.lower()
 
     @pytest.mark.asyncio
-    async def test_exactly_at_threshold_no_warning(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_exactly_at_threshold_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         """Exactly at threshold value (2000) should NOT trigger warning."""
         envelope = _cloud_v1_envelope(data=[])
         mock_resp = _mock_response(
@@ -596,9 +592,7 @@ class TestRateLimitRetry:
         success_resp = _mock_response(200, json_data=success_envelope)
 
         async with CloudV1Client(api_key="key", max_retries=3) as client:
-            client._client.request = AsyncMock(
-                side_effect=[rate_limit_resp, success_resp]
-            )
+            client._client.request = AsyncMock(side_effect=[rate_limit_resp, success_resp])
 
             with patch("unifi.api.cloud_v1_client.asyncio.sleep", new_callable=AsyncMock):
                 result = await client.get("sites")
@@ -662,9 +656,7 @@ class TestRateLimitRetry:
         success_resp = _mock_response(200, json_data=success_envelope)
 
         async with CloudV1Client(api_key="key", max_retries=2) as client:
-            client._client.request = AsyncMock(
-                side_effect=[rate_limit_resp, success_resp]
-            )
+            client._client.request = AsyncMock(side_effect=[rate_limit_resp, success_resp])
 
             mock_sleep = AsyncMock()
             with (
@@ -689,9 +681,7 @@ class TestRateLimitRetry:
         success_resp = _mock_response(200, json_data=success_envelope)
 
         async with CloudV1Client(api_key="key", max_retries=2) as client:
-            client._client.request = AsyncMock(
-                side_effect=[rate_limit_resp, success_resp]
-            )
+            client._client.request = AsyncMock(side_effect=[rate_limit_resp, success_resp])
 
             mock_sleep = AsyncMock()
             with (
@@ -711,9 +701,7 @@ class TestRateLimitRetry:
 
         with caplog.at_level(logging.WARNING, logger="unifi.api.cloud_v1_client"):
             async with CloudV1Client(api_key="key", max_retries=2) as client:
-                client._client.request = AsyncMock(
-                    side_effect=[rate_limit_resp, success_resp]
-                )
+                client._client.request = AsyncMock(side_effect=[rate_limit_resp, success_resp])
 
                 with patch("unifi.api.cloud_v1_client.asyncio.sleep", new_callable=AsyncMock):
                     await client.get("sites")
@@ -774,9 +762,7 @@ class TestConnectionFailures:
     @pytest.mark.asyncio
     async def test_timeout_raises_network_error(self) -> None:
         async with CloudV1Client(api_key="key") as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.ReadTimeout("read timed out")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.ReadTimeout("read timed out"))
 
             with pytest.raises(NetworkError) as exc_info:
                 await client.get("sites")
@@ -799,9 +785,7 @@ class TestConnectionFailures:
     @pytest.mark.asyncio
     async def test_connection_refused_raises_network_error(self) -> None:
         async with CloudV1Client(api_key="key") as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
             with pytest.raises(NetworkError) as exc_info:
                 await client.get("sites")
@@ -827,9 +811,7 @@ class TestConnectionFailures:
     @pytest.mark.asyncio
     async def test_generic_http_error_raises_network_error(self) -> None:
         async with CloudV1Client(api_key="key") as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.HTTPError("Something went wrong")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.HTTPError("Something went wrong"))
 
             with pytest.raises(NetworkError) as exc_info:
                 await client.get("sites")
@@ -840,9 +822,7 @@ class TestConnectionFailures:
     async def test_network_errors_not_retried(self) -> None:
         """Network errors should propagate immediately, not be retried."""
         async with CloudV1Client(api_key="key", max_retries=3) as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
             with pytest.raises(NetworkError):
                 await client.get("sites")
@@ -911,9 +891,7 @@ class TestLogging:
         assert "Slow request" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_error_log_on_connection_failure(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_error_log_on_connection_failure(self, caplog: pytest.LogCaptureFixture) -> None:
         with caplog.at_level(logging.ERROR, logger="unifi.api.cloud_v1_client"):
             async with CloudV1Client(api_key="key") as client:
                 client._client.request = AsyncMock(

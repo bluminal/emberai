@@ -39,6 +39,7 @@ logger = logging.getLogger("netex.agents.network_security")
 # Audit domain enum
 # ---------------------------------------------------------------------------
 
+
 class AuditDomain(StrEnum):
     """Audit domains for on-demand security assessment (PRD 5.2.2)."""
 
@@ -97,24 +98,27 @@ _DOMAIN_LABELS: dict[AuditDomain, str] = {
 }
 
 # Write tool name patterns that the agent must never call.
-_WRITE_TOOL_PATTERNS = frozenset({
-    "add_",
-    "create_",
-    "update_",
-    "delete_",
-    "remove_",
-    "set_",
-    "apply_",
-    "assign_",
-    "configure_",
-    "provision_",
-    "reconfigure",
-})
+_WRITE_TOOL_PATTERNS = frozenset(
+    {
+        "add_",
+        "create_",
+        "update_",
+        "delete_",
+        "remove_",
+        "set_",
+        "apply_",
+        "assign_",
+        "configure_",
+        "provision_",
+        "reconfigure",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Read-only enforcement
 # ---------------------------------------------------------------------------
+
 
 def is_read_only_tool(tool_name: str) -> bool:
     """Check whether a tool name represents a read-only operation.
@@ -161,6 +165,7 @@ def filter_read_only_tools(
 # ---------------------------------------------------------------------------
 # NetworkSecurityAgent
 # ---------------------------------------------------------------------------
+
 
 class NetworkSecurityAgent:
     """Read-only agent for security review.  Never makes changes.
@@ -327,9 +332,7 @@ class NetworkSecurityAgent:
                 SecurityFinding(
                     severity=FindingSeverity.INFORMATIONAL,
                     category=category,
-                    description=(
-                        f"No plugins provide tools for {label} assessment."
-                    ),
+                    description=(f"No plugins provide tools for {label} assessment."),
                     recommendation=(
                         "Install a vendor plugin that exposes the "
                         f"{', '.join(required_skills)} skill(s)."
@@ -342,9 +345,7 @@ class NetworkSecurityAgent:
         # logic below demonstrates the pattern; actual tool invocation
         # will be wired in when the MCP call framework is integrated.
         findings: list[SecurityFinding] = []
-        findings.extend(
-            self._analyze_domain(domain, category, available_tools)
-        )
+        findings.extend(self._analyze_domain(domain, category, available_tools))
 
         return findings
 
@@ -402,7 +403,8 @@ class NetworkSecurityAgent:
 
         # Find VLAN creation steps
         vlan_creates = [
-            s for s in steps
+            s
+            for s in steps
             if s.get("subsystem") == "vlan" and s.get("action") in ("add", "create")
         ]
 
@@ -411,7 +413,8 @@ class NetworkSecurityAgent:
 
         # Check if there are corresponding firewall deny rules
         firewall_steps = [
-            s for s in steps
+            s
+            for s in steps
             if s.get("subsystem") == "firewall" and s.get("action") in ("add", "create")
         ]
 
@@ -435,25 +438,27 @@ class NetworkSecurityAgent:
             )
 
             if not has_deny_rule:
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.HIGH,
-                    category=FindingCategory.VLAN_ISOLATION,
-                    description=(
-                        f"New VLAN '{vlan_name}' created without corresponding "
-                        "inter-VLAN firewall deny rules."
-                    ),
-                    why_it_matters=(
-                        f"Without deny rules, VLAN {vlan_name} can reach other "
-                        "VLANs, defeating network segmentation."
-                    ),
-                    recommendation=(
-                        f"Add deny rules blocking traffic from VLAN {vlan_name} "
-                        "to other VLANs, then allow only intended cross-VLAN flows."
-                    ),
-                    source_plugin=source_plugin,
-                    source_tool=source_tool,
-                    affected_resource=str(vlan_id),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.VLAN_ISOLATION,
+                        description=(
+                            f"New VLAN '{vlan_name}' created without corresponding "
+                            "inter-VLAN firewall deny rules."
+                        ),
+                        why_it_matters=(
+                            f"Without deny rules, VLAN {vlan_name} can reach other "
+                            "VLANs, defeating network segmentation."
+                        ),
+                        recommendation=(
+                            f"Add deny rules blocking traffic from VLAN {vlan_name} "
+                            "to other VLANs, then allow only intended cross-VLAN flows."
+                        ),
+                        source_plugin=source_plugin,
+                        source_tool=source_tool,
+                        affected_resource=str(vlan_id),
+                    )
+                )
 
         return findings
 
@@ -470,7 +475,8 @@ class NetworkSecurityAgent:
         findings: list[SecurityFinding] = []
 
         firewall_steps = [
-            s for s in steps
+            s
+            for s in steps
             if s.get("subsystem") == "firewall" and s.get("action") in ("add", "create", "modify")
         ]
 
@@ -488,32 +494,31 @@ class NetworkSecurityAgent:
             if rule_action != "allow":
                 continue
 
-            is_broad = (
-                (src == "any" and dst == "any")
-                or (protocol == "any" and port == "any")
-            )
+            is_broad = (src == "any" and dst == "any") or (protocol == "any" and port == "any")
 
             if is_broad:
                 target = step.get("target", "new rule")
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.HIGH,
-                    category=FindingCategory.FIREWALL_POLICY,
-                    description=(
-                        f"Overly broad allow rule: source={src}, "
-                        f"destination={dst}, port={port}, protocol={protocol}."
-                    ),
-                    why_it_matters=(
-                        "An any/any rule permits all traffic, bypassing the "
-                        "intent of network segmentation."
-                    ),
-                    recommendation=(
-                        "Narrow the rule to the specific source, destination, "
-                        "port, and protocol required for the intended access."
-                    ),
-                    source_plugin=source_plugin,
-                    source_tool=source_tool,
-                    affected_resource=str(target),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.FIREWALL_POLICY,
+                        description=(
+                            f"Overly broad allow rule: source={src}, "
+                            f"destination={dst}, port={port}, protocol={protocol}."
+                        ),
+                        why_it_matters=(
+                            "An any/any rule permits all traffic, bypassing the "
+                            "intent of network segmentation."
+                        ),
+                        recommendation=(
+                            "Narrow the rule to the specific source, destination, "
+                            "port, and protocol required for the intended access."
+                        ),
+                        source_plugin=source_plugin,
+                        source_tool=source_tool,
+                        affected_resource=str(target),
+                    )
+                )
 
         return findings
 
@@ -530,7 +535,8 @@ class NetworkSecurityAgent:
         findings: list[SecurityFinding] = []
 
         firewall_steps = [
-            s for s in steps
+            s
+            for s in steps
             if s.get("subsystem") == "firewall" and s.get("action") in ("add", "create")
         ]
 
@@ -545,24 +551,26 @@ class NetworkSecurityAgent:
             target = step.get("target", "new rule")
 
             if rule_action == "allow":
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.MEDIUM,
-                    category=FindingCategory.RULE_ORDERING,
-                    description=(
-                        f"New allow rule '{target}' added without explicit "
-                        "position; may shadow existing deny rules."
-                    ),
-                    why_it_matters=(
-                        "If this rule is evaluated before a more specific deny, "
-                        "traffic that should be blocked will be allowed."
-                    ),
-                    recommendation=(
-                        "Specify the insert position to ensure correct evaluation "
-                        "order relative to existing deny rules."
-                    ),
-                    source_plugin=source_plugin,
-                    affected_resource=str(target),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.MEDIUM,
+                        category=FindingCategory.RULE_ORDERING,
+                        description=(
+                            f"New allow rule '{target}' added without explicit "
+                            "position; may shadow existing deny rules."
+                        ),
+                        why_it_matters=(
+                            "If this rule is evaluated before a more specific deny, "
+                            "traffic that should be blocked will be allowed."
+                        ),
+                        recommendation=(
+                            "Specify the insert position to ensure correct evaluation "
+                            "order relative to existing deny rules."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(target),
+                    )
+                )
 
         return findings
 
@@ -578,7 +586,8 @@ class NetworkSecurityAgent:
         findings: list[SecurityFinding] = []
 
         vpn_steps = [
-            s for s in steps
+            s
+            for s in steps
             if s.get("subsystem") == "vpn" and s.get("action") in ("add", "create", "modify")
         ]
 
@@ -592,53 +601,53 @@ class NetworkSecurityAgent:
             # Flag 0.0.0.0/0 (full tunnel) when split tunnel is intended
             if "0.0.0.0/0" in str(allowed_ips) and tunnel_scope == "split":
                 target = step.get("target", "VPN tunnel")
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.HIGH,
-                    category=FindingCategory.VPN_POSTURE,
-                    description=(
-                        f"VPN '{target}' has allowed_ips=0.0.0.0/0 but "
-                        "tunnel_scope is set to 'split'."
-                    ),
-                    why_it_matters=(
-                        "A /0 allowed IPs entry routes all traffic through the "
-                        "tunnel, contradicting the split-tunnel intent and "
-                        "potentially exposing the remote network."
-                    ),
-                    recommendation=(
-                        "Restrict allowed_ips to only the specific networks "
-                        "that need to be reached through the tunnel."
-                    ),
-                    source_plugin=source_plugin,
-                    affected_resource=str(target),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.VPN_POSTURE,
+                        description=(
+                            f"VPN '{target}' has allowed_ips=0.0.0.0/0 but "
+                            "tunnel_scope is set to 'split'."
+                        ),
+                        why_it_matters=(
+                            "A /0 allowed IPs entry routes all traffic through the "
+                            "tunnel, contradicting the split-tunnel intent and "
+                            "potentially exposing the remote network."
+                        ),
+                        recommendation=(
+                            "Restrict allowed_ips to only the specific networks "
+                            "that need to be reached through the tunnel."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(target),
+                    )
+                )
 
             # Flag narrow scope when full tunnel is intended
-            if (
-                "0.0.0.0/0" not in str(allowed_ips)
-                and allowed_ips
-                and tunnel_scope == "full"
-            ):
+            if "0.0.0.0/0" not in str(allowed_ips) and allowed_ips and tunnel_scope == "full":
                 target = step.get("target", "VPN tunnel")
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.MEDIUM,
-                    category=FindingCategory.VPN_POSTURE,
-                    description=(
-                        f"VPN '{target}' scope is 'full' but allowed_ips is "
-                        f"restricted to '{allowed_ips}'."
-                    ),
-                    why_it_matters=(
-                        "Full-tunnel intent means all traffic should go through "
-                        "the VPN, but the current config only routes specific "
-                        "networks."
-                    ),
-                    recommendation=(
-                        "Set allowed_ips to 0.0.0.0/0 for full-tunnel, or "
-                        "change tunnel_scope to 'split' if partial routing "
-                        "is intended."
-                    ),
-                    source_plugin=source_plugin,
-                    affected_resource=str(target),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.MEDIUM,
+                        category=FindingCategory.VPN_POSTURE,
+                        description=(
+                            f"VPN '{target}' scope is 'full' but allowed_ips is "
+                            f"restricted to '{allowed_ips}'."
+                        ),
+                        why_it_matters=(
+                            "Full-tunnel intent means all traffic should go through "
+                            "the VPN, but the current config only routes specific "
+                            "networks."
+                        ),
+                        recommendation=(
+                            "Set allowed_ips to 0.0.0.0/0 for full-tunnel, or "
+                            "change tunnel_scope to 'split' if partial routing "
+                            "is intended."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(target),
+                    )
+                )
 
         return findings
 
@@ -655,7 +664,8 @@ class NetworkSecurityAgent:
 
         # Check VLAN or wifi steps for sensitive use cases
         sensitive_steps = [
-            s for s in steps
+            s
+            for s in steps
             if (
                 s.get("subsystem") in ("vlan", "wifi", "ssid")
                 and s.get("action") in ("add", "create", "modify")
@@ -672,28 +682,26 @@ class NetworkSecurityAgent:
             security_mode = step.get("security", step.get("wpa_mode", "")).lower()
             target = step.get("target", step.get("ssid", "unknown"))
 
-            if (
-                purpose in sensitive_purposes
-                and security_mode in ("open", "none", "")
-            ):
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.HIGH,
-                    category=FindingCategory.WIRELESS_SECURITY,
-                    description=(
-                        f"SSID/VLAN '{target}' for {purpose} traffic uses "
-                        f"'{security_mode or 'no'}' security."
-                    ),
-                    why_it_matters=(
-                        f"{purpose.title()} traffic on an unencrypted network "
-                        "can be intercepted by any device on the same segment."
-                    ),
-                    recommendation=(
-                        f"Configure WPA3 (or at minimum WPA2) for the "
-                        f"'{target}' SSID/VLAN."
-                    ),
-                    source_plugin=source_plugin,
-                    affected_resource=str(target),
-                ))
+            if purpose in sensitive_purposes and security_mode in ("open", "none", ""):
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.WIRELESS_SECURITY,
+                        description=(
+                            f"SSID/VLAN '{target}' for {purpose} traffic uses "
+                            f"'{security_mode or 'no'}' security."
+                        ),
+                        why_it_matters=(
+                            f"{purpose.title()} traffic on an unencrypted network "
+                            "can be intercepted by any device on the same segment."
+                        ),
+                        recommendation=(
+                            f"Configure WPA3 (or at minimum WPA2) for the '{target}' SSID/VLAN."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(target),
+                    )
+                )
 
         return findings
 
@@ -731,30 +739,30 @@ class NetworkSecurityAgent:
                     or (is_to_mgmt and is_from_untrusted)
                     or (is_mgmt_target and is_from_untrusted_dst)
                 ):
-                    fw_tools = filter_read_only_tools(
-                        registry.tools_for_skill("firewall")
-                    )
+                    fw_tools = filter_read_only_tools(registry.tools_for_skill("firewall"))
                     source_plugin = fw_tools[0]["plugin"] if fw_tools else ""
 
-                    findings.append(SecurityFinding(
-                        severity=FindingSeverity.CRITICAL,
-                        category=FindingCategory.MANAGEMENT_EXPOSURE,
-                        description=(
-                            f"Change exposes management interface to untrusted "
-                            f"segment: {step.get('target', 'unknown')}."
-                        ),
-                        why_it_matters=(
-                            "Attackers on untrusted segments could access the "
-                            "firewall admin or network controller, gaining full "
-                            "control of the network."
-                        ),
-                        recommendation=(
-                            "Keep management interfaces on a dedicated management "
-                            "VLAN with deny rules from all untrusted segments."
-                        ),
-                        source_plugin=source_plugin,
-                        affected_resource=step.get("target", ""),
-                    ))
+                    findings.append(
+                        SecurityFinding(
+                            severity=FindingSeverity.CRITICAL,
+                            category=FindingCategory.MANAGEMENT_EXPOSURE,
+                            description=(
+                                f"Change exposes management interface to untrusted "
+                                f"segment: {step.get('target', 'unknown')}."
+                            ),
+                            why_it_matters=(
+                                "Attackers on untrusted segments could access the "
+                                "firewall admin or network controller, gaining full "
+                                "control of the network."
+                            ),
+                            recommendation=(
+                                "Keep management interfaces on a dedicated management "
+                                "VLAN with deny rules from all untrusted segments."
+                            ),
+                            source_plugin=source_plugin,
+                            affected_resource=step.get("target", ""),
+                        )
+                    )
 
         return findings
 
@@ -769,10 +777,7 @@ class NetworkSecurityAgent:
         """
         findings: list[SecurityFinding] = []
 
-        dns_steps = [
-            s for s in steps
-            if s.get("subsystem") in ("dns", "services")
-        ]
+        dns_steps = [s for s in steps if s.get("subsystem") in ("dns", "services")]
 
         svc_tools = filter_read_only_tools(registry.tools_for_skill("services"))
         source_plugin = svc_tools[0]["plugin"] if svc_tools else ""
@@ -782,59 +787,64 @@ class NetworkSecurityAgent:
 
             # Check for DNSSEC being disabled
             if step.get("dnssec") is False or step.get("dnssec_enabled") is False:
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.MEDIUM,
-                    category=FindingCategory.DNS_SECURITY,
-                    description=f"DNSSEC is disabled in {target}.",
-                    why_it_matters=(
-                        "Without DNSSEC, DNS responses can be spoofed, "
-                        "redirecting traffic to malicious servers."
-                    ),
-                    recommendation="Enable DNSSEC validation in the resolver.",
-                    source_plugin=source_plugin,
-                    affected_resource=str(target),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.MEDIUM,
+                        category=FindingCategory.DNS_SECURITY,
+                        description=f"DNSSEC is disabled in {target}.",
+                        why_it_matters=(
+                            "Without DNSSEC, DNS responses can be spoofed, "
+                            "redirecting traffic to malicious servers."
+                        ),
+                        recommendation="Enable DNSSEC validation in the resolver.",
+                        source_plugin=source_plugin,
+                        affected_resource=str(target),
+                    )
+                )
 
             # Check for forwarder without DoT
             forwarder = step.get("forwarder", "")
             use_dot = step.get("dot_enabled", step.get("tls", False))
 
             if forwarder and not use_dot:
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.MEDIUM,
-                    category=FindingCategory.DNS_SECURITY,
-                    description=(
-                        f"DNS forwarder '{forwarder}' configured without "
-                        "DNS-over-TLS (DoT)."
-                    ),
-                    why_it_matters=(
-                        "DNS queries sent in plaintext can be intercepted and "
-                        "monitored by any device on the path to the forwarder."
-                    ),
-                    recommendation=(
-                        f"Enable DoT for forwarder '{forwarder}' or switch to "
-                        "a DoT-capable resolver (e.g. 1.1.1.1:853, 8.8.8.8:853)."
-                    ),
-                    source_plugin=source_plugin,
-                    affected_resource=str(forwarder),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.MEDIUM,
+                        category=FindingCategory.DNS_SECURITY,
+                        description=(
+                            f"DNS forwarder '{forwarder}' configured without DNS-over-TLS (DoT)."
+                        ),
+                        why_it_matters=(
+                            "DNS queries sent in plaintext can be intercepted and "
+                            "monitored by any device on the path to the forwarder."
+                        ),
+                        recommendation=(
+                            f"Enable DoT for forwarder '{forwarder}' or switch to "
+                            "a DoT-capable resolver (e.g. 1.1.1.1:853, 8.8.8.8:853)."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(forwarder),
+                    )
+                )
 
             # Check for open recursion
             if step.get("open_recursion") is True:
-                findings.append(SecurityFinding(
-                    severity=FindingSeverity.HIGH,
-                    category=FindingCategory.DNS_SECURITY,
-                    description=f"Open DNS recursion enabled on {target}.",
-                    why_it_matters=(
-                        "An open recursive resolver can be used as a DNS "
-                        "amplification vector in DDoS attacks."
-                    ),
-                    recommendation=(
-                        "Restrict DNS recursion to local networks only "
-                        "(ACL or interface binding)."
-                    ),
-                    source_plugin=source_plugin,
-                    affected_resource=str(target),
-                ))
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.DNS_SECURITY,
+                        description=f"Open DNS recursion enabled on {target}.",
+                        why_it_matters=(
+                            "An open recursive resolver can be used as a DNS "
+                            "amplification vector in DDoS attacks."
+                        ),
+                        recommendation=(
+                            "Restrict DNS recursion to local networks only "
+                            "(ACL or interface binding)."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(target),
+                    )
+                )
 
         return findings

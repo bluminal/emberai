@@ -15,6 +15,7 @@ from netex.models.security_finding import (
 # SecurityFinding construction
 # ---------------------------------------------------------------------------
 
+
 class TestSecurityFinding:
     def test_minimal_construction(self) -> None:
         finding = SecurityFinding(
@@ -101,6 +102,7 @@ class TestSecurityFinding:
 # Sorting
 # ---------------------------------------------------------------------------
 
+
 class TestSortFindings:
     def test_sort_by_severity(self) -> None:
         findings = [
@@ -158,6 +160,7 @@ class TestSortFindings:
 # Grouping
 # ---------------------------------------------------------------------------
 
+
 class TestGroupFindings:
     def test_group_by_category(self) -> None:
         findings = [
@@ -208,6 +211,7 @@ class TestGroupFindings:
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class TestEnums:
     def test_severity_values(self) -> None:

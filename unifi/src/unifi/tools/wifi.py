@@ -11,11 +11,9 @@ All tools are read-only. No active RF scans are triggered -- passive data only.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
 
@@ -297,11 +295,13 @@ async def unifi__wifi__get_rf_scan(
 # Tool 5: Get Roaming Events
 # ---------------------------------------------------------------------------
 
-_ROAM_EVENT_KEYS = frozenset({
-    "EVT_WU_Roam",
-    "EVT_WU_RoamRadio",
-    "EVT_WC_Roam",
-})
+_ROAM_EVENT_KEYS = frozenset(
+    {
+        "EVT_WU_Roam",
+        "EVT_WU_RoamRadio",
+        "EVT_WC_Roam",
+    }
+)
 
 
 def _is_roam_event(event: dict[str, Any]) -> bool:

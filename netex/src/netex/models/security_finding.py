@@ -181,7 +181,4 @@ def group_findings_by_category(
         grouped.setdefault(finding.category, []).append(finding)
 
     # Sort each group by severity
-    return {
-        category: sort_findings(group)
-        for category, group in grouped.items()
-    }
+    return {category: sort_findings(group) for category, group in grouped.items()}

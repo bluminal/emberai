@@ -14,7 +14,6 @@ from unifi.output import (
     format_table,
 )
 
-
 # ---------------------------------------------------------------------------
 # Severity enum
 # ---------------------------------------------------------------------------
@@ -180,7 +179,7 @@ class TestFormatTable:
         rows = [["very long value", "x"]]
         result = format_table(headers, rows)
         # The separator should be at least as wide as the longest value.
-        sep_line = [line for line in result.split("\n") if "---" in line][0]
+        sep_line = next(line for line in result.split("\n") if "---" in line)
         assert "---------------" in sep_line
 
     def test_short_row_padded(self) -> None:
@@ -190,7 +189,8 @@ class TestFormatTable:
         result = format_table(headers, rows)
         # Should not raise; the row is padded with empty strings.
         data_lines = [
-            line for line in result.strip().split("\n")
+            line
+            for line in result.strip().split("\n")
             if line.startswith("|") and "---" not in line
         ]
         assert len(data_lines) == 2  # header + 1 data row
@@ -201,10 +201,11 @@ class TestFormatTable:
         rows = [["1", "2", "3", "4"]]
         result = format_table(headers, rows)
         # Extra columns should not appear.
-        data_line = [
-            line for line in result.strip().split("\n")
+        data_line = next(
+            line
+            for line in result.strip().split("\n")
             if line.startswith("|") and "---" not in line and "A" not in line
-        ][0]
+        )
         assert "3" not in data_line
         assert "4" not in data_line
 

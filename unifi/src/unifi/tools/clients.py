@@ -9,10 +9,8 @@ by MAC, hostname, IP, or alias via the Local Gateway API.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
-from unifi.api.local_gateway_client import LocalGatewayClient
 from unifi.errors import APIError, NetexError
 from unifi.models.client import Client
 from unifi.server import mcp_server
@@ -210,10 +208,7 @@ def _client_matches_query(raw_client: dict[str, Any], query_lower: str) -> bool:
         raw_client.get("name", ""),
     ]
 
-    return any(
-        query_lower in (field or "").lower()
-        for field in searchable_fields
-    )
+    return any(query_lower in (field or "").lower() for field in searchable_fields)
 
 
 @mcp_server.tool()

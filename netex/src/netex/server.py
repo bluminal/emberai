@@ -106,9 +106,7 @@ def _load_env() -> dict[str, str]:
         config[var_name] = value
 
     if missing:
-        raise ConfigError(
-            "Required environment variables are not set:\n" + "\n".join(missing)
-        )
+        raise ConfigError("Required environment variables are not set:\n" + "\n".join(missing))
 
     for var_name, default, _description in _OPTIONAL_ENV_VARS:
         config[var_name] = os.environ.get(var_name, default).strip() or default
@@ -154,8 +152,7 @@ def _run_check() -> int:
                 print(f"  [PASS] Found plugin: {p['name']} (roles: {p['roles']})")
         else:
             print(
-                "  [WARN] No vendor plugins found"
-                " -- install at least one (e.g., unifi, opnsense)"
+                "  [WARN] No vendor plugins found -- install at least one (e.g., unifi, opnsense)"
             )
             all_ok = False
     except Exception as exc:

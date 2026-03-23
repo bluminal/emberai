@@ -349,7 +349,6 @@ class OPNsenseClient:
             On connection failures, timeouts, or SSL errors.
         """
         import os
-        import re as _re
 
         url = path if path.startswith("/") else f"/{path}"
 

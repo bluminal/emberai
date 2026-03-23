@@ -66,7 +66,8 @@ def _classify_firewall_rules(rules: list[dict[str, Any]]) -> list[Finding]:
                     title=f"Over-broad firewall rule: {rule.get('name', 'unnamed')}",
                     detail=(
                         f"Rule '{rule.get('name', '')}' accepts all traffic with "
-                        f"no source or destination restriction (protocol={rule.get('protocol', 'all')})."
+                        "no source or destination restriction "
+                        f"(protocol={rule.get('protocol', 'all')})."
                     ),
                     recommendation="Add source/destination restrictions to limit attack surface.",
                 )
@@ -101,7 +102,9 @@ def _classify_zbf_policies(policies: list[dict[str, Any]]) -> list[Finding]:
                         f"Traffic from '{policy.get('from_zone', '')}' to "
                         f"'{policy.get('to_zone', '')}' is accepted without restriction."
                     ),
-                    recommendation="Consider adding specific match criteria to limit inter-zone traffic.",
+                    recommendation=(
+                        "Consider adding specific match criteria to limit inter-zone traffic."
+                    ),
                 )
             )
 
@@ -147,20 +150,20 @@ def _classify_port_forwards(forwards: list[dict[str, Any]]) -> list[Finding]:
 
     if enabled_forwards:
         non_sensitive = [
-            f for f in enabled_forwards
-            if str(f.get("wan_port", "")) not in sensitive_ports
+            f for f in enabled_forwards if str(f.get("wan_port", "")) not in sensitive_ports
         ]
         if non_sensitive:
             names = ", ".join(
-                f"{f.get('name', 'unnamed')} (:{f.get('wan_port', '?')})"
-                for f in non_sensitive
+                f"{f.get('name', 'unnamed')} (:{f.get('wan_port', '?')})" for f in non_sensitive
             )
             findings.append(
                 Finding(
                     severity=Severity.INFORMATIONAL,
                     title=f"{len(non_sensitive)} port forward(s) active",
                     detail=f"Active port forwards: {names}.",
-                    recommendation="Periodically review port forwards to ensure they are still needed.",
+                    recommendation=(
+                        "Periodically review port forwards to ensure they are still needed."
+                    ),
                 )
             )
 
@@ -226,7 +229,10 @@ def _classify_ids_alerts(alerts: list[dict[str, Any]]) -> list[Finding]:
             Finding(
                 severity=Severity.WARNING,
                 title=f"{len(warning_alerts)} medium-severity IDS alert(s)",
-                detail=f"{len(warning_alerts)} medium-severity intrusion detection alerts in the time window.",
+                detail=(
+                    f"{len(warning_alerts)} medium-severity intrusion "
+                    "detection alerts in the time window."
+                ),
                 recommendation="Review medium-severity alerts for potential threats.",
             )
         )
@@ -325,9 +331,7 @@ async def security_audit(site_id: str = "default") -> str:
             f"{len(port_forwards)} port forward(s) reviewed."
         )
 
-    sections.append(
-        format_summary("Security Audit", summary_stats, detail=detail)
-    )
+    sections.append(format_summary("Security Audit", summary_stats, detail=detail))
 
     # Severity report (only if there are findings).
     if findings:

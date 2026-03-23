@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class FirewallAction(StrEnum):
     """Firewall rule action."""
 
@@ -69,6 +70,7 @@ class TopologyNodeType(StrEnum):
 # ---------------------------------------------------------------------------
 # VLAN
 # ---------------------------------------------------------------------------
+
 
 class VLAN(BaseModel):
     """Vendor-neutral VLAN representation.
@@ -140,6 +142,7 @@ class VLAN(BaseModel):
 # FirewallPolicy
 # ---------------------------------------------------------------------------
 
+
 class FirewallPolicy(BaseModel):
     """Vendor-neutral firewall policy / rule representation.
 
@@ -169,8 +172,11 @@ class FirewallPolicy(BaseModel):
     def from_vendor(cls, vendor_name: str, raw_data: dict[str, Any]) -> FirewallPolicy:
         """Create a FirewallPolicy from vendor-specific API data."""
         if vendor_name == "opnsense":
-            action_map = {"pass": FirewallAction.ALLOW, "block": FirewallAction.DENY,
-                          "reject": FirewallAction.REJECT}
+            action_map = {
+                "pass": FirewallAction.ALLOW,
+                "block": FirewallAction.DENY,
+                "reject": FirewallAction.REJECT,
+            }
             return cls(
                 rule_id=raw_data.get("uuid", ""),
                 src_zone=raw_data.get("interface", ""),
@@ -218,6 +224,7 @@ class FirewallPolicy(BaseModel):
 # ---------------------------------------------------------------------------
 # Route
 # ---------------------------------------------------------------------------
+
 
 class Route(BaseModel):
     """Vendor-neutral static route representation.
@@ -269,6 +276,7 @@ class Route(BaseModel):
 # VPNTunnel
 # ---------------------------------------------------------------------------
 
+
 class VPNTunnel(BaseModel):
     """Vendor-neutral VPN tunnel representation.
 
@@ -304,8 +312,12 @@ class VPNTunnel(BaseModel):
 
             # Map status
             status_str = raw_data.get("status", "down").lower()
-            status_map = {"associated": VPNStatus.UP, "connected": VPNStatus.UP,
-                          "up": VPNStatus.UP, "down": VPNStatus.DOWN}
+            status_map = {
+                "associated": VPNStatus.UP,
+                "connected": VPNStatus.UP,
+                "up": VPNStatus.UP,
+                "down": VPNStatus.DOWN,
+            }
             status = status_map.get(status_str, VPNStatus.DOWN)
 
             return cls(
@@ -336,6 +348,7 @@ class VPNTunnel(BaseModel):
 # ---------------------------------------------------------------------------
 # DNSRecord
 # ---------------------------------------------------------------------------
+
 
 class DNSRecord(BaseModel):
     """Vendor-neutral DNS record representation.
@@ -386,6 +399,7 @@ class DNSRecord(BaseModel):
 # ---------------------------------------------------------------------------
 # DHCPLease
 # ---------------------------------------------------------------------------
+
 
 class DHCPLease(BaseModel):
     """Vendor-neutral DHCP lease representation.
@@ -455,6 +469,7 @@ class DHCPLease(BaseModel):
 # Network Topology
 # ---------------------------------------------------------------------------
 
+
 class TopologyNode(BaseModel):
     """A single node in the network topology graph."""
 
@@ -517,8 +532,7 @@ class NetworkTopology(BaseModel):
 
         existing_vlan_ids = {(v.vlan_id, v.source_plugin) for v in self.vlans}
         new_vlans = [
-            v for v in other.vlans
-            if (v.vlan_id, v.source_plugin) not in existing_vlan_ids
+            v for v in other.vlans if (v.vlan_id, v.source_plugin) not in existing_vlan_ids
         ]
 
         merged_plugins = list(dict.fromkeys(self.source_plugins + other.source_plugins))

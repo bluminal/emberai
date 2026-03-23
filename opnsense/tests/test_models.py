@@ -18,15 +18,14 @@ from opnsense.models import (
     FirmwareStatus,
     Gateway,
     IDSAlert,
-    IPSecSession,
     Interface,
+    IPSecSession,
     NATRule,
     OpenVPNInstance,
     Route,
     VLANInterface,
     WireGuardPeer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Interface
@@ -99,7 +98,10 @@ class TestVLANInterface:
 
     def test_populate_by_name(self) -> None:
         vlan = VLANInterface(
-            uuid="x", tag=10, if_="vlan10", parent_if="igb0",
+            uuid="x",
+            tag=10,
+            if_="vlan10",
+            parent_if="igb0",
         )
         assert vlan.if_ == "vlan10"
 
@@ -395,7 +397,10 @@ class TestStrictMode:
     def test_vlan_interface_rejects_str_for_tag(self) -> None:
         with pytest.raises(ValidationError):
             VLANInterface(  # type: ignore[arg-type]
-                uuid="x", tag="ten", if_="vlan10", parent_if="igb0",
+                uuid="x",
+                tag="ten",
+                if_="vlan10",
+                parent_if="igb0",
             )
 
 

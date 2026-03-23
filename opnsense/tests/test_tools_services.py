@@ -111,7 +111,9 @@ class TestResolveHostname:
 
         assert result == result_data
         client.get.assert_called_once_with(
-            "unbound", "diagnostics", "lookup/nas.home.local",
+            "unbound",
+            "diagnostics",
+            "lookup/nas.home.local",
         )
 
 
@@ -132,7 +134,11 @@ class TestAddDNSOverrideWriteGate:
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(WriteGateError) as exc_info:
                 await opnsense__services__add_dns_override(
-                    client, "test", "home.local", "1.2.3.4", apply=True,
+                    client,
+                    "test",
+                    "home.local",
+                    "1.2.3.4",
+                    apply=True,
                 )
             assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
 
@@ -145,7 +151,11 @@ class TestAddDNSOverrideWriteGate:
         with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
                 await opnsense__services__add_dns_override(
-                    client, "test", "home.local", "1.2.3.4", apply=False,
+                    client,
+                    "test",
+                    "home.local",
+                    "1.2.3.4",
+                    apply=False,
                 )
             assert exc_info.value.reason == WriteBlockReason.APPLY_FLAG_MISSING
 
@@ -158,7 +168,10 @@ class TestAddDNSOverrideWriteGate:
         with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
                 await opnsense__services__add_dns_override(
-                    client, "test", "home.local", "1.2.3.4",
+                    client,
+                    "test",
+                    "home.local",
+                    "1.2.3.4",
                 )
             assert exc_info.value.reason == WriteBlockReason.APPLY_FLAG_MISSING
 
@@ -170,8 +183,12 @@ class TestAddDNSOverrideWriteGate:
 
         with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
             result = await opnsense__services__add_dns_override(
-                client, "test", "home.local", "1.2.3.4",
-                description="Test entry", apply=True,
+                client,
+                "test",
+                "home.local",
+                "1.2.3.4",
+                description="Test entry",
+                apply=True,
             )
 
         assert result["hostname"] == "test"
@@ -197,7 +214,11 @@ class TestAddDNSOverrideWriteGate:
 
         with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
             await opnsense__services__add_dns_override(
-                client, "test", "home.local", "1.2.3.4", apply=True,
+                client,
+                "test",
+                "home.local",
+                "1.2.3.4",
+                apply=True,
             )
 
         client.reconfigure.assert_called_once_with("unbound", "service")
@@ -244,7 +265,8 @@ class TestGetDHCPLeases4:
         client = _make_client(fixture)
 
         leases = await opnsense__services__get_dhcp_leases4(
-            client, interface="igb1_vlan30",
+            client,
+            interface="igb1_vlan30",
         )
 
         # Only leases on igb1_vlan30
@@ -260,7 +282,8 @@ class TestGetDHCPLeases4:
         client = _make_client(fixture)
 
         leases = await opnsense__services__get_dhcp_leases4(
-            client, interface="nonexistent",
+            client,
+            interface="nonexistent",
         )
 
         assert leases == []
@@ -274,7 +297,7 @@ class TestGetDHCPLeases4:
 
         leases = await opnsense__services__get_dhcp_leases4(client)
 
-        expired = [l for l in leases if l["state"] == "expired"]
+        expired = [le for le in leases if le["state"] == "expired"]
         assert len(expired) >= 1
 
 
@@ -295,5 +318,7 @@ class TestGetTrafficShaper:
 
         assert result == settings
         client.get.assert_called_once_with(
-            "trafficshaper", "settings", "getSettings",
+            "trafficshaper",
+            "settings",
+            "getSettings",
         )

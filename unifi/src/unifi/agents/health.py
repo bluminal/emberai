@@ -248,9 +248,7 @@ async def check_health(site_id: str = "default") -> str:
             f"{client_count} client(s) connected."
         )
 
-    sections.append(
-        format_summary("Health Check", summary_stats, detail=detail)
-    )
+    sections.append(format_summary("Health Check", summary_stats, detail=detail))
 
     # Severity report (only if there are findings).
     if findings:

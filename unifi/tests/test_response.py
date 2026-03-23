@@ -268,9 +268,7 @@ class TestNormalizeSingle:
 
         assert "api.err.NoSuchDevice" in exc_info.value.message
 
-    def test_with_device_single_fixture(
-        self, device_single_response: dict[str, Any]
-    ) -> None:
+    def test_with_device_single_fixture(self, device_single_response: dict[str, Any]) -> None:
         result = normalize_single(device_single_response)
 
         assert result["name"] == "Office-Switch-16"

@@ -22,11 +22,11 @@ from unifi.models.site import Site
 from unifi.models.vlan import VLAN
 
 __all__ = [
+    "VLAN",
     "Client",
     "Device",
     "Event",
     "FirmwareStatus",
     "HealthStatus",
     "Site",
-    "VLAN",
 ]

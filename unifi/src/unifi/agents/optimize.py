@@ -134,8 +134,7 @@ async def _gather_security_data(site_id: str) -> list[Finding]:
                         severity=Severity.HIGH,
                         title=f"Sensitive port {fwd.get('wan_port')} exposed",
                         detail=(
-                            f"Port forward '{fwd.get('name', 'unnamed')}' "
-                            f"exposes a sensitive port."
+                            f"Port forward '{fwd.get('name', 'unnamed')}' exposes a sensitive port."
                         ),
                         recommendation="Consider VPN instead of direct port forwarding.",
                     )
@@ -224,9 +223,7 @@ async def _gather_traffic_data(site_id: str) -> list[Finding]:
             )
 
         if wan_usage:
-            total = sum(
-                d.get("download_gb", 0) + d.get("upload_gb", 0) for d in wan_usage
-            )
+            total = sum(d.get("download_gb", 0) + d.get("upload_gb", 0) for d in wan_usage)
             avg_daily = total / len(wan_usage)
             if avg_daily > 100:
                 findings.append(
@@ -234,8 +231,7 @@ async def _gather_traffic_data(site_id: str) -> list[Finding]:
                         severity=Severity.WARNING,
                         title=f"High average daily WAN usage: {avg_daily:.1f} GB/day",
                         detail=(
-                            f"Average daily usage is {avg_daily:.1f} GB "
-                            f"over {len(wan_usage)} days."
+                            f"Average daily usage is {avg_daily:.1f} GB over {len(wan_usage)} days."
                         ),
                         recommendation="Review DPI data to identify bandwidth-heavy applications.",
                     )
@@ -264,13 +260,15 @@ def _findings_to_recommendations(findings: list[Finding]) -> list[dict[str, Any]
     recommendations: list[dict[str, Any]] = []
     for finding in findings:
         if finding.recommendation:
-            recommendations.append({
-                "priority": severity_to_priority.get(finding.severity, "low"),
-                "category": _categorize_finding(finding),
-                "title": finding.title,
-                "detail": finding.detail,
-                "action": finding.recommendation,
-            })
+            recommendations.append(
+                {
+                    "priority": severity_to_priority.get(finding.severity, "low"),
+                    "category": _categorize_finding(finding),
+                    "title": finding.title,
+                    "detail": finding.detail,
+                    "action": finding.recommendation,
+                }
+            )
 
     # Sort by priority
     recommendations.sort(key=_priority_sort_key)
@@ -361,9 +359,7 @@ async def generate_recommendations(site_id: str = "default") -> str:
         rec_lines: list[str] = ["## Prioritized Recommendations", ""]
         for i, rec in enumerate(recommendations, start=1):
             priority = rec["priority"].upper()
-            rec_lines.append(
-                f"{i}. **[{priority}] [{rec['category'].upper()}]** {rec['title']}"
-            )
+            rec_lines.append(f"{i}. **[{priority}] [{rec['category'].upper()}]** {rec['title']}")
             rec_lines.append(f"   {rec['detail']}")
             rec_lines.append(f"   *Action:* {rec['action']}")
             rec_lines.append("")

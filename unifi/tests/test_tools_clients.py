@@ -199,9 +199,7 @@ class TestListClients:
         mock.get_normalized.assert_called_once_with("/api/s/default/stat/sta")
         mock.close.assert_called_once()
 
-    async def test_client_has_expected_fields(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_client_has_expected_fields(self, fixture_data: dict[str, Any]) -> None:
         mock = _mock_client_with_normalized(fixture_data)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -214,9 +212,7 @@ class TestListClients:
         assert "is_wired" in first
         assert "uptime" in first
 
-    async def test_vlan_filter_narrows_results(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_vlan_filter_narrows_results(self, fixture_data: dict[str, Any]) -> None:
         """Filter by LAN VLAN ID should only return LAN clients."""
         mock = _mock_client_with_normalized(fixture_data)
         lan_vlan_id = "5f9a8b7c6d5e4f3a2b1c0001"
@@ -305,9 +301,7 @@ class TestListClients:
 
         assert len(result) == 1
 
-    async def test_exclude_none_in_output(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_exclude_none_in_output(self, fixture_data: dict[str, Any]) -> None:
         """Verify that None fields are excluded from output."""
         mock = _mock_client_with_normalized(fixture_data)
 
@@ -348,9 +342,7 @@ class TestGetClientTool:
         assert result["hostname"] == "macbook-pro-jdoe"
         assert result["ip"] == "192.168.1.101"
 
-    async def test_calls_correct_endpoint(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_calls_correct_endpoint(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -363,9 +355,7 @@ class TestGetClientTool:
             "/api/s/mysite/stat/sta/a4:83:e7:11:22:33",
         )
 
-    async def test_includes_detail_fields(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_includes_detail_fields(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -379,9 +369,7 @@ class TestGetClientTool:
         assert result["device_vendor"] == "Apple"
 
     async def test_propagates_api_error(self) -> None:
-        mock = _mock_client_raising(
-            APIError("Not found", status_code=404, endpoint="/test")
-        )
+        mock = _mock_client_raising(APIError("Not found", status_code=404, endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),
@@ -400,9 +388,7 @@ class TestGetClientTool:
         ):
             await unifi__clients__get_client(client_mac="aa:bb:cc:dd:ee:ff")
 
-    async def test_closes_client_on_success(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_closes_client_on_success(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -411,9 +397,7 @@ class TestGetClientTool:
         mock.close.assert_called_once()
 
     async def test_closes_client_on_api_error(self) -> None:
-        mock = _mock_client_raising(
-            APIError("fail", status_code=500, endpoint="/test")
-        )
+        mock = _mock_client_raising(APIError("fail", status_code=500, endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),
@@ -450,9 +434,7 @@ class TestGetClientTraffic:
         data = load_fixture("client_list.json")
         return data["data"][0]
 
-    async def test_returns_traffic_dict(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_returns_traffic_dict(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -466,9 +448,7 @@ class TestGetClientTraffic:
         assert result["tx_packets"] == 2847291
         assert result["rx_packets"] == 18293746
 
-    async def test_calls_user_endpoint(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_calls_user_endpoint(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -481,9 +461,7 @@ class TestGetClientTraffic:
             "/api/s/mysite/stat/user/a4:83:e7:11:22:33",
         )
 
-    async def test_includes_hostname_and_ip(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_includes_hostname_and_ip(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -522,9 +500,7 @@ class TestGetClientTraffic:
         assert "dpi_stats" in result
         assert result["dpi_stats"][0]["app"] == "netflix"
 
-    async def test_excludes_dpi_when_absent(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_excludes_dpi_when_absent(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -553,9 +529,7 @@ class TestGetClientTraffic:
         assert result["rx_packets"] == 0
 
     async def test_propagates_api_error(self) -> None:
-        mock = _mock_client_raising(
-            APIError("Not found", status_code=404, endpoint="/test")
-        )
+        mock = _mock_client_raising(APIError("Not found", status_code=404, endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),
@@ -578,9 +552,7 @@ class TestGetClientTraffic:
                 client_mac="aa:bb:cc:dd:ee:ff",
             )
 
-    async def test_closes_client_on_success(
-        self, raw_macbook: dict[str, Any]
-    ) -> None:
+    async def test_closes_client_on_success(self, raw_macbook: dict[str, Any]) -> None:
         mock = _mock_client_with_single(raw_macbook)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -591,9 +563,7 @@ class TestGetClientTraffic:
         mock.close.assert_called_once()
 
     async def test_closes_client_on_error(self) -> None:
-        mock = _mock_client_raising(
-            APIError("fail", status_code=500, endpoint="/test")
-        )
+        mock = _mock_client_raising(APIError("fail", status_code=500, endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),
@@ -642,9 +612,7 @@ class TestSearchClients:
         assert len(result) == 1
         assert result[0]["client_mac"] == "a4:83:e7:11:22:33"
 
-    async def test_search_by_hostname(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_by_hostname(self, fixture_data: dict[str, Any]) -> None:
         mock = _mock_client_with_normalized(fixture_data)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -662,9 +630,7 @@ class TestSearchClients:
         assert len(result) == 1
         assert result[0]["ip"] == "192.168.1.101"
 
-    async def test_search_by_ip_subnet(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_by_ip_subnet(self, fixture_data: dict[str, Any]) -> None:
         """Partial IP match should find multiple clients on the same subnet."""
         mock = _mock_client_with_normalized(fixture_data)
 
@@ -674,9 +640,7 @@ class TestSearchClients:
         # macbook (192.168.1.101), pixel (192.168.1.142), synology (192.168.1.50)
         assert len(result) == 3
 
-    async def test_search_by_name_alias(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_by_name_alias(self, fixture_data: dict[str, Any]) -> None:
         mock = _mock_client_with_normalized(fixture_data)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -685,9 +649,7 @@ class TestSearchClients:
         assert len(result) == 1
         assert result[0]["client_mac"] == "b0:be:76:33:44:55"
 
-    async def test_search_case_insensitive(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_case_insensitive(self, fixture_data: dict[str, Any]) -> None:
         mock = _mock_client_with_normalized(fixture_data)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -706,9 +668,7 @@ class TestSearchClients:
 
         assert result == []
 
-    async def test_search_multiple_results(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_multiple_results(self, fixture_data: dict[str, Any]) -> None:
         """Searching by IoT subnet should find IoT devices."""
         mock = _mock_client_with_normalized(fixture_data)
 
@@ -727,9 +687,7 @@ class TestSearchClients:
 
         assert result == []
 
-    async def test_search_custom_site_id(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_custom_site_id(self, fixture_data: dict[str, Any]) -> None:
         mock = _mock_client_with_normalized(fixture_data)
 
         with patch("unifi.tools.clients._get_client", return_value=mock):
@@ -777,9 +735,7 @@ class TestSearchClients:
         assert len(result) == 1
         assert result[0]["client_mac"] == "aa:bb:cc:dd:ee:ff"
 
-    async def test_search_by_partial_hostname(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_by_partial_hostname(self, fixture_data: dict[str, Any]) -> None:
         """Search by partial hostname prefix."""
         mock = _mock_client_with_normalized(fixture_data)
 
@@ -799,9 +755,7 @@ class TestSearchClients:
         assert len(result) == 1
         assert result[0]["hostname"] == "ring-doorbell"
 
-    async def test_search_by_name_front_door(
-        self, fixture_data: dict[str, Any]
-    ) -> None:
+    async def test_search_by_name_front_door(self, fixture_data: dict[str, Any]) -> None:
         """Search for 'Front Door' should match via the name/alias field."""
         mock = _mock_client_with_normalized(fixture_data)
 
@@ -835,9 +789,7 @@ class TestErrorPropagation:
             await unifi__clients__list_clients()
 
     async def test_get_client_network_error(self) -> None:
-        mock = _mock_client_raising(
-            NetworkError("Timeout", endpoint="/test")
-        )
+        mock = _mock_client_raising(NetworkError("Timeout", endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),
@@ -846,9 +798,7 @@ class TestErrorPropagation:
             await unifi__clients__get_client(client_mac="aa:bb:cc:dd:ee:ff")
 
     async def test_search_clients_api_error(self) -> None:
-        mock = _mock_client_raising(
-            APIError("Server error", status_code=500, endpoint="/test")
-        )
+        mock = _mock_client_raising(APIError("Server error", status_code=500, endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),
@@ -857,9 +807,7 @@ class TestErrorPropagation:
             await unifi__clients__search_clients(query="test")
 
     async def test_traffic_network_error(self) -> None:
-        mock = _mock_client_raising(
-            NetworkError("DNS failure", endpoint="/test")
-        )
+        mock = _mock_client_raising(NetworkError("DNS failure", endpoint="/test"))
 
         with (
             patch("unifi.tools.clients._get_client", return_value=mock),

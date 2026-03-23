@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -21,7 +20,6 @@ from unifi.server import (
     mcp_server,
     plugin_info,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -134,18 +132,14 @@ class TestLoadEnv:
         assert "UNIFI_LOCAL_HOST" in message
         assert "UNIFI_LOCAL_KEY" in message
 
-    def test_empty_string_treated_as_missing(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_empty_string_treated_as_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("UNIFI_LOCAL_HOST", "")
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "key")
 
         with pytest.raises(ConfigError, match="UNIFI_LOCAL_HOST"):
             _load_env()
 
-    def test_whitespace_only_treated_as_missing(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_whitespace_only_treated_as_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("UNIFI_LOCAL_HOST", "   ")
         monkeypatch.setenv("UNIFI_LOCAL_KEY", "key")
 
@@ -232,15 +226,13 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, detail = await _check_connectivity("10.0.0.1")
+            ok, _detail = await _check_connectivity("10.0.0.1")
             assert ok is True
             mock_client.get.assert_called_once_with("https://10.0.0.1")
 
     @pytest.mark.asyncio
     async def test_host_with_http_scheme_preserved(self) -> None:
-        mock_response = httpx.Response(
-            200, request=httpx.Request("GET", "http://192.168.1.1")
-        )
+        mock_response = httpx.Response(200, request=httpx.Request("GET", "http://192.168.1.1"))
 
         with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
@@ -249,7 +241,7 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, detail = await _check_connectivity("http://192.168.1.1")
+            ok, _detail = await _check_connectivity("http://192.168.1.1")
             assert ok is True
             mock_client.get.assert_called_once_with("http://192.168.1.1")
 
@@ -276,9 +268,7 @@ class TestRunCheck:
         assert "[PASS] UNIFI_LOCAL_HOST" in output
         assert "[PASS] UNIFI_LOCAL_KEY" in output
 
-    def test_missing_env_vars(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_missing_env_vars(self, capsys: pytest.CaptureFixture[str]) -> None:
         exit_code = _run_check()
 
         assert exit_code == 1
@@ -418,9 +408,7 @@ class TestJSONFormatter:
 
     def test_extra_fields(self) -> None:
         formatter = JSONFormatter()
-        record = logging.LogRecord(
-            "unifi", logging.INFO, "server.py", 1, "Starting", (), None
-        )
+        record = logging.LogRecord("unifi", logging.INFO, "server.py", 1, "Starting", (), None)
         record.component = "startup"  # type: ignore[attr-defined]
         record.detail = {"transport": "stdio"}  # type: ignore[attr-defined]
 
@@ -448,9 +436,7 @@ class TestConfigureLogging:
 
     def test_handler_uses_json_formatter(self) -> None:
         log = _configure_logging("INFO")
-        assert any(
-            isinstance(h.formatter, JSONFormatter) for h in log.handlers
-        )
+        assert any(isinstance(h.formatter, JSONFormatter) for h in log.handlers)
 
     def test_no_duplicate_handlers(self) -> None:
         """Calling _configure_logging multiple times should not add handlers."""
@@ -563,9 +549,7 @@ class TestMain:
             main(["--transport", "stdio"])
             mock_run.assert_called_once_with(transport="stdio")
 
-    def test_http_transport_maps_correctly(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_http_transport_maps_correctly(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """--transport http should map to 'streamable-http' for FastMCP."""
         from unifi.server import main
 

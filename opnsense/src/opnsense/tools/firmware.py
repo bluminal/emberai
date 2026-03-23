@@ -15,10 +15,12 @@ Tools
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.models.firmware import FirmwareStatus
+
+if TYPE_CHECKING:
+    from opnsense.api.opnsense_client import OPNsenseClient
 
 logger = logging.getLogger(__name__)
 

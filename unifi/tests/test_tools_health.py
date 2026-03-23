@@ -26,7 +26,6 @@ from unifi.tools.health import (
     unifi__health__get_site_health,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -230,9 +229,7 @@ class TestGetSiteHealth:
 
     async def test_api_error_propagates(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=APIError("API error", status_code=500)
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=APIError("API error", status_code=500))
         mock_client.close = AsyncMock()
 
         with (
@@ -245,9 +242,7 @@ class TestGetSiteHealth:
 
     async def test_client_closed_on_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=NetworkError("Connection refused")
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=NetworkError("Connection refused"))
         mock_client.close = AsyncMock()
 
         with (
@@ -322,8 +317,13 @@ class TestGetDeviceHealth:
 
     async def test_custom_site_id(self) -> None:
         raw = {
-            "_id": "dev003", "name": "AP", "mac": "11:22:33:44:55:66",
-            "model": "U6-Pro", "state": 1, "uptime": 100, "version": "7.0.76",
+            "_id": "dev003",
+            "name": "AP",
+            "mac": "11:22:33:44:55:66",
+            "model": "U6-Pro",
+            "state": 1,
+            "uptime": 100,
+            "version": "7.0.76",
         }
         mock_client = _mock_client_with_single(raw)
 
@@ -336,9 +336,7 @@ class TestGetDeviceHealth:
 
     async def test_api_error_propagates(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_single = AsyncMock(
-            side_effect=APIError("Not found", status_code=404)
-        )
+        mock_client.get_single = AsyncMock(side_effect=APIError("Not found", status_code=404))
         mock_client.close = AsyncMock()
 
         with (
@@ -351,8 +349,13 @@ class TestGetDeviceHealth:
 
     async def test_disconnected_state(self) -> None:
         raw = {
-            "_id": "dev004", "name": "Offline-AP", "mac": "aa:bb:cc:dd:ee:01",
-            "model": "U6-LR", "state": 0, "uptime": 0, "version": "7.0.76",
+            "_id": "dev004",
+            "name": "Offline-AP",
+            "mac": "aa:bb:cc:dd:ee:01",
+            "model": "U6-LR",
+            "state": 0,
+            "uptime": 0,
+            "version": "7.0.76",
         }
         mock_client = _mock_client_with_single(raw)
 
@@ -363,9 +366,14 @@ class TestGetDeviceHealth:
 
     async def test_upgrade_available(self) -> None:
         raw = {
-            "_id": "dev005", "name": "Switch-16", "mac": "74:ac:b9:bb:33:44",
-            "model": "USLITE16P", "state": 1, "uptime": 864210,
-            "version": "7.0.50.15116", "upgradable": True,
+            "_id": "dev005",
+            "name": "Switch-16",
+            "mac": "74:ac:b9:bb:33:44",
+            "model": "USLITE16P",
+            "state": 1,
+            "uptime": 864210,
+            "version": "7.0.50.15116",
+            "upgradable": True,
             "upgrade_to_firmware": "7.0.72.15290",
         }
         mock_client = _mock_client_with_single(raw)
@@ -410,9 +418,7 @@ class TestGetIspMetrics:
         with patch("unifi.tools.health._get_client", return_value=mock_client):
             await unifi__health__get_isp_metrics(site_id="branch-office")
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/branch-office/stat/health"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/branch-office/stat/health")
 
     async def test_no_wan_subsystem(self) -> None:
         """When no WAN subsystem exists, all fields should be defaults."""
@@ -648,9 +654,7 @@ class TestGetEvents:
         with patch("unifi.tools.health._get_client", return_value=mock_client):
             await unifi__health__get_events(site_id="remote-site")
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/remote-site/stat/event"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/remote-site/stat/event")
 
     async def test_api_error_propagates(self) -> None:
         mock_client = AsyncMock()
@@ -669,9 +673,7 @@ class TestGetEvents:
 
     async def test_client_closed_on_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=NetworkError("Timeout")
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=NetworkError("Timeout"))
         mock_client.close = AsyncMock()
 
         with (
@@ -763,9 +765,7 @@ class TestGetFirmwareStatus:
         with patch("unifi.tools.health._get_client", return_value=mock_client):
             await unifi__health__get_firmware_status(site_id="main-office")
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/main-office/stat/device"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/main-office/stat/device")
 
     async def test_empty_device_list(self) -> None:
         mock_client = _mock_client_with_normalized({"meta": {"rc": "ok"}, "data": []})
@@ -794,8 +794,11 @@ class TestGetFirmwareStatus:
         """Integer state codes should be converted before FirmwareStatus parsing."""
         raw_data = [
             {
-                "_id": "fw001", "model": "U6-Pro", "version": "7.0.76",
-                "state": 1, "upgradable": False,
+                "_id": "fw001",
+                "model": "U6-Pro",
+                "version": "7.0.76",
+                "state": 1,
+                "upgradable": False,
             },
         ]
         fixture = {"meta": {"rc": "ok"}, "data": raw_data}
@@ -810,8 +813,11 @@ class TestGetFirmwareStatus:
     async def test_unparseable_device_skipped(self) -> None:
         """Devices that fail FirmwareStatus validation should be skipped."""
         good_device = {
-            "_id": "fw002", "model": "USW-24", "version": "7.0.50",
-            "state": 1, "upgradable": False,
+            "_id": "fw002",
+            "model": "USW-24",
+            "version": "7.0.50",
+            "state": 1,
+            "upgradable": False,
         }
         bad_device = {
             # Missing required fields (_id, model, version)
@@ -873,8 +879,14 @@ class TestFixtureRoundTrips:
             result = await unifi__health__get_site_health()
 
         required_keys = {
-            "wan_status", "lan_status", "wlan_status", "www_status",
-            "device_count", "adopted_count", "offline_count", "client_count",
+            "wan_status",
+            "lan_status",
+            "wlan_status",
+            "www_status",
+            "device_count",
+            "adopted_count",
+            "offline_count",
+            "client_count",
         }
         assert required_keys.issubset(result.keys())
 
@@ -900,8 +912,12 @@ class TestFixtureRoundTrips:
 
         assert len(result) == 3
         required_keys = {
-            "device_id", "model", "current_version",
-            "latest_version", "upgrade_available", "product_line",
+            "device_id",
+            "model",
+            "current_version",
+            "latest_version",
+            "upgrade_available",
+            "product_line",
         }
         for fw in result:
             assert required_keys.issubset(fw.keys())

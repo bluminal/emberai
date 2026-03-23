@@ -50,6 +50,7 @@ class Interface(BaseModel):
     )
     if_type: str = Field(
         default="",
+        alias="type",
         description="Link type (e.g. 'dhcp', 'static', 'none')",
     )
     enabled: bool = Field(

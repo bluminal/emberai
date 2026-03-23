@@ -11,7 +11,7 @@ Covers:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -22,17 +22,13 @@ def _make_client_multi(responses: dict[tuple[str, str, str], dict[str, Any]]) ->
     """Create a mock client with per-endpoint responses."""
     client = AsyncMock()
 
-    async def _get(
-        module: str, controller: str, command: str, **kwargs: Any
-    ) -> dict[str, Any]:
+    async def _get(module: str, controller: str, command: str, **kwargs: Any) -> dict[str, Any]:
         key = (module, controller, command)
         if key in responses:
             return responses[key]
         return {"rows": []}
 
-    async def _post(
-        module: str, controller: str, command: str, **kwargs: Any
-    ) -> dict[str, Any]:
+    async def _post(module: str, controller: str, command: str, **kwargs: Any) -> dict[str, Any]:
         key = (module, controller, command)
         if key in responses:
             return responses[key]
@@ -53,11 +49,13 @@ class TestVPNAgent:
     async def test_report_with_mixed_status(self) -> None:
         from opnsense.agents.vpn import vpn_status_report
 
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): load_fixture("ipsec_sessions.json"),
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): load_fixture("wireguard_peers.json"),
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): load_fixture("ipsec_sessions.json"),
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): load_fixture("wireguard_peers.json"),
+            }
+        )
 
         report = await vpn_status_report(client)
 
@@ -71,11 +69,13 @@ class TestVPNAgent:
     async def test_report_all_empty(self) -> None:
         from opnsense.agents.vpn import vpn_status_report
 
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): {"rows": []},
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): {"rows": []},
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): {"rows": []},
+            }
+        )
 
         report = await vpn_status_report(client)
 
@@ -85,11 +85,13 @@ class TestVPNAgent:
     async def test_report_contains_peer_names(self) -> None:
         from opnsense.agents.vpn import vpn_status_report
 
-        client = _make_client_multi({
-            ("ipsec", "sessions", "search"): {"rows": []},
-            ("openvpn", "instances", "search"): {"rows": []},
-            ("wireguard", "client", "search"): load_fixture("wireguard_peers.json"),
-        })
+        client = _make_client_multi(
+            {
+                ("ipsec", "sessions", "search"): {"rows": []},
+                ("openvpn", "instances", "search"): {"rows": []},
+                ("wireguard", "client", "search"): load_fixture("wireguard_peers.json"),
+            }
+        )
 
         report = await vpn_status_report(client)
 
@@ -107,10 +109,12 @@ class TestSecurityAgent:
     async def test_report_with_alerts(self) -> None:
         from opnsense.agents.security import security_audit_report
 
-        client = _make_client_multi({
-            ("ids", "service", "queryAlerts"): load_fixture("ids_alerts.json"),
-            ("trust", "cert", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("ids", "service", "queryAlerts"): load_fixture("ids_alerts.json"),
+                ("trust", "cert", "search"): {"rows": []},
+            }
+        )
 
         report = await security_audit_report(client)
 
@@ -121,10 +125,12 @@ class TestSecurityAgent:
     async def test_report_detects_high_severity(self) -> None:
         from opnsense.agents.security import security_audit_report
 
-        client = _make_client_multi({
-            ("ids", "service", "queryAlerts"): load_fixture("ids_alerts.json"),
-            ("trust", "cert", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("ids", "service", "queryAlerts"): load_fixture("ids_alerts.json"),
+                ("trust", "cert", "search"): {"rows": []},
+            }
+        )
 
         report = await security_audit_report(client)
 
@@ -148,10 +154,12 @@ class TestSecurityAgent:
                 },
             ],
         }
-        client = _make_client_multi({
-            ("ids", "service", "queryAlerts"): {"rows": []},
-            ("trust", "cert", "search"): cert_data,
-        })
+        client = _make_client_multi(
+            {
+                ("ids", "service", "queryAlerts"): {"rows": []},
+                ("trust", "cert", "search"): cert_data,
+            }
+        )
 
         report = await security_audit_report(client)
 
@@ -175,10 +183,12 @@ class TestSecurityAgent:
                 },
             ],
         }
-        client = _make_client_multi({
-            ("ids", "service", "queryAlerts"): {"rows": []},
-            ("trust", "cert", "search"): cert_data,
-        })
+        client = _make_client_multi(
+            {
+                ("ids", "service", "queryAlerts"): {"rows": []},
+                ("trust", "cert", "search"): cert_data,
+            }
+        )
 
         report = await security_audit_report(client)
 
@@ -189,10 +199,12 @@ class TestSecurityAgent:
     async def test_report_no_alerts_no_certs(self) -> None:
         from opnsense.agents.security import security_audit_report
 
-        client = _make_client_multi({
-            ("ids", "service", "queryAlerts"): {"rows": []},
-            ("trust", "cert", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("ids", "service", "queryAlerts"): {"rows": []},
+                ("trust", "cert", "search"): {"rows": []},
+            }
+        )
 
         report = await security_audit_report(client)
 
@@ -221,10 +233,12 @@ class TestServicesAgent:
             ],
         }
 
-        client = _make_client_multi({
-            ("unbound", "host", "searchHost"): dns_data,
-            ("kea", "leases4", "search"): load_fixture("dhcp_leases.json"),
-        })
+        client = _make_client_multi(
+            {
+                ("unbound", "host", "searchHost"): dns_data,
+                ("kea", "leases4", "search"): load_fixture("dhcp_leases.json"),
+            }
+        )
 
         report = await services_report(client)
 
@@ -237,10 +251,12 @@ class TestServicesAgent:
     async def test_report_empty_state(self) -> None:
         from opnsense.agents.services import services_report
 
-        client = _make_client_multi({
-            ("unbound", "host", "searchHost"): {"rows": []},
-            ("kea", "leases4", "search"): {"rows": []},
-        })
+        client = _make_client_multi(
+            {
+                ("unbound", "host", "searchHost"): {"rows": []},
+                ("kea", "leases4", "search"): {"rows": []},
+            }
+        )
 
         report = await services_report(client)
 
@@ -251,10 +267,12 @@ class TestServicesAgent:
     async def test_report_detects_no_hostname_leases(self) -> None:
         from opnsense.agents.services import services_report
 
-        client = _make_client_multi({
-            ("unbound", "host", "searchHost"): {"rows": []},
-            ("kea", "leases4", "search"): load_fixture("dhcp_leases.json"),
-        })
+        client = _make_client_multi(
+            {
+                ("unbound", "host", "searchHost"): {"rows": []},
+                ("kea", "leases4", "search"): load_fixture("dhcp_leases.json"),
+            }
+        )
 
         report = await services_report(client)
 
@@ -272,17 +290,21 @@ class TestFirmwareAgent:
     async def test_report_upgrade_available(self) -> None:
         from opnsense.agents.firmware import firmware_report
 
-        client = _make_client_multi({
-            ("core", "firmware", "status"): {
-                "product_version": "24.7.1",
-                "product_latest": "24.7.2",
-                "upgrade_available": True,
-                "last_check": "2026-03-19T09:00:00Z",
-            },
-            ("core", "firmware", "info"): {"package": [
-                {"name": "opnsense", "version": "24.7.1", "comment": "OPNsense core"},
-            ]},
-        })
+        client = _make_client_multi(
+            {
+                ("core", "firmware", "status"): {
+                    "product_version": "24.7.1",
+                    "product_latest": "24.7.2",
+                    "upgrade_available": True,
+                    "last_check": "2026-03-19T09:00:00Z",
+                },
+                ("core", "firmware", "info"): {
+                    "package": [
+                        {"name": "opnsense", "version": "24.7.1", "comment": "OPNsense core"},
+                    ]
+                },
+            }
+        )
 
         report = await firmware_report(client)
 
@@ -294,13 +316,15 @@ class TestFirmwareAgent:
     async def test_report_up_to_date(self) -> None:
         from opnsense.agents.firmware import firmware_report
 
-        client = _make_client_multi({
-            ("core", "firmware", "status"): {
-                "product_version": "24.7.2",
-                "upgrade_available": False,
-            },
-            ("core", "firmware", "info"): {"package": []},
-        })
+        client = _make_client_multi(
+            {
+                ("core", "firmware", "status"): {
+                    "product_version": "24.7.2",
+                    "upgrade_available": False,
+                },
+                ("core", "firmware", "info"): {"package": []},
+            }
+        )
 
         report = await firmware_report(client)
 
@@ -318,10 +342,12 @@ class TestDiagnosticsAgent:
         from opnsense.agents.diagnostics import diagnostics_report
 
         client = AsyncMock()
-        client.post = AsyncMock(return_value={
-            "loss": "0",
-            "avg": "5.2",
-        })
+        client.post = AsyncMock(
+            return_value={
+                "loss": "0",
+                "avg": "5.2",
+            }
+        )
 
         report = await diagnostics_report(client, targets=["8.8.8.8"])
 

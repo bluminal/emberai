@@ -224,15 +224,17 @@ async def list_clients_report(
             if c.get("is_guest"):
                 conn_type += " (Guest)"
 
-            rows.append([
-                _client_display_name(c),
-                c.get("ip", ""),
-                c.get("vlan_id", ""),
-                _connection_info(c),
-                conn_type,
-                _format_signal(c.get("rssi")) if not c.get("is_wired") else "",
-                _traffic_summary(c),
-            ])
+            rows.append(
+                [
+                    _client_display_name(c),
+                    c.get("ip", ""),
+                    c.get("vlan_id", ""),
+                    _connection_info(c),
+                    conn_type,
+                    _format_signal(c.get("rssi")) if not c.get("is_wired") else "",
+                    _traffic_summary(c),
+                ]
+            )
 
         sections.append(
             format_table(

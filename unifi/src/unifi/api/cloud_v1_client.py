@@ -338,8 +338,7 @@ class CloudV1Client:
                 jittered_delay = min(jittered_delay, _BACKOFF_MAX)
 
                 logger.warning(
-                    "Rate limited (429) on attempt %d/%d for %s %s. "
-                    "Retrying in %.2f seconds.",
+                    "Rate limited (429) on attempt %d/%d for %s %s. Retrying in %.2f seconds.",
                     attempt + 1,
                     self._max_retries + 1,
                     method,
@@ -373,8 +372,7 @@ class CloudV1Client:
         """
         url = endpoint
         redacted_headers = {
-            k: ("***" if k.lower() == "x-api-key" else v)
-            for k, v in self._client.headers.items()
+            k: ("***" if k.lower() == "x-api-key" else v) for k, v in self._client.headers.items()
         }
         logger.debug(
             "Request: %s %s%s | headers=%s",

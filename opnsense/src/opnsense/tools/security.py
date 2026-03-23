@@ -16,10 +16,12 @@ Tools
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.models.security import Certificate, IDSAlert
+
+if TYPE_CHECKING:
+    from opnsense.api.opnsense_client import OPNsenseClient
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +74,7 @@ async def opnsense__security__get_ids_alerts(
 
             alerts.append(alert_dict)
         except Exception:
-            logger.warning(
-                "Failed to parse IDS alert: %s", row.get("timestamp", "unknown")
-            )
+            logger.warning("Failed to parse IDS alert: %s", row.get("timestamp", "unknown"))
             # Still include unparseable alerts if they pass severity filter
             if severity is None or row.get("alert_sev", 3) <= severity:
                 alerts.append(row)
@@ -173,9 +173,7 @@ async def opnsense__security__get_certificates(
             cert = Certificate.model_validate(row)
             certs.append(cert.model_dump())
         except Exception:
-            logger.warning(
-                "Failed to parse certificate: %s", row.get("cn", "unknown")
-            )
+            logger.warning("Failed to parse certificate: %s", row.get("cn", "unknown"))
             certs.append(row)
 
     logger.info("Listed %d certificates", len(certs))

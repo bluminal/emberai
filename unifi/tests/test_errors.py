@@ -16,10 +16,10 @@ from unifi.errors import (
     WriteGateReason,
 )
 
-
 # ---------------------------------------------------------------------------
 # NetexError (base)
 # ---------------------------------------------------------------------------
+
 
 class TestNetexError:
     """Tests for the base NetexError class."""
@@ -97,6 +97,7 @@ class TestNetexError:
 # Inheritance
 # ---------------------------------------------------------------------------
 
+
 class TestInheritance:
     """All error subclasses should be catchable as NetexError."""
 
@@ -138,6 +139,7 @@ class TestInheritance:
 # ---------------------------------------------------------------------------
 # AuthenticationError
 # ---------------------------------------------------------------------------
+
 
 class TestAuthenticationError:
     """Tests for AuthenticationError."""
@@ -194,6 +196,7 @@ class TestAuthenticationError:
 # RateLimitError
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimitError:
     """Tests for RateLimitError."""
 
@@ -244,6 +247,7 @@ class TestRateLimitError:
 # NetworkError
 # ---------------------------------------------------------------------------
 
+
 class TestNetworkError:
     """Tests for NetworkError."""
 
@@ -282,6 +286,7 @@ class TestNetworkError:
 # ---------------------------------------------------------------------------
 # APIError
 # ---------------------------------------------------------------------------
+
 
 class TestAPIError:
     """Tests for APIError."""
@@ -335,6 +340,7 @@ class TestAPIError:
 # ValidationError
 # ---------------------------------------------------------------------------
 
+
 class TestValidationError:
     """Tests for ValidationError."""
 
@@ -361,6 +367,7 @@ class TestValidationError:
 # ---------------------------------------------------------------------------
 # WriteGateError
 # ---------------------------------------------------------------------------
+
 
 class TestWriteGateError:
     """Tests for WriteGateError."""
@@ -422,6 +429,7 @@ class TestWriteGateError:
 # ---------------------------------------------------------------------------
 # WriteGateReason enum
 # ---------------------------------------------------------------------------
+
 
 class TestWriteGateReason:
     """Tests for the WriteGateReason enum."""

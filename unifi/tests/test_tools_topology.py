@@ -88,9 +88,7 @@ class TestListDevices:
     """Integration tests for the list_devices MCP tool."""
 
     @pytest.fixture()
-    def mock_normalized_response(
-        self, device_list_response: dict[str, Any]
-    ) -> NormalizedResponse:
+    def mock_normalized_response(self, device_list_response: dict[str, Any]) -> NormalizedResponse:
         """Build a NormalizedResponse from the device_list fixture."""
         return NormalizedResponse(
             data=device_list_response["data"],
@@ -363,9 +361,14 @@ class TestGetDevice:
 
     async def test_optional_fields_excluded_when_none(self) -> None:
         minimal = {
-            "_id": "abc123", "mac": "aa:bb:cc:dd:ee:ff", "model": "U6-Pro",
-            "name": "Test-AP", "ip": "192.168.1.50", "state": 1,
-            "uptime": 3600, "version": "7.0.76",
+            "_id": "abc123",
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "model": "U6-Pro",
+            "name": "Test-AP",
+            "ip": "192.168.1.50",
+            "state": 1,
+            "uptime": 3600,
+            "version": "7.0.76",
         }
         mock_client = AsyncMock()
         mock_client.get_single = AsyncMock(return_value=minimal)
@@ -391,7 +394,13 @@ class TestIsVlanNetwork:
         assert _is_vlan_network(network) is True
 
     def test_tagged_vlan_included(self) -> None:
-        network = {"_id": "002", "name": "Guest", "purpose": "guest", "vlan_enabled": True, "vlan": 10}
+        network = {
+            "_id": "002",
+            "name": "Guest",
+            "purpose": "guest",
+            "vlan_enabled": True,
+            "vlan": 10,
+        }
         assert _is_vlan_network(network) is True
 
     def test_wan_excluded(self) -> None:
@@ -410,7 +419,9 @@ class TestIsVlanNetwork:
 
 def _normalized_from_fixture(fixture: dict[str, Any]) -> NormalizedResponse:
     data = fixture.get("data", [])
-    return NormalizedResponse(data=data, count=len(data), total_count=None, meta=fixture.get("meta", {}))
+    return NormalizedResponse(
+        data=data, count=len(data), total_count=None, meta=fixture.get("meta", {})
+    )
 
 
 class TestGetVlans:
@@ -441,11 +452,20 @@ class TestGetVlans:
         assert result == []
 
     async def test_wan_filtered_out(self) -> None:
-        data = {"meta": {"rc": "ok"}, "data": [
-            {"_id": "wan001", "name": "WAN", "purpose": "wan", "vlan_enabled": False},
-            {"_id": "lan001", "name": "Default", "purpose": "corporate",
-             "vlan_enabled": False, "ip_subnet": "192.168.1.0/24", "dhcpd_enabled": True},
-        ]}
+        data = {
+            "meta": {"rc": "ok"},
+            "data": [
+                {"_id": "wan001", "name": "WAN", "purpose": "wan", "vlan_enabled": False},
+                {
+                    "_id": "lan001",
+                    "name": "Default",
+                    "purpose": "corporate",
+                    "vlan_enabled": False,
+                    "ip_subnet": "192.168.1.0/24",
+                    "dhcpd_enabled": True,
+                },
+            ],
+        }
         with self._patch_client(data):
             result = await unifi__topology__get_vlans()
         assert len(result) == 1
@@ -472,9 +492,7 @@ class TestGetVlans:
 class TestBuildUplinkGraph:
     """Unit tests for the _build_uplink_graph helper."""
 
-    def test_builds_graph_from_fixture(
-        self, device_list: list[dict[str, Any]]
-    ) -> None:
+    def test_builds_graph_from_fixture(self, device_list: list[dict[str, Any]]) -> None:
         """Fixture has 3 devices: gateway (root), switch -> gateway, AP -> switch."""
         graph = _build_uplink_graph(device_list)
 
@@ -583,9 +601,7 @@ class TestGetUplinks:
     """Integration tests for the unifi__topology__get_uplinks MCP tool."""
 
     @pytest.fixture()
-    def mock_normalized_response(
-        self, device_list_response: dict[str, Any]
-    ) -> NormalizedResponse:
+    def mock_normalized_response(self, device_list_response: dict[str, Any]) -> NormalizedResponse:
         return NormalizedResponse(
             data=device_list_response["data"],
             count=len(device_list_response["data"]),
@@ -623,9 +639,15 @@ class TestGetUplinks:
             result = await unifi__topology__get_uplinks()
 
         expected_keys = {
-            "device_id", "device_name", "device_mac",
-            "uplink_device_id", "uplink_device_name", "uplink_device_mac",
-            "uplink_port", "uplink_type", "speed",
+            "device_id",
+            "device_name",
+            "device_mac",
+            "uplink_device_id",
+            "uplink_device_name",
+            "uplink_device_mac",
+            "uplink_port",
+            "uplink_type",
+            "speed",
         }
         for entry in result:
             assert set(entry.keys()) == expected_keys
@@ -1145,8 +1167,7 @@ class TestFixtureValidation:
         required_keys = {"device_id", "name", "model", "mac", "ip", "status", "uptime", "firmware"}
         for device in result:
             assert required_keys.issubset(device.keys()), (
-                f"Device {device.get('name', '?')} missing keys: "
-                f"{required_keys - device.keys()}"
+                f"Device {device.get('name', '?')} missing keys: {required_keys - device.keys()}"
             )
             # status must be a string, not an int
             assert isinstance(device["status"], str)
@@ -1176,8 +1197,7 @@ class TestFixtureValidation:
         required_keys = {"vlan_id", "name", "subnet", "purpose", "dhcp_enabled"}
         for vlan in result:
             assert required_keys.issubset(vlan.keys()), (
-                f"VLAN {vlan.get('name', '?')} missing keys: "
-                f"{required_keys - vlan.keys()}"
+                f"VLAN {vlan.get('name', '?')} missing keys: {required_keys - vlan.keys()}"
             )
 
         # Verify specific fixture VLANs were parsed correctly
@@ -1215,9 +1235,15 @@ class TestFixtureValidation:
         assert len(result) == 2
 
         expected_keys = {
-            "device_id", "device_name", "device_mac",
-            "uplink_device_id", "uplink_device_name", "uplink_device_mac",
-            "uplink_port", "uplink_type", "speed",
+            "device_id",
+            "device_name",
+            "device_mac",
+            "uplink_device_id",
+            "uplink_device_name",
+            "uplink_device_mac",
+            "uplink_port",
+            "uplink_type",
+            "speed",
         }
         for link in result:
             assert set(link.keys()) == expected_keys

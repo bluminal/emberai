@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 from opnsense.api.opnsense_client import OPNsenseClient
@@ -27,6 +28,25 @@ logger = logging.getLogger(__name__)
 # Host discovery polling configuration
 _POLL_INTERVAL_SECONDS = 2.0
 _POLL_TIMEOUT_SECONDS = 120.0
+
+
+# ---------------------------------------------------------------------------
+# Client factory
+# ---------------------------------------------------------------------------
+
+
+def _get_client() -> OPNsenseClient:
+    """Get a configured OPNsenseClient from environment variables."""
+    host = os.environ.get("OPNSENSE_HOST", "")
+    api_key = os.environ.get("OPNSENSE_API_KEY", "")
+    api_secret = os.environ.get("OPNSENSE_API_SECRET", "")
+    verify_ssl = os.environ.get("OPNSENSE_VERIFY_SSL", "true").lower() != "false"
+    return OPNsenseClient(
+        host=host,
+        api_key=api_key,
+        api_secret=api_secret,
+        verify_ssl=verify_ssl,
+    )
 
 
 async def opnsense__diagnostics__run_ping(
@@ -132,14 +152,16 @@ async def opnsense__diagnostics__dns_lookup(
         params["type"] = record_type
 
     result = await client.get(
-        "diagnostics", "dns", "reverseResolve", params=params,
+        "diagnostics",
+        "dns",
+        "reverseResolve",
+        params=params,
     )
     logger.info("DNS lookup for %s completed", hostname)
     return result
 
 
 async def opnsense__diagnostics__get_lldp_neighbors(
-    client: OPNsenseClient,
     *,
     interface: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -148,43 +170,81 @@ async def opnsense__diagnostics__get_lldp_neighbors(
     Queries LLDP (Link Layer Discovery Protocol) neighbor information
     to identify directly connected network devices.
 
-    .. note::
-        This tool may already exist in M3.2 parallel work. If so,
-        the duplication will be resolved at merge time.
-
     Parameters
     ----------
-    client:
-        Authenticated OPNsense API client.
     interface:
         If provided, filter neighbors to this interface.
 
     Returns
     -------
     list[dict]
-        List of LLDP neighbor dictionaries.
+        List of LLDP neighbor dictionaries with keys:
+        ``local_interface``, ``chassis_name``, ``chassis_id``,
+        ``chassis_descr``, ``port_id``, ``port_descr``.
     """
-    raw = await client.get("diagnostics", "lldp", "getNeighbors")
+    client = _get_client()
+    try:
+        raw = await client.get("diagnostics", "lldp", "getNeighbors")
+    finally:
+        await client.close()
 
-    # Response may be in "rows" or "neighbors" format depending on version
-    neighbors: list[dict[str, Any]]
-    if "rows" in raw and isinstance(raw["rows"], list):
-        neighbors = raw["rows"]
-    elif "neighbors" in raw and isinstance(raw["neighbors"], list):
-        neighbors = raw["neighbors"]
-    else:
-        # Flat response, wrap as single entry
-        neighbors = [raw] if raw else []
+    neighbors: list[dict[str, Any]] = []
+
+    # OPNsense LLDP response format: {lldp: {interface: [...]}}
+    lldp_data = raw.get("lldp", {})
+    iface_list = lldp_data.get("interface", [])
+    if isinstance(iface_list, list):
+        for iface_entry in iface_list:
+            chassis_list = iface_entry.get("chassis", [])
+            port_list = iface_entry.get("port", [])
+            chassis = chassis_list[0] if chassis_list else {}
+            port = port_list[0] if port_list else {}
+
+            neighbor: dict[str, Any] = {
+                "local_interface": iface_entry.get("name", ""),
+                "chassis_name": _extract_lldp_value(chassis, "name"),
+                "chassis_id": _extract_lldp_value(chassis, "id"),
+                "chassis_descr": _extract_lldp_value(chassis, "descr"),
+                "port_id": _extract_lldp_value(port, "id"),
+                "port_descr": _extract_lldp_value(port, "descr"),
+            }
+            neighbors.append(neighbor)
+
+    # Fallback: rows or neighbors format (non-LLDP-XML responses)
+    if not neighbors:
+        if "rows" in raw and isinstance(raw["rows"], list):
+            neighbors = raw["rows"]
+        elif "neighbors" in raw and isinstance(raw["neighbors"], list):
+            neighbors = raw["neighbors"]
 
     # Post-filter by interface if requested
     if interface is not None:
         neighbors = [
-            n for n in neighbors
-            if n.get("interface") == interface or n.get("local_port") == interface
+            n
+            for n in neighbors
+            if n.get("local_interface") == interface
+            or n.get("interface") == interface
+            or n.get("local_port") == interface
         ]
 
-    logger.info("Listed %d LLDP neighbors (interface=%s)", len(neighbors), interface)
+    logger.info(
+        "Listed %d LLDP neighbors (interface=%s)",
+        len(neighbors),
+        interface,
+    )
     return neighbors
+
+
+def _extract_lldp_value(data: dict[str, Any], key: str) -> str:
+    """Extract a value from LLDP nested format.
+
+    LLDP values come as ``{"name": [{"value": "..."}]}`` or
+    plain ``{"name": "..."}``.
+    """
+    val = data.get(key, "")
+    if isinstance(val, list) and val:
+        return str(val[0].get("value", ""))
+    return str(val)
 
 
 async def opnsense__diagnostics__run_host_discovery(
@@ -222,7 +282,10 @@ async def opnsense__diagnostics__run_host_discovery(
     # Step 1: Start the scan
     start_data = {"interface": interface}
     start_result = await client.post(
-        "diagnostics", "interface", "startScan", data=start_data,
+        "diagnostics",
+        "interface",
+        "startScan",
+        data=start_data,
     )
     logger.info("Started host discovery on %s", interface)
 
@@ -237,7 +300,9 @@ async def opnsense__diagnostics__run_host_discovery(
 
         try:
             poll_result = await client.get(
-                "diagnostics", "interface", "getScanResult",
+                "diagnostics",
+                "interface",
+                "getScanResult",
             )
         except Exception:
             logger.warning(

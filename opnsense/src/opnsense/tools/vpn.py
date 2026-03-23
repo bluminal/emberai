@@ -16,10 +16,12 @@ Tools
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.models.vpn import IPSecSession, OpenVPNInstance, WireGuardPeer
+
+if TYPE_CHECKING:
+    from opnsense.api.opnsense_client import OPNsenseClient
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +88,7 @@ async def opnsense__vpn__list_openvpn_instances(
             instance = OpenVPNInstance.model_validate(row)
             instances.append(instance.model_dump())
         except Exception:
-            logger.warning(
-                "Failed to parse OpenVPN instance: %s", row.get("uuid", "unknown")
-            )
+            logger.warning("Failed to parse OpenVPN instance: %s", row.get("uuid", "unknown"))
             instances.append(row)
 
     logger.info("Listed %d OpenVPN instances", len(instances))
@@ -123,9 +123,7 @@ async def opnsense__vpn__list_wireguard_peers(
             peer = WireGuardPeer.model_validate(row)
             peers.append(peer.model_dump())
         except Exception:
-            logger.warning(
-                "Failed to parse WireGuard peer: %s", row.get("uuid", "unknown")
-            )
+            logger.warning("Failed to parse WireGuard peer: %s", row.get("uuid", "unknown"))
             peers.append(row)
 
     logger.info("Listed %d WireGuard peers", len(peers))
@@ -162,26 +160,16 @@ async def opnsense__vpn__get_vpn_status(
     wireguard_peers = await opnsense__vpn__list_wireguard_peers(client)
 
     # IPSec summary
-    ipsec_connected = sum(
-        1 for s in ipsec_sessions if s.get("status") == "connected"
-    )
+    ipsec_connected = sum(1 for s in ipsec_sessions if s.get("status") == "connected")
     ipsec_disconnected = len(ipsec_sessions) - ipsec_connected
 
     # OpenVPN summary
-    openvpn_servers = sum(
-        1 for i in openvpn_instances if i.get("role") == "server"
-    )
-    openvpn_clients = sum(
-        1 for i in openvpn_instances if i.get("role") == "client"
-    )
-    openvpn_enabled = sum(
-        1 for i in openvpn_instances if i.get("enabled") is True
-    )
+    openvpn_servers = sum(1 for i in openvpn_instances if i.get("role") == "server")
+    openvpn_clients = sum(1 for i in openvpn_instances if i.get("role") == "client")
+    openvpn_enabled = sum(1 for i in openvpn_instances if i.get("enabled") is True)
 
     # WireGuard summary
-    wg_active = sum(
-        1 for p in wireguard_peers if p.get("last_handshake") is not None
-    )
+    wg_active = sum(1 for p in wireguard_peers if p.get("last_handshake") is not None)
     wg_inactive = len(wireguard_peers) - wg_active
 
     total_tunnels = len(ipsec_sessions) + len(openvpn_instances) + len(wireguard_peers)

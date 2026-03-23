@@ -150,9 +150,7 @@ class TestJSONFormatter:
 
     def test_extra_fields(self) -> None:
         formatter = JSONFormatter()
-        record = logging.LogRecord(
-            "netex", logging.INFO, "server.py", 1, "Starting", (), None
-        )
+        record = logging.LogRecord("netex", logging.INFO, "server.py", 1, "Starting", (), None)
         record.component = "startup"  # type: ignore[attr-defined]
         record.detail = {"transport": "stdio"}  # type: ignore[attr-defined]
 
@@ -180,9 +178,7 @@ class TestConfigureLogging:
 
     def test_handler_uses_json_formatter(self) -> None:
         log = _configure_logging("INFO")
-        assert any(
-            isinstance(h.formatter, JSONFormatter) for h in log.handlers
-        )
+        assert any(isinstance(h.formatter, JSONFormatter) for h in log.handlers)
 
 
 # ---------------------------------------------------------------------------

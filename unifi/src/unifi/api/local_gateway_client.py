@@ -384,8 +384,7 @@ class LocalGatewayClient:
         """
         url = endpoint
         redacted_headers = {
-            k: ("***" if k.lower() == "x-api-key" else v)
-            for k, v in self._client.headers.items()
+            k: ("***" if k.lower() == "x-api-key" else v) for k, v in self._client.headers.items()
         }
         logger.debug(
             "Request: %s %s%s | headers=%s",

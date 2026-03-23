@@ -8,14 +8,15 @@ pattern for consistent formatting.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
-from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.output import Finding, Severity, format_key_value, format_severity_report
 from opnsense.tools.diagnostics import (
     opnsense__diagnostics__run_ping,
-    opnsense__diagnostics__run_traceroute,
 )
+
+if TYPE_CHECKING:
+    from opnsense.api.opnsense_client import OPNsenseClient
 
 
 async def diagnostics_report(
@@ -50,7 +51,9 @@ async def diagnostics_report(
     for target in targets:
         try:
             ping_result = await opnsense__diagnostics__run_ping(
-                client, target, count=3,
+                client,
+                target,
+                count=3,
             )
 
             # Extract key metrics from ping result
@@ -69,33 +72,41 @@ async def diagnostics_report(
             # Assess connectivity
             loss = ping_result.get("loss", "")
             if isinstance(loss, str) and "100" in loss:
-                findings.append(Finding(
-                    severity=Severity.HIGH,
-                    title=f"Host unreachable: {target}",
-                    detail=f"100% packet loss when pinging {target}.",
-                    recommendation="Check routing, firewall rules, and upstream connectivity.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.HIGH,
+                        title=f"Host unreachable: {target}",
+                        detail=f"100% packet loss when pinging {target}.",
+                        recommendation="Check routing, firewall rules, and upstream connectivity.",
+                    )
+                )
             elif loss and loss != "0":
-                findings.append(Finding(
-                    severity=Severity.WARNING,
-                    title=f"Packet loss to {target}",
-                    detail=f"Experienced {loss} packet loss when pinging {target}.",
-                    recommendation="Investigate link quality and congestion.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        title=f"Packet loss to {target}",
+                        detail=f"Experienced {loss} packet loss when pinging {target}.",
+                        recommendation="Investigate link quality and congestion.",
+                    )
+                )
             else:
-                findings.append(Finding(
-                    severity=Severity.INFORMATIONAL,
-                    title=f"Connectivity OK: {target}",
-                    detail=f"Ping to {target} succeeded with no packet loss.",
-                ))
+                findings.append(
+                    Finding(
+                        severity=Severity.INFORMATIONAL,
+                        title=f"Connectivity OK: {target}",
+                        detail=f"Ping to {target} succeeded with no packet loss.",
+                    )
+                )
 
         except Exception as exc:
-            findings.append(Finding(
-                severity=Severity.HIGH,
-                title=f"Ping failed: {target}",
-                detail=f"Unable to ping {target}: {exc}",
-                recommendation="Verify network connectivity and DNS resolution.",
-            ))
+            findings.append(
+                Finding(
+                    severity=Severity.HIGH,
+                    title=f"Ping failed: {target}",
+                    detail=f"Unable to ping {target}: {exc}",
+                    recommendation="Verify network connectivity and DNS resolution.",
+                )
+            )
 
     # Build final report
     report_parts: list[str] = []

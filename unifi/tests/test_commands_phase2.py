@@ -104,7 +104,8 @@ class TestUnifiOptimizeReadOnly:
         mock_gen = AsyncMock(return_value="## Optimization Recommendations\nmock")
 
         with patch(
-            "unifi.agents.optimize.generate_recommendations", mock_gen,
+            "unifi.agents.optimize.generate_recommendations",
+            mock_gen,
         ):
             result = await unifi_optimize()
 
@@ -116,7 +117,8 @@ class TestUnifiOptimizeReadOnly:
         mock_gen = AsyncMock(return_value="report")
 
         with patch(
-            "unifi.agents.optimize.generate_recommendations", mock_gen,
+            "unifi.agents.optimize.generate_recommendations",
+            mock_gen,
         ):
             await unifi_optimize()
 
@@ -127,7 +129,8 @@ class TestUnifiOptimizeReadOnly:
         mock_gen = AsyncMock(return_value="report")
 
         with patch(
-            "unifi.agents.optimize.generate_recommendations", mock_gen,
+            "unifi.agents.optimize.generate_recommendations",
+            mock_gen,
         ):
             await unifi_optimize(site_id="warehouse")
 
@@ -163,7 +166,8 @@ class TestUnifiOptimizeReadOnly:
         mock_gen = AsyncMock(return_value="## Recommendations\nNone")
 
         with patch(
-            "unifi.agents.optimize.generate_recommendations", mock_gen,
+            "unifi.agents.optimize.generate_recommendations",
+            mock_gen,
         ):
             result = await unifi_optimize()
 
@@ -574,10 +578,13 @@ class TestUnifiConfig:
 
 
 _CFG_SNAPSHOT = {
-    "network_count": 3, "wlan_count": 2, "rule_count": 5,
+    "network_count": 3,
+    "wlan_count": 2,
+    "rule_count": 5,
 }
 _CFG_BACKUP = {
-    "last_backup_time": "2026-03-18", "cloud_enabled": True,
+    "last_backup_time": "2026-03-18",
+    "cloud_enabled": True,
 }
 _CFG_NO_DIFF = {"added": [], "removed": [], "modified": []}
 
@@ -629,11 +636,13 @@ class TestConfigReviewDrift:
 
         mock_snapshot = AsyncMock(return_value=_CFG_SNAPSHOT)
         mock_backup = AsyncMock(return_value=_CFG_BACKUP)
-        mock_diff = AsyncMock(return_value={
-            "added": [{"name": "new-vlan"}],
-            "removed": [],
-            "modified": [{"name": "main-network"}],
-        })
+        mock_diff = AsyncMock(
+            return_value={
+                "added": [{"name": "new-vlan"}],
+                "removed": [],
+                "modified": [{"name": "main-network"}],
+            }
+        )
 
         with (
             patch("unifi.agents.config.unifi__config__get_config_snapshot", mock_snapshot),

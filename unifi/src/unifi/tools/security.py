@@ -9,12 +9,9 @@ port forwarding rules, and IDS/IPS alert retrieval via the Local Gateway API.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from unifi.api.local_gateway_client import LocalGatewayClient
-from unifi.api.response import NormalizedResponse
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
 

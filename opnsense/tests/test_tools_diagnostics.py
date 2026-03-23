@@ -10,9 +10,8 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -46,7 +45,9 @@ class TestRunPing:
 
         assert response == result
         client.post.assert_called_once_with(
-            "diagnostics", "interface", "getPing",
+            "diagnostics",
+            "interface",
+            "getPing",
             data={"address": "8.8.8.8"},
         )
 
@@ -68,7 +69,9 @@ class TestRunPing:
         client = _make_client(post_returns={"loss": "0"})
 
         await opnsense__diagnostics__run_ping(
-            client, "8.8.8.8", source_ip="192.168.1.1",
+            client,
+            "8.8.8.8",
+            source_ip="192.168.1.1",
         )
 
         call_data = client.post.call_args[1]["data"]
@@ -92,7 +95,9 @@ class TestRunTraceroute:
 
         assert response == result
         client.post.assert_called_once_with(
-            "diagnostics", "interface", "getTrace",
+            "diagnostics",
+            "interface",
+            "getTrace",
             data={"address": "8.8.8.8"},
         )
 
@@ -125,7 +130,9 @@ class TestDNSLookup:
 
         assert response == result
         client.get.assert_called_once_with(
-            "diagnostics", "dns", "reverseResolve",
+            "diagnostics",
+            "dns",
+            "reverseResolve",
             params={"address": "192.168.1.200"},
         )
 
@@ -136,11 +143,15 @@ class TestDNSLookup:
         client = _make_client(get_returns={})
 
         await opnsense__diagnostics__dns_lookup(
-            client, "example.com", record_type="MX",
+            client,
+            "example.com",
+            record_type="MX",
         )
 
         client.get.assert_called_once_with(
-            "diagnostics", "dns", "reverseResolve",
+            "diagnostics",
+            "dns",
+            "reverseResolve",
             params={"address": "example.com", "type": "MX"},
         )
 
@@ -163,7 +174,8 @@ class TestGetLLDPNeighbors:
         }
         client = _make_client(get_returns=data)
 
-        neighbors = await opnsense__diagnostics__get_lldp_neighbors(client)
+        with patch("opnsense.tools.diagnostics._get_client", return_value=client):
+            neighbors = await opnsense__diagnostics__get_lldp_neighbors()
 
         assert len(neighbors) == 2
         assert neighbors[0]["interface"] == "igb0"
@@ -179,7 +191,8 @@ class TestGetLLDPNeighbors:
         }
         client = _make_client(get_returns=data)
 
-        neighbors = await opnsense__diagnostics__get_lldp_neighbors(client)
+        with patch("opnsense.tools.diagnostics._get_client", return_value=client):
+            neighbors = await opnsense__diagnostics__get_lldp_neighbors()
 
         assert len(neighbors) == 1
         assert neighbors[0]["remote_system"] == "switch-1"
@@ -196,9 +209,10 @@ class TestGetLLDPNeighbors:
         }
         client = _make_client(get_returns=data)
 
-        neighbors = await opnsense__diagnostics__get_lldp_neighbors(
-            client, interface="igb0",
-        )
+        with patch("opnsense.tools.diagnostics._get_client", return_value=client):
+            neighbors = await opnsense__diagnostics__get_lldp_neighbors(
+                interface="igb0",
+            )
 
         assert len(neighbors) == 1
         assert neighbors[0]["interface"] == "igb0"
@@ -215,9 +229,10 @@ class TestGetLLDPNeighbors:
         }
         client = _make_client(get_returns=data)
 
-        neighbors = await opnsense__diagnostics__get_lldp_neighbors(
-            client, interface="igb1",
-        )
+        with patch("opnsense.tools.diagnostics._get_client", return_value=client):
+            neighbors = await opnsense__diagnostics__get_lldp_neighbors(
+                interface="igb1",
+            )
 
         assert len(neighbors) == 1
         assert neighbors[0]["local_port"] == "igb1"
@@ -228,7 +243,8 @@ class TestGetLLDPNeighbors:
 
         client = _make_client(get_returns={})
 
-        neighbors = await opnsense__diagnostics__get_lldp_neighbors(client)
+        with patch("opnsense.tools.diagnostics._get_client", return_value=client):
+            neighbors = await opnsense__diagnostics__get_lldp_neighbors()
 
         assert neighbors == []
 
@@ -249,10 +265,13 @@ class TestRunHostDiscovery:
         # First poll: still running; second poll: done
         poll_responses = [
             {"status": "running", "rows": [{"ip": "192.168.1.10"}]},
-            {"status": "done", "rows": [
-                {"ip": "192.168.1.10"},
-                {"ip": "192.168.1.20"},
-            ]},
+            {
+                "status": "done",
+                "rows": [
+                    {"ip": "192.168.1.10"},
+                    {"ip": "192.168.1.20"},
+                ],
+            },
         ]
         client.get = AsyncMock(side_effect=poll_responses)
 
@@ -271,10 +290,12 @@ class TestRunHostDiscovery:
         client.post = AsyncMock(return_value={"status": "started"})
 
         # Always return "running" to trigger timeout
-        client.get = AsyncMock(return_value={
-            "status": "running",
-            "rows": [{"ip": "192.168.1.10"}],
-        })
+        client.get = AsyncMock(
+            return_value={
+                "status": "running",
+                "rows": [{"ip": "192.168.1.10"}],
+            }
+        )
 
         with (
             patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock),
@@ -314,16 +335,20 @@ class TestRunHostDiscovery:
 
         client = AsyncMock()
         client.post = AsyncMock(return_value={"status": "started"})
-        client.get = AsyncMock(return_value={
-            "status": "done",
-            "rows": [],
-        })
+        client.get = AsyncMock(
+            return_value={
+                "status": "done",
+                "rows": [],
+            }
+        )
 
         with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
             await opnsense__diagnostics__run_host_discovery(client, "igb1")
 
         client.post.assert_called_once_with(
-            "diagnostics", "interface", "startScan",
+            "diagnostics",
+            "interface",
+            "startScan",
             data={"interface": "igb1"},
         )
 
@@ -334,10 +359,12 @@ class TestRunHostDiscovery:
 
         client = AsyncMock()
         client.post = AsyncMock(return_value={"status": "started"})
-        client.get = AsyncMock(return_value={
-            "status": "done",
-            "hosts": [{"ip": "10.0.0.1"}, {"ip": "10.0.0.2"}],
-        })
+        client.get = AsyncMock(
+            return_value={
+                "status": "done",
+                "hosts": [{"ip": "10.0.0.1"}, {"ip": "10.0.0.2"}],
+            }
+        )
 
         with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
             result = await opnsense__diagnostics__run_host_discovery(client, "igb1")

@@ -96,9 +96,7 @@ class TestConstruction:
         assert client._verify_ssl is False
 
     def test_custom_verify_ssl_true(self) -> None:
-        client = LocalGatewayClient(
-            host="192.168.1.1", api_key="test-key", verify_ssl=True
-        )
+        client = LocalGatewayClient(host="192.168.1.1", api_key="test-key", verify_ssl=True)
         assert client._verify_ssl is True
 
     def test_default_timeout(self) -> None:
@@ -106,9 +104,7 @@ class TestConstruction:
         assert client._timeout == 30.0
 
     def test_custom_timeout(self) -> None:
-        client = LocalGatewayClient(
-            host="192.168.1.1", api_key="test-key", timeout=10.0
-        )
+        client = LocalGatewayClient(host="192.168.1.1", api_key="test-key", timeout=10.0)
         assert client._timeout == 10.0
 
     def test_ssl_disabled_warning_logged(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -406,9 +402,7 @@ class TestConnectionFailures:
     @pytest.mark.asyncio
     async def test_timeout_raises_network_error(self) -> None:
         async with LocalGatewayClient(host="192.168.1.1", api_key="key") as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.ReadTimeout("read timed out")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.ReadTimeout("read timed out"))
 
             with pytest.raises(NetworkError) as exc_info:
                 await client.get("/api/s/default/stat/device")
@@ -431,9 +425,7 @@ class TestConnectionFailures:
     @pytest.mark.asyncio
     async def test_connection_refused_raises_network_error(self) -> None:
         async with LocalGatewayClient(host="192.168.1.1", api_key="key") as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
             with pytest.raises(NetworkError) as exc_info:
                 await client.get("/api/s/default/stat/device")
@@ -470,9 +462,7 @@ class TestConnectionFailures:
     @pytest.mark.asyncio
     async def test_generic_http_error_raises_network_error(self) -> None:
         async with LocalGatewayClient(host="192.168.1.1", api_key="key") as client:
-            client._client.request = AsyncMock(
-                side_effect=httpx.HTTPError("Something went wrong")
-            )
+            client._client.request = AsyncMock(side_effect=httpx.HTTPError("Something went wrong"))
 
             with pytest.raises(NetworkError) as exc_info:
                 await client.get("/api/s/default/stat/device")
@@ -489,16 +479,12 @@ class TestSSLVerification:
     """Tests for the SSL verification configuration."""
 
     def test_ssl_disabled_passes_verify_false(self) -> None:
-        client = LocalGatewayClient(
-            host="192.168.1.1", api_key="key", verify_ssl=False
-        )
+        client = LocalGatewayClient(host="192.168.1.1", api_key="key", verify_ssl=False)
         # httpx stores the verify parameter on the client.
         assert client._client._transport._pool._ssl_context.verify_mode.name == "CERT_NONE"
 
     def test_ssl_enabled_passes_verify_true(self) -> None:
-        client = LocalGatewayClient(
-            host="192.168.1.1", api_key="key", verify_ssl=True
-        )
+        client = LocalGatewayClient(host="192.168.1.1", api_key="key", verify_ssl=True)
         assert client._client._transport._pool._ssl_context.verify_mode.name != "CERT_NONE"
 
 
@@ -576,9 +562,7 @@ class TestLogging:
         assert "Slow request" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_error_log_on_connection_failure(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_error_log_on_connection_failure(self, caplog: pytest.LogCaptureFixture) -> None:
         with caplog.at_level(logging.ERROR, logger="unifi.api.local_gateway_client"):
             async with LocalGatewayClient(host="192.168.1.1", api_key="key") as client:
                 client._client.request = AsyncMock(

@@ -217,9 +217,7 @@ class TestPostFlush:
         result = await client.post("/api/s/default/cmd/devmgr", data={"cmd": "restart"})
 
         assert result == {"meta": {"rc": "ok"}}
-        mock_raw.post.assert_awaited_once_with(
-            "/api/s/default/cmd/devmgr", data={"cmd": "restart"}
-        )
+        mock_raw.post.assert_awaited_once_with("/api/s/default/cmd/devmgr", data={"cmd": "restart"})
 
     @pytest.mark.asyncio
     async def test_post_flushes_cache_for_endpoint_prefix(self) -> None:

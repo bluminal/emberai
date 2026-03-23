@@ -90,7 +90,7 @@ def _format_site_list(sites: list[dict[str, object]]) -> str:
                 "Multiple UniFi sites are available. "
                 "Please specify which site to scan by providing the site name "
                 "or ID.\n\n"
-                "Example: ``unifi scan`` with ``site_id=\"<site name>\"``"
+                'Example: ``unifi scan`` with ``site_id="<site name>"``'
             ),
         )
     )

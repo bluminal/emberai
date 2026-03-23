@@ -26,7 +26,6 @@ from unifi.tools.security import (
     unifi__security__get_zbf_policies,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -357,9 +356,7 @@ class TestGetFirewallRules:
         assert result[0]["name"] == "Allow LAN to WAN"
         assert result[0]["action"] == "accept"
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/default/rest/firewallrule"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/rest/firewallrule")
         mock_client.close.assert_called_once()
 
     async def test_custom_site_id(self) -> None:
@@ -369,9 +366,7 @@ class TestGetFirewallRules:
         with patch("unifi.tools.security._get_client", return_value=mock_client):
             await unifi__security__get_firewall_rules(site_id="site-xyz")
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/site-xyz/rest/firewallrule"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/site-xyz/rest/firewallrule")
 
     async def test_empty_rules(self) -> None:
         mock_client = _mock_client_with_normalized({"data": [], "meta": {"rc": "ok"}})
@@ -383,9 +378,7 @@ class TestGetFirewallRules:
 
     async def test_api_error_propagates(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=APIError("API error", status_code=500)
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=APIError("API error", status_code=500))
         mock_client.close = AsyncMock()
 
         with (
@@ -398,9 +391,7 @@ class TestGetFirewallRules:
 
     async def test_client_closed_on_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=NetworkError("Connection refused")
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=NetworkError("Connection refused"))
         mock_client.close = AsyncMock()
 
         with (
@@ -432,9 +423,7 @@ class TestGetZbfPolicies:
         assert result[0]["from_zone"] == "LAN"
         assert result[0]["to_zone"] == "WAN"
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/default/rest/firewallzone"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/rest/firewallzone")
 
     async def test_empty_policies(self) -> None:
         mock_client = _mock_client_with_normalized({"data": [], "meta": {"rc": "ok"}})
@@ -446,9 +435,7 @@ class TestGetZbfPolicies:
 
     async def test_client_closed_on_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=APIError("Forbidden", status_code=403)
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=APIError("Forbidden", status_code=403))
         mock_client.close = AsyncMock()
 
         with (
@@ -480,9 +467,7 @@ class TestGetAcls:
         assert result[0]["acl_id"] == "acl001"
         assert result[0]["name"] == "Management ACL"
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/default/rest/firewallgroup"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/rest/firewallgroup")
 
     async def test_custom_site_id(self) -> None:
         fixture = load_fixture("acl_rules.json")
@@ -491,9 +476,7 @@ class TestGetAcls:
         with patch("unifi.tools.security._get_client", return_value=mock_client):
             await unifi__security__get_acls(site_id="branch-01")
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/branch-01/rest/firewallgroup"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/branch-01/rest/firewallgroup")
 
     async def test_empty_acls(self) -> None:
         mock_client = _mock_client_with_normalized({"data": [], "meta": {"rc": "ok"}})
@@ -525,9 +508,7 @@ class TestGetPortForwards:
         assert result[0]["wan_port"] == "443"
         assert result[0]["lan_host"] == "192.168.1.100"
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/default/rest/portforward"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/rest/portforward")
 
     async def test_includes_disabled_forwards(self) -> None:
         fixture = load_fixture("port_forwards.json")
@@ -583,9 +564,7 @@ class TestGetIdsAlerts:
         assert result[0]["signature"] == "ET SCAN SSH"
         assert result[0]["severity"] == 1
 
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/default/stat/ips/event"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/default/stat/ips/event")
 
     async def test_filters_by_time_window(self) -> None:
         now_ms = datetime.now(tz=UTC).timestamp() * 1000
@@ -614,9 +593,7 @@ class TestGetIdsAlerts:
             result = await unifi__security__get_ids_alerts(site_id="lab", hours=48)
 
         assert result == []
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/lab/stat/ips/event"
-        )
+        mock_client.get_normalized.assert_called_once_with("/api/s/lab/stat/ips/event")
 
     async def test_empty_alerts(self) -> None:
         mock_client = _mock_client_with_normalized({"data": [], "meta": {"rc": "ok"}})
@@ -628,9 +605,7 @@ class TestGetIdsAlerts:
 
     async def test_client_closed_on_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_normalized = AsyncMock(
-            side_effect=NetworkError("timeout")
-        )
+        mock_client.get_normalized = AsyncMock(side_effect=NetworkError("timeout"))
         mock_client.close = AsyncMock()
 
         with (

@@ -217,15 +217,11 @@ def _patch_all_tools(
     mock_site_health = AsyncMock(
         return_value=health if health is not None else _build_healthy_site_health()
     )
-    mock_events = AsyncMock(
-        return_value=events if events is not None else _build_no_events()
-    )
+    mock_events = AsyncMock(return_value=events if events is not None else _build_no_events())
     mock_firmware = AsyncMock(
         return_value=firmware if firmware is not None else _build_no_firmware_updates()
     )
-    mock_isp = AsyncMock(
-        return_value=isp if isp is not None else _build_healthy_isp()
-    )
+    mock_isp = AsyncMock(return_value=isp if isp is not None else _build_healthy_isp())
     return mock_site_health, mock_events, mock_firmware, mock_isp
 
 

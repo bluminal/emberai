@@ -30,6 +30,7 @@ from netex.registry.plugin_registry import PluginRegistry
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_registry(
     *,
     has_firewall: bool = True,
@@ -73,14 +74,16 @@ def _make_registry(
         gw_tools["firmware"] = ["opnsense__firmware__get_status"]
 
     if gw_skills:
-        registry.register({
-            "name": "opnsense",
-            "version": "0.2.0",
-            "vendor": "opnsense",
-            "roles": ["gateway"],
-            "skills": gw_skills,
-            "tools": gw_tools,
-        })
+        registry.register(
+            {
+                "name": "opnsense",
+                "version": "0.2.0",
+                "vendor": "opnsense",
+                "roles": ["gateway"],
+                "skills": gw_skills,
+                "tools": gw_tools,
+            }
+        )
 
     # Edge plugin (unifi-like)
     edge_skills: list[str] = []
@@ -103,14 +106,16 @@ def _make_registry(
         edge_tools["config"] = ["unifi__config__get_settings"]
 
     if edge_skills:
-        registry.register({
-            "name": "unifi",
-            "version": "0.1.0",
-            "vendor": "unifi",
-            "roles": ["edge", "wireless"],
-            "skills": edge_skills,
-            "tools": edge_tools,
-        })
+        registry.register(
+            {
+                "name": "unifi",
+                "version": "0.1.0",
+                "vendor": "unifi",
+                "roles": ["edge", "wireless"],
+                "skills": edge_skills,
+                "tools": edge_tools,
+            }
+        )
 
     return registry
 
@@ -135,6 +140,7 @@ def empty_registry() -> PluginRegistry:
 # ---------------------------------------------------------------------------
 # Read-only enforcement
 # ---------------------------------------------------------------------------
+
 
 class TestReadOnlyEnforcement:
     def test_read_tool_allowed(self) -> None:
@@ -195,9 +201,12 @@ class TestReadOnlyEnforcement:
 # Plan review: Category 1 -- VLAN isolation gap
 # ---------------------------------------------------------------------------
 
+
 class TestVlanIsolation:
     async def test_vlan_without_firewall_rules(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """New VLAN without deny rules produces a finding."""
         steps = [
@@ -211,7 +220,9 @@ class TestVlanIsolation:
         assert "IoT" in vlan_findings[0].description
 
     async def test_vlan_with_matching_deny_rule(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """VLAN with corresponding deny rules in the plan produces no gap finding."""
         steps = [
@@ -229,7 +240,9 @@ class TestVlanIsolation:
         assert len(vlan_findings) == 0
 
     async def test_multiple_vlans_without_rules(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Multiple new VLANs without rules produce multiple findings."""
         steps = [
@@ -245,9 +258,12 @@ class TestVlanIsolation:
 # Plan review: Category 2 -- Overly broad firewall rule
 # ---------------------------------------------------------------------------
 
+
 class TestBroadFirewallRules:
     async def test_any_any_rule(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """any/any source+destination allow rule is flagged."""
         steps = [
@@ -269,7 +285,9 @@ class TestBroadFirewallRules:
         assert "any" in broad_findings[0].description.lower()
 
     async def test_deny_rule_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Deny rules with any/any are not flagged (they're restrictive)."""
         steps = [
@@ -287,7 +305,9 @@ class TestBroadFirewallRules:
         assert len(broad_findings) == 0
 
     async def test_specific_rule_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """A specific allow rule is not flagged as broad."""
         steps = [
@@ -311,9 +331,12 @@ class TestBroadFirewallRules:
 # Plan review: Category 3 -- Firewall rule ordering risk
 # ---------------------------------------------------------------------------
 
+
 class TestRuleOrdering:
     async def test_allow_without_position(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Allow rule without explicit position gets ordering warning."""
         steps = [
@@ -334,7 +357,9 @@ class TestRuleOrdering:
         assert ordering[0].severity == FindingSeverity.MEDIUM
 
     async def test_rule_with_explicit_position(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Rule with explicit insert_position is not flagged."""
         steps = [
@@ -359,9 +384,12 @@ class TestRuleOrdering:
 # Plan review: Category 4 -- VPN split-tunnel exposure
 # ---------------------------------------------------------------------------
 
+
 class TestVpnSplitTunnel:
     async def test_full_tunnel_with_split_intent(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """0.0.0.0/0 allowed IPs with split tunnel intent is flagged."""
         steps = [
@@ -379,7 +407,9 @@ class TestVpnSplitTunnel:
         assert vpn_findings[0].severity == FindingSeverity.HIGH
 
     async def test_narrow_scope_with_full_intent(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Narrow allowed_ips with full tunnel intent is flagged."""
         steps = [
@@ -397,7 +427,9 @@ class TestVpnSplitTunnel:
         assert vpn_findings[0].severity == FindingSeverity.MEDIUM
 
     async def test_matching_scope_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Split tunnel with narrow IPs is not flagged."""
         steps = [
@@ -418,9 +450,12 @@ class TestVpnSplitTunnel:
 # Plan review: Category 5 -- Unencrypted VLAN for sensitive traffic
 # ---------------------------------------------------------------------------
 
+
 class TestUnencryptedVlan:
     async def test_iot_ssid_open_auth(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """IoT SSID with open auth is flagged."""
         steps = [
@@ -438,7 +473,9 @@ class TestUnencryptedVlan:
         assert wifi_findings[0].severity == FindingSeverity.HIGH
 
     async def test_management_ssid_no_security(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Management SSID with no security mode is flagged."""
         steps = [
@@ -455,7 +492,9 @@ class TestUnencryptedVlan:
         assert len(wifi_findings) == 1
 
     async def test_camera_ssid_none_security(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Camera SSID with security=none is flagged."""
         steps = [
@@ -472,7 +511,9 @@ class TestUnencryptedVlan:
         assert len(wifi_findings) == 1
 
     async def test_guest_ssid_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Guest SSID (non-sensitive purpose) is not flagged."""
         steps = [
@@ -489,7 +530,9 @@ class TestUnencryptedVlan:
         assert len(wifi_findings) == 0
 
     async def test_iot_with_wpa3_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """IoT SSID with WPA3 is not flagged."""
         steps = [
@@ -510,9 +553,12 @@ class TestUnencryptedVlan:
 # Plan review: Category 6 -- Management plane exposure
 # ---------------------------------------------------------------------------
 
+
 class TestManagementExposure:
     async def test_firewall_rule_guest_to_mgmt(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Firewall rule allowing guest to management is CRITICAL."""
         steps = [
@@ -533,7 +579,9 @@ class TestManagementExposure:
         assert mgmt_findings[0].severity == FindingSeverity.CRITICAL
 
     async def test_iot_to_admin_route(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Route from IoT to admin interface is flagged."""
         steps = [
@@ -550,7 +598,9 @@ class TestManagementExposure:
         assert len(mgmt_findings) >= 1
 
     async def test_trusted_to_mgmt_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Trusted VLAN to management is not flagged."""
         steps = [
@@ -572,9 +622,12 @@ class TestManagementExposure:
 # Plan review: Category 7 -- DNS security posture
 # ---------------------------------------------------------------------------
 
+
 class TestDnsSecurity:
     async def test_dnssec_disabled(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Disabling DNSSEC is flagged."""
         steps = [
@@ -590,7 +643,9 @@ class TestDnsSecurity:
         assert any(f.description and "DNSSEC" in f.description for f in dns_findings)
 
     async def test_forwarder_without_dot(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """DNS forwarder without DoT is flagged."""
         steps = [
@@ -607,7 +662,9 @@ class TestDnsSecurity:
         assert any("DoT" in f.description or "DNS-over-TLS" in f.description for f in dns_findings)
 
     async def test_open_recursion(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Open recursion is flagged as HIGH."""
         steps = [
@@ -621,14 +678,14 @@ class TestDnsSecurity:
         findings = await agent.review_plan(steps, full_registry)
         dns_findings = [f for f in findings if f.category == FindingCategory.DNS_SECURITY]
         assert len(dns_findings) >= 1
-        recursion_findings = [
-            f for f in dns_findings if "recursion" in f.description.lower()
-        ]
+        recursion_findings = [f for f in dns_findings if "recursion" in f.description.lower()]
         assert len(recursion_findings) == 1
         assert recursion_findings[0].severity == FindingSeverity.HIGH
 
     async def test_forwarder_with_dot_not_flagged(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """DNS forwarder with DoT enabled is not flagged."""
         steps = [
@@ -642,7 +699,8 @@ class TestDnsSecurity:
         ]
         findings = await agent.review_plan(steps, full_registry)
         dns_findings = [
-            f for f in findings
+            f
+            for f in findings
             if f.category == FindingCategory.DNS_SECURITY and "DoT" in f.description
         ]
         assert len(dns_findings) == 0
@@ -652,16 +710,21 @@ class TestDnsSecurity:
 # Plan review: edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestPlanReviewEdgeCases:
     async def test_empty_steps(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Empty change list returns no findings."""
         findings = await agent.review_plan([], full_registry)
         assert findings == []
 
     async def test_unrelated_subsystems(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Steps in non-security subsystems produce no findings."""
         steps = [
@@ -672,7 +735,9 @@ class TestPlanReviewEdgeCases:
         assert findings == []
 
     async def test_findings_sorted_by_severity(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Findings are returned sorted by severity (most severe first)."""
         steps = [
@@ -712,7 +777,9 @@ class TestPlanReviewEdgeCases:
         assert orders == sorted(orders), "Findings should be sorted by severity"
 
     async def test_empty_registry(
-        self, agent: NetworkSecurityAgent, empty_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        empty_registry: PluginRegistry,
     ) -> None:
         """Plan review works even with no plugins registered."""
         steps = [
@@ -728,9 +795,12 @@ class TestPlanReviewEdgeCases:
 # On-demand audit: domain filtering
 # ---------------------------------------------------------------------------
 
+
 class TestAuditDomainFiltering:
     async def test_all_domains_audited_by_default(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Without a domain filter, all 10 domains are audited."""
         findings = await agent.audit(full_registry)
@@ -739,7 +809,9 @@ class TestAuditDomainFiltering:
         assert isinstance(findings, list)
 
     async def test_single_domain_filter(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Specifying a domain restricts audit to that domain."""
         findings = await agent.audit(full_registry, domain="firewall-gw")
@@ -747,7 +819,9 @@ class TestAuditDomainFiltering:
         assert isinstance(findings, list)
 
     async def test_unknown_domain_returns_informational(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Unknown domain returns an informational finding."""
         findings = await agent.audit(full_registry, domain="nonexistent")
@@ -759,42 +833,59 @@ class TestAuditDomainFiltering:
         """All 10 audit domains are defined."""
         assert len(AuditDomain) == 10
         expected = {
-            "firewall-gw", "firewall-edge", "cross-layer",
-            "vlan-isolation", "vpn-posture", "dns-security",
-            "ids-ips", "wireless", "certs", "firmware",
+            "firewall-gw",
+            "firewall-edge",
+            "cross-layer",
+            "vlan-isolation",
+            "vpn-posture",
+            "dns-security",
+            "ids-ips",
+            "wireless",
+            "certs",
+            "firmware",
         }
         assert {d.value for d in AuditDomain} == expected
 
     async def test_audit_firewall_edge_domain(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """firewall-edge domain audit runs without error."""
         findings = await agent.audit(full_registry, domain="firewall-edge")
         assert isinstance(findings, list)
 
     async def test_audit_vlan_isolation_domain(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """vlan-isolation domain audit runs without error."""
         findings = await agent.audit(full_registry, domain="vlan-isolation")
         assert isinstance(findings, list)
 
     async def test_audit_vpn_posture_domain(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """vpn-posture domain audit runs without error."""
         findings = await agent.audit(full_registry, domain="vpn-posture")
         assert isinstance(findings, list)
 
     async def test_audit_dns_security_domain(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """dns-security domain audit runs without error."""
         findings = await agent.audit(full_registry, domain="dns-security")
         assert isinstance(findings, list)
 
     async def test_audit_wireless_domain(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """wireless domain audit runs without error."""
         findings = await agent.audit(full_registry, domain="wireless")
@@ -805,9 +896,12 @@ class TestAuditDomainFiltering:
 # On-demand audit: tool availability
 # ---------------------------------------------------------------------------
 
+
 class TestAuditToolAvailability:
     async def test_missing_tools_produce_informational(
-        self, agent: NetworkSecurityAgent, empty_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        empty_registry: PluginRegistry,
     ) -> None:
         """Domains without available tools produce informational findings."""
         findings = await agent.audit(empty_registry, domain="firewall-gw")
@@ -816,18 +910,18 @@ class TestAuditToolAvailability:
         assert "No plugins provide tools" in findings[0].description
 
     async def test_firmware_domain_without_plugin(
-        self, agent: NetworkSecurityAgent,
+        self,
+        agent: NetworkSecurityAgent,
     ) -> None:
         """Firmware domain without firmware skill produces informational."""
         registry = _make_registry(has_firmware=False, has_health=False)
         findings = await agent.audit(registry, domain="firmware")
-        informational = [
-            f for f in findings if f.severity == FindingSeverity.INFORMATIONAL
-        ]
+        informational = [f for f in findings if f.severity == FindingSeverity.INFORMATIONAL]
         assert len(informational) >= 1
 
     async def test_partial_tools_available(
-        self, agent: NetworkSecurityAgent,
+        self,
+        agent: NetworkSecurityAgent,
     ) -> None:
         """Domains with partial tools still produce results."""
         registry = _make_registry(has_firewall=True, has_security=False)
@@ -841,9 +935,12 @@ class TestAuditToolAvailability:
 # On-demand audit: findings quality
 # ---------------------------------------------------------------------------
 
+
 class TestAuditFindingsQuality:
     async def test_findings_sorted(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """Audit findings are sorted by severity."""
         findings = await agent.audit(full_registry)
@@ -859,7 +956,9 @@ class TestAuditFindingsQuality:
             assert orders == sorted(orders)
 
     async def test_findings_are_security_finding_instances(
-        self, agent: NetworkSecurityAgent, full_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        full_registry: PluginRegistry,
     ) -> None:
         """All audit results are SecurityFinding instances."""
         findings = await agent.audit(full_registry)
@@ -867,7 +966,9 @@ class TestAuditFindingsQuality:
             assert isinstance(finding, SecurityFinding)
 
     async def test_informational_findings_have_recommendation(
-        self, agent: NetworkSecurityAgent, empty_registry: PluginRegistry,
+        self,
+        agent: NetworkSecurityAgent,
+        empty_registry: PluginRegistry,
     ) -> None:
         """Informational 'no tools' findings include a recommendation."""
         findings = await agent.audit(empty_registry, domain="firewall-gw")
@@ -879,6 +980,7 @@ class TestAuditFindingsQuality:
 # ---------------------------------------------------------------------------
 # AuditDomain enum
 # ---------------------------------------------------------------------------
+
 
 class TestAuditDomainEnum:
     def test_domain_values(self) -> None:

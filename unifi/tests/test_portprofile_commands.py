@@ -123,7 +123,8 @@ class TestPortProfileCreatePlanOnly:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Trunk-AP", native_vlan=1,
+                name="Trunk-AP",
+                native_vlan=1,
             )
 
         assert "Change Plan" in result
@@ -135,7 +136,9 @@ class TestPortProfileCreatePlanOnly:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Trunk-AP", native_vlan=10, tagged_vlans="30,50",
+                name="Trunk-AP",
+                native_vlan=10,
+                tagged_vlans="30,50",
             )
 
         assert "Trunk-AP" in result
@@ -149,10 +152,14 @@ class TestPortProfileCreatePlanOnly:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result_poe = await unifi_port_profile_create(
-                name="PoE-AP", native_vlan=1, poe=True,
+                name="PoE-AP",
+                native_vlan=1,
+                poe=True,
             )
             result_no_poe = await unifi_port_profile_create(
-                name="No-PoE", native_vlan=1, poe=False,
+                name="No-PoE",
+                native_vlan=1,
+                poe=False,
             )
 
         assert "enabled" in result_poe
@@ -167,7 +174,8 @@ class TestPortProfileCreatePlanOnly:
             patch.dict(os.environ, {"UNIFI_WRITE_ENABLED": "false"}),
         ):
             result = await unifi_port_profile_create(
-                name="Trunk-AP", native_vlan=1,
+                name="Trunk-AP",
+                native_vlan=1,
             )
 
         assert "disabled" in result.lower()
@@ -182,7 +190,8 @@ class TestPortProfileCreatePlanOnly:
             patch.dict(os.environ, {"UNIFI_WRITE_ENABLED": "true"}),
         ):
             result = await unifi_port_profile_create(
-                name="Trunk-AP", native_vlan=1,
+                name="Trunk-AP",
+                native_vlan=1,
             )
 
         assert "apply=True" in result
@@ -218,7 +227,8 @@ class TestPortProfileCreateVlanValidation:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Test", native_vlan=999,
+                name="Test",
+                native_vlan=999,
             )
 
         assert "Verification Failed" in result
@@ -230,7 +240,9 @@ class TestPortProfileCreateVlanValidation:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Test", native_vlan=1, tagged_vlans="30,999",
+                name="Test",
+                native_vlan=1,
+                tagged_vlans="30,999",
             )
 
         assert "Verification Failed" in result
@@ -242,7 +254,9 @@ class TestPortProfileCreateVlanValidation:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Test", native_vlan=1, tagged_vlans="30,50",
+                name="Test",
+                native_vlan=1,
+                tagged_vlans="30,50",
             )
 
         assert "Change Plan" in result
@@ -260,21 +274,26 @@ class TestPortProfileCreateApplyMode:
     async def test_apply_delegates_to_write_tool(self) -> None:
         """With apply=True, delegates to unifi__config__create_port_profile."""
         mock_get_vlans = AsyncMock(return_value=_mock_vlans())
-        mock_create = AsyncMock(return_value={
-            "profile_id": "prof_new",
-            "name": "Trunk-AP",
-            "native_vlan": 1,
-            "tagged_vlans": ["30"],
-            "poe": False,
-            "site_id": "default",
-        })
+        mock_create = AsyncMock(
+            return_value={
+                "profile_id": "prof_new",
+                "name": "Trunk-AP",
+                "native_vlan": 1,
+                "tagged_vlans": ["30"],
+                "poe": False,
+                "site_id": "default",
+            }
+        )
 
         with (
             patch(_PATCH_GET_VLANS, mock_get_vlans),
             patch(_PATCH_CREATE_PROFILE, mock_create),
         ):
             result = await unifi_port_profile_create(
-                name="Trunk-AP", native_vlan=1, tagged_vlans="30", apply=True,
+                name="Trunk-AP",
+                native_vlan=1,
+                tagged_vlans="30",
+                apply=True,
             )
 
         assert "Port Profile Created" in result
@@ -298,7 +317,9 @@ class TestPortProfileCreateApplyMode:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi_port_profile_create(
-                name="Test", native_vlan=1, apply=True,
+                name="Test",
+                native_vlan=1,
+                apply=True,
             )
 
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
@@ -306,22 +327,27 @@ class TestPortProfileCreateApplyMode:
     async def test_apply_returns_created_profile_details(self) -> None:
         """Successful apply returns formatted profile details."""
         mock_get_vlans = AsyncMock(return_value=_mock_vlans())
-        mock_create = AsyncMock(return_value={
-            "profile_id": "prof_new",
-            "name": "PoE-Profile",
-            "native_vlan": 10,
-            "tagged_vlans": ["30", "50"],
-            "poe": True,
-            "site_id": "default",
-        })
+        mock_create = AsyncMock(
+            return_value={
+                "profile_id": "prof_new",
+                "name": "PoE-Profile",
+                "native_vlan": 10,
+                "tagged_vlans": ["30", "50"],
+                "poe": True,
+                "site_id": "default",
+            }
+        )
 
         with (
             patch(_PATCH_GET_VLANS, mock_get_vlans),
             patch(_PATCH_CREATE_PROFILE, mock_create),
         ):
             result = await unifi_port_profile_create(
-                name="PoE-Profile", native_vlan=10, tagged_vlans="30,50",
-                poe=True, apply=True,
+                name="PoE-Profile",
+                native_vlan=10,
+                tagged_vlans="30,50",
+                poe=True,
+                apply=True,
             )
 
         assert "PoE-Profile" in result
@@ -347,7 +373,9 @@ class TestPortProfileAssignPlanOnly:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Change Plan" in result
@@ -363,7 +391,9 @@ class TestPortProfileAssignPlanOnly:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="1", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="1",
+                profile="Trunk-AP",
             )
 
         # Port 1 has existing override with prof_trunk
@@ -382,7 +412,9 @@ class TestPortProfileAssignPlanOnly:
             patch(_PATCH_ASSIGN_PROFILE, mock_assign),
         ):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         mock_assign.assert_not_called()
@@ -406,7 +438,9 @@ class TestPortProfileAssignOutageRisk:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "OutageRiskAgent" in result
@@ -422,7 +456,9 @@ class TestPortProfileAssignOutageRisk:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Outage Risk Assessment" in result
@@ -446,7 +482,9 @@ class TestPortProfileAssignSwitchLookup:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Change Plan" in result
@@ -462,7 +500,9 @@ class TestPortProfileAssignSwitchLookup:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="aa:bb:cc:dd:ee:01", port="5", profile="Trunk-AP",
+                switch="aa:bb:cc:dd:ee:01",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Change Plan" in result
@@ -477,7 +517,9 @@ class TestPortProfileAssignSwitchLookup:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="dev_switch_01", port="5", profile="Trunk-AP",
+                switch="dev_switch_01",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Change Plan" in result
@@ -488,7 +530,9 @@ class TestPortProfileAssignSwitchLookup:
 
         with patch(_PATCH_LIST_DEVICES, mock_devices):
             result = await unifi_port_profile_assign(
-                switch="Nonexistent-Switch", port="5", profile="Trunk-AP",
+                switch="Nonexistent-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Not Found" in result
@@ -504,7 +548,9 @@ class TestPortProfileAssignSwitchLookup:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Nonexistent-Profile",
+                switch="Core-Switch",
+                port="5",
+                profile="Nonexistent-Profile",
             )
 
         assert "Not Found" in result
@@ -523,13 +569,15 @@ class TestPortProfileAssignApplyMode:
         """With apply=True, delegates to unifi__topology__assign_port_profile."""
         mock_devices = AsyncMock(return_value=_mock_devices())
         mock_client = _mock_config_client()
-        mock_assign = AsyncMock(return_value={
-            "device_id": "dev_switch_01",
-            "port_idx": 5,
-            "profile_applied": "Trunk-AP",
-            "profile_id": "prof_trunk",
-            "site_id": "default",
-        })
+        mock_assign = AsyncMock(
+            return_value={
+                "device_id": "dev_switch_01",
+                "port_idx": 5,
+                "profile_applied": "Trunk-AP",
+                "profile_id": "prof_trunk",
+                "site_id": "default",
+            }
+        )
 
         with (
             patch(_PATCH_LIST_DEVICES, mock_devices),
@@ -537,7 +585,10 @@ class TestPortProfileAssignApplyMode:
             patch(_PATCH_ASSIGN_PROFILE, mock_assign),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP", apply=True,
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
+                apply=True,
             )
 
         assert "Port Profile Assigned" in result
@@ -562,7 +613,10 @@ class TestPortProfileAssignApplyMode:
             pytest.raises(WriteGateError),
         ):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP", apply=True,
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
+                apply=True,
             )
 
 
@@ -584,7 +638,9 @@ class TestPortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi_port_profile_create(
-                name="Test", native_vlan=1, apply=True,
+                name="Test",
+                native_vlan=1,
+                apply=True,
             )
 
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
@@ -599,7 +655,9 @@ class TestPortProfileWriteGate:
             pytest.raises(WriteGateError) as exc_info,
         ):
             await unifi_port_profile_create(
-                name="Test", native_vlan=1, apply=True,
+                name="Test",
+                native_vlan=1,
+                apply=True,
             )
 
         assert exc_info.value.reason == WriteBlockReason.ENV_VAR_DISABLED
@@ -616,7 +674,10 @@ class TestPortProfileWriteGate:
             pytest.raises(WriteGateError),
         ):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP", apply=True,
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
+                apply=True,
             )
 
     async def test_assign_write_gate_env_var_unset(self) -> None:
@@ -631,7 +692,10 @@ class TestPortProfileWriteGate:
             pytest.raises(WriteGateError),
         ):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP", apply=True,
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
+                apply=True,
             )
 
 
@@ -649,7 +713,8 @@ class TestThreePhaseModel:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Test", native_vlan=999,
+                name="Test",
+                native_vlan=999,
             )
 
         # Should fail at Phase 1, never reach Phase 2
@@ -662,7 +727,8 @@ class TestThreePhaseModel:
 
         with patch(_PATCH_GET_VLANS, mock_get_vlans):
             result = await unifi_port_profile_create(
-                name="Test", native_vlan=1,
+                name="Test",
+                native_vlan=1,
             )
 
         assert "Change Plan" in result
@@ -673,21 +739,25 @@ class TestThreePhaseModel:
     async def test_create_phase3_executes_with_apply(self) -> None:
         """Phase 3 executes the write when apply=True and gate passes."""
         mock_get_vlans = AsyncMock(return_value=_mock_vlans())
-        mock_create = AsyncMock(return_value={
-            "profile_id": "prof_new",
-            "name": "Test",
-            "native_vlan": 1,
-            "tagged_vlans": [],
-            "poe": False,
-            "site_id": "default",
-        })
+        mock_create = AsyncMock(
+            return_value={
+                "profile_id": "prof_new",
+                "name": "Test",
+                "native_vlan": 1,
+                "tagged_vlans": [],
+                "poe": False,
+                "site_id": "default",
+            }
+        )
 
         with (
             patch(_PATCH_GET_VLANS, mock_get_vlans),
             patch(_PATCH_CREATE_PROFILE, mock_create),
         ):
             result = await unifi_port_profile_create(
-                name="Test", native_vlan=1, apply=True,
+                name="Test",
+                native_vlan=1,
+                apply=True,
             )
 
         assert "Port Profile Created" in result
@@ -699,7 +769,9 @@ class TestThreePhaseModel:
 
         with patch(_PATCH_LIST_DEVICES, mock_devices):
             result = await unifi_port_profile_assign(
-                switch="Nonexistent", port="5", profile="Trunk-AP",
+                switch="Nonexistent",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Not Found" in result
@@ -715,7 +787,9 @@ class TestThreePhaseModel:
             patch(_PATCH_CONFIG_GET_CLIENT, return_value=mock_client),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
             )
 
         assert "Change Plan" in result
@@ -726,13 +800,15 @@ class TestThreePhaseModel:
         """Phase 3 executes the write when apply=True and gate passes."""
         mock_devices = AsyncMock(return_value=_mock_devices())
         mock_client = _mock_config_client()
-        mock_assign = AsyncMock(return_value={
-            "device_id": "dev_switch_01",
-            "port_idx": 5,
-            "profile_applied": "Trunk-AP",
-            "profile_id": "prof_trunk",
-            "site_id": "default",
-        })
+        mock_assign = AsyncMock(
+            return_value={
+                "device_id": "dev_switch_01",
+                "port_idx": 5,
+                "profile_applied": "Trunk-AP",
+                "profile_id": "prof_trunk",
+                "site_id": "default",
+            }
+        )
 
         with (
             patch(_PATCH_LIST_DEVICES, mock_devices),
@@ -740,7 +816,10 @@ class TestThreePhaseModel:
             patch(_PATCH_ASSIGN_PROFILE, mock_assign),
         ):
             result = await unifi_port_profile_assign(
-                switch="Core-Switch", port="5", profile="Trunk-AP", apply=True,
+                switch="Core-Switch",
+                port="5",
+                profile="Trunk-AP",
+                apply=True,
             )
 
         assert "Port Profile Assigned" in result
@@ -759,21 +838,27 @@ class TestPortProfileAssignValidation:
         """Non-numeric port raises ValidationError."""
         with pytest.raises(ValidationError, match="Invalid port"):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="abc", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="abc",
+                profile="Trunk-AP",
             )
 
     async def test_invalid_port_zero_raises(self) -> None:
         """Port index 0 raises ValidationError."""
         with pytest.raises(ValidationError, match="1-based"):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="0", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="0",
+                profile="Trunk-AP",
             )
 
     async def test_invalid_port_negative_raises(self) -> None:
         """Negative port index raises ValidationError."""
         with pytest.raises(ValidationError, match="1-based"):
             await unifi_port_profile_assign(
-                switch="Core-Switch", port="-1", profile="Trunk-AP",
+                switch="Core-Switch",
+                port="-1",
+                profile="Trunk-AP",
             )
 
 

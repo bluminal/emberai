@@ -293,7 +293,9 @@ class TestUnifiClients:
             await unifi_clients(ap_id="aa:bb:cc:dd:ee:ff")
 
         mock_report.assert_called_once_with(
-            "default", vlan_id=None, ap_id="aa:bb:cc:dd:ee:ff",
+            "default",
+            vlan_id=None,
+            ap_id="aa:bb:cc:dd:ee:ff",
         )
 
     async def test_clients_error_propagation(self) -> None:
@@ -341,7 +343,8 @@ class TestUnifiDiagnose:
             await unifi_diagnose(target="aa:bb:cc:dd:ee:ff")
 
         mock_diagnose.assert_called_once_with(
-            "aa:bb:cc:dd:ee:ff", site_id="default",
+            "aa:bb:cc:dd:ee:ff",
+            site_id="default",
         )
 
     async def test_diagnose_custom_site_id(self) -> None:
@@ -352,7 +355,8 @@ class TestUnifiDiagnose:
             await unifi_diagnose(target="aa:bb:cc:dd:ee:ff", site_id="branch")
 
         mock_diagnose.assert_called_once_with(
-            "aa:bb:cc:dd:ee:ff", site_id="branch",
+            "aa:bb:cc:dd:ee:ff",
+            site_id="branch",
         )
 
     async def test_diagnose_error_propagation(self) -> None:

@@ -155,7 +155,4 @@ def is_action_success(raw: dict[str, Any]) -> bool:
 
     if isinstance(result, str) and result.lower() in ("saved", "done"):
         return True
-    if isinstance(status, str) and status.lower() in ("ok", "done"):
-        return True
-
-    return False
+    return isinstance(status, str) and status.lower() in ("ok", "done")

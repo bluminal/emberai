@@ -259,13 +259,16 @@ class TestListClientsReport:
 
     async def test_report_with_clients(self) -> None:
         """Report includes summary and client table."""
-        mock_list = AsyncMock(return_value=[
-            _build_wireless_client(),
-            _build_wired_client(),
-        ])
+        mock_list = AsyncMock(
+            return_value=[
+                _build_wireless_client(),
+                _build_wired_client(),
+            ]
+        )
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report()
 
@@ -281,7 +284,8 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report()
 
@@ -294,7 +298,8 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             await list_clients_report(vlan_id="vlan-123")
 
@@ -302,17 +307,20 @@ class TestListClientsReport:
 
     async def test_report_applies_ap_filter(self) -> None:
         """AP filter is applied client-side after fetching."""
-        mock_list = AsyncMock(return_value=[
-            _build_wireless_client(ap_id="e0:63:da:cc:55:66"),
-            _build_wireless_client(
-                client_mac="xx:xx:xx:xx:xx:xx",
-                hostname="other-device",
-                ap_id="aa:bb:cc:dd:ee:ff",
-            ),
-        ])
+        mock_list = AsyncMock(
+            return_value=[
+                _build_wireless_client(ap_id="e0:63:da:cc:55:66"),
+                _build_wireless_client(
+                    client_mac="xx:xx:xx:xx:xx:xx",
+                    hostname="other-device",
+                    ap_id="aa:bb:cc:dd:ee:ff",
+                ),
+            ]
+        )
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report(ap_id="e0:63:da:cc:55:66")
 
@@ -325,7 +333,8 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             await list_clients_report(site_id="branch")
 
@@ -333,13 +342,16 @@ class TestListClientsReport:
 
     async def test_report_guest_count(self) -> None:
         """Report shows guest count when guests are present."""
-        mock_list = AsyncMock(return_value=[
-            _build_wireless_client(),
-            _build_guest_client(),
-        ])
+        mock_list = AsyncMock(
+            return_value=[
+                _build_wireless_client(),
+                _build_guest_client(),
+            ]
+        )
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report()
 
@@ -350,7 +362,8 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[_build_wireless_client()])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report()
 
@@ -361,10 +374,12 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report(
-                vlan_id="vlan-123", ap_id="aa:bb:cc:dd:ee:ff",
+                vlan_id="vlan-123",
+                ap_id="aa:bb:cc:dd:ee:ff",
             )
 
         assert "Filters:" in result
@@ -376,7 +391,8 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[_build_wireless_client(rssi=56)])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report()
 
@@ -387,7 +403,8 @@ class TestListClientsReport:
         mock_list = AsyncMock(return_value=[])
 
         with patch(
-            "unifi.agents.clients.unifi__clients__list_clients", mock_list,
+            "unifi.agents.clients.unifi__clients__list_clients",
+            mock_list,
         ):
             result = await list_clients_report()
 

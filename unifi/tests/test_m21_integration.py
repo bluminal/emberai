@@ -508,15 +508,17 @@ def _build_port_forwards(sensitive: bool = False) -> list[dict[str, Any]]:
         },
     ]
     if sensitive:
-        forwards.append({
-            "rule_id": "pf2",
-            "name": "SSH Access",
-            "proto": "tcp",
-            "wan_port": "22",
-            "lan_host": "192.168.1.50",
-            "lan_port": "22",
-            "enabled": True,
-        })
+        forwards.append(
+            {
+                "rule_id": "pf2",
+                "name": "SSH Access",
+                "proto": "tcp",
+                "wan_port": "22",
+                "lan_host": "192.168.1.50",
+                "lan_port": "22",
+                "enabled": True,
+            }
+        )
     return forwards
 
 
@@ -821,9 +823,7 @@ class TestConfigAgentIntegration:
         """Zero networks configured produces a WARNING finding."""
         from unifi.agents.config import config_review
 
-        mock_snap = AsyncMock(
-            return_value=_build_config_snapshot(networks=0, wlans=0, rules=0)
-        )
+        mock_snap = AsyncMock(return_value=_build_config_snapshot(networks=0, wlans=0, rules=0))
         mock_backup = AsyncMock(return_value=_build_backup_state())
         mock_diff = AsyncMock(return_value=_build_diff_no_changes())
 

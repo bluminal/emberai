@@ -19,7 +19,6 @@ from unifi.tools.traffic import (
     unifi__traffic__get_wan_usage,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -141,9 +140,7 @@ class TestGetBandwidth:
 
     async def test_custom_site_id(self) -> None:
         mock = AsyncMock()
-        mock.get_normalized = AsyncMock(
-            side_effect=[_normalized([]), _normalized([])]
-        )
+        mock.get_normalized = AsyncMock(side_effect=[_normalized([]), _normalized([])])
         mock.close = AsyncMock()
 
         with patch("unifi.tools.traffic._get_client", return_value=mock):
@@ -155,9 +152,7 @@ class TestGetBandwidth:
 
     async def test_empty_health_data(self) -> None:
         mock = AsyncMock()
-        mock.get_normalized = AsyncMock(
-            side_effect=[_normalized([]), _normalized([])]
-        )
+        mock.get_normalized = AsyncMock(side_effect=[_normalized([]), _normalized([])])
         mock.close = AsyncMock()
 
         with patch("unifi.tools.traffic._get_client", return_value=mock):
@@ -169,9 +164,7 @@ class TestGetBandwidth:
 
     async def test_api_error_propagates(self) -> None:
         mock = AsyncMock()
-        mock.get_normalized = AsyncMock(
-            side_effect=APIError("Server error", status_code=500)
-        )
+        mock.get_normalized = AsyncMock(side_effect=APIError("Server error", status_code=500))
         mock.close = AsyncMock()
 
         with (
@@ -196,14 +189,9 @@ class TestGetBandwidth:
         mock.close.assert_called_once()
 
     async def test_history_limited_by_hours(self) -> None:
-        stat_data = [
-            {"time": i, "wan-rx_bytes": 1000, "wan-tx_bytes": 500}
-            for i in range(48)
-        ]
+        stat_data = [{"time": i, "wan-rx_bytes": 1000, "wan-tx_bytes": 500} for i in range(48)]
         mock = AsyncMock()
-        mock.get_normalized = AsyncMock(
-            side_effect=[_normalized([]), _normalized(stat_data)]
-        )
+        mock.get_normalized = AsyncMock(side_effect=[_normalized([]), _normalized(stat_data)])
         mock.close = AsyncMock()
 
         with patch("unifi.tools.traffic._get_client", return_value=mock):
@@ -224,8 +212,20 @@ class TestGetDpiStats:
         dpi_data = [
             {
                 "by_app": [
-                    {"app": "YouTube", "cat": "Streaming", "tx_bytes": 100, "rx_bytes": 5000, "clients": 3},
-                    {"app": "Netflix", "cat": "Streaming", "tx_bytes": 50, "rx_bytes": 8000, "clients": 2},
+                    {
+                        "app": "YouTube",
+                        "cat": "Streaming",
+                        "tx_bytes": 100,
+                        "rx_bytes": 5000,
+                        "clients": 3,
+                    },
+                    {
+                        "app": "Netflix",
+                        "cat": "Streaming",
+                        "tx_bytes": 50,
+                        "rx_bytes": 8000,
+                        "clients": 2,
+                    },
                 ],
             },
         ]

@@ -16,7 +16,6 @@ import pytest
 
 from tests.fixtures import load_fixture
 
-
 # ---------------------------------------------------------------------------
 # Fixture loader
 # ---------------------------------------------------------------------------
@@ -115,8 +114,7 @@ class TestInterfacesFixtureData:
         required_fields = {"name", "description", "addr4", "subnet4", "type", "status"}
         for iface in data["rows"]:
             assert required_fields.issubset(iface.keys()), (
-                f"Interface {iface['name']} missing fields: "
-                f"{required_fields - iface.keys()}"
+                f"Interface {iface['name']} missing fields: {required_fields - iface.keys()}"
             )
 
 
@@ -177,9 +175,7 @@ class TestFirewallRulesFixtureData:
         valid_actions = {"pass", "block", "reject"}
         data = load_fixture("firewall_rules.json")
         for rule in data["rows"]:
-            assert rule["action"] in valid_actions, (
-                f"Invalid action: {rule['action']}"
-            )
+            assert rule["action"] in valid_actions, f"Invalid action: {rule['action']}"
 
     def test_has_inter_vlan_block_rules(self) -> None:
         """Fixture should include realistic inter-VLAN isolation rules."""
@@ -370,7 +366,7 @@ class TestDHCPLeasesFixtureData:
 
     def test_includes_active_and_expired_leases(self) -> None:
         data = load_fixture("dhcp_leases.json")
-        states = {l["state"] for l in data["rows"]}
+        states = {row["state"] for row in data["rows"]}
         assert "active" in states
         assert "expired" in states
 
@@ -383,7 +379,7 @@ class TestDHCPLeasesFixtureData:
 
     def test_leases_span_multiple_interfaces(self) -> None:
         data = load_fixture("dhcp_leases.json")
-        interfaces = {l["interface"] for l in data["rows"]}
+        interfaces = {row["interface"] for row in data["rows"]}
         assert len(interfaces) >= 2, "Leases should span multiple interfaces"
 
 

@@ -26,7 +26,6 @@ from unifi.safety import (
     write_gate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -186,9 +185,11 @@ class TestWriteGateEnvVar:
 
     @pytest.mark.asyncio
     async def test_error_message_includes_env_var_name(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(WriteGateError, match="UNIFI_WRITE_ENABLED"):
-                await sample_write_tool("test", apply=True)
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(WriteGateError, match="UNIFI_WRITE_ENABLED"),
+        ):
+            await sample_write_tool("test", apply=True)
 
     @pytest.mark.asyncio
     async def test_env_var_takes_priority_over_apply_flag(self) -> None:
@@ -226,9 +227,11 @@ class TestWriteGateApplyFlag:
 
     @pytest.mark.asyncio
     async def test_error_message_mentions_apply(self) -> None:
-        with patch.dict(os.environ, {"UNIFI_WRITE_ENABLED": "true"}):
-            with pytest.raises(WriteGateError, match="--apply"):
-                await sample_write_tool("test")
+        with (
+            patch.dict(os.environ, {"UNIFI_WRITE_ENABLED": "true"}),
+            pytest.raises(WriteGateError, match="--apply"),
+        ):
+            await sample_write_tool("test")
 
 
 # ---------------------------------------------------------------------------
@@ -358,9 +361,8 @@ class TestWriteGateErrorStructure:
 
     @pytest.mark.asyncio
     async def test_error_is_exception(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(Exception):
-                await sample_write_tool("test", apply=True)
+        with patch.dict(os.environ, {}, clear=True), pytest.raises(WriteGateError):
+            await sample_write_tool("test", apply=True)
 
     @pytest.mark.asyncio
     async def test_error_message_is_str(self) -> None:

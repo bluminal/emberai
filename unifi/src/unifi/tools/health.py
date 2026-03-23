@@ -18,8 +18,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from unifi.api.cloud_v1_client import CloudV1Client
-from unifi.api.local_gateway_client import LocalGatewayClient
-from unifi.api.response import NormalizedResponse
 from unifi.models.event import Event
 from unifi.models.health import FirmwareStatus, HealthStatus
 from unifi.server import mcp_server

@@ -202,10 +202,12 @@ class TestResolveTarget:
 
     async def test_resolve_ambiguous(self) -> None:
         """Multiple matches returns ambiguous."""
-        mock_search = AsyncMock(return_value=[
-            _build_client(client_mac="aa:bb:cc:11:22:33", hostname="device-a"),
-            _build_client(client_mac="aa:bb:cc:44:55:66", hostname="device-b"),
-        ])
+        mock_search = AsyncMock(
+            return_value=[
+                _build_client(client_mac="aa:bb:cc:11:22:33", hostname="device-a"),
+                _build_client(client_mac="aa:bb:cc:44:55:66", hostname="device-b"),
+            ]
+        )
         mock_list = AsyncMock(return_value=[])
 
         with (
@@ -278,10 +280,7 @@ class TestAnalyzeClient:
         client = _build_client()
         ap_health = _build_device_health(status="disconnected")
         findings = _analyze_client(client, ap_health, [])
-        assert any(
-            f.severity == Severity.CRITICAL and "AP" in f.title
-            for f in findings
-        )
+        assert any(f.severity == Severity.CRITICAL and "AP" in f.title for f in findings)
 
     def test_ap_high_cpu(self) -> None:
         """AP with high CPU triggers warning."""
@@ -454,10 +453,12 @@ class TestDiagnoseTarget:
 
     async def test_diagnose_ambiguous(self) -> None:
         """Ambiguous target returns assumption resolution prompt."""
-        mock_search = AsyncMock(return_value=[
-            _build_client(client_mac="aa:bb:cc:11:22:33", hostname="device-a"),
-            _build_client(client_mac="aa:bb:cc:44:55:66", hostname="device-b"),
-        ])
+        mock_search = AsyncMock(
+            return_value=[
+                _build_client(client_mac="aa:bb:cc:11:22:33", hostname="device-a"),
+                _build_client(client_mac="aa:bb:cc:44:55:66", hostname="device-b"),
+            ]
+        )
         mock_list_devices = AsyncMock(return_value=[])
 
         with (
@@ -493,10 +494,12 @@ class TestDiagnoseTarget:
         """Device with issues shows critical/warning findings."""
         mock_search = AsyncMock(return_value=[])
         mock_list_devices = AsyncMock(return_value=[_build_device()])
-        mock_device_health = AsyncMock(return_value=_build_device_health(
-            status="disconnected",
-            cpu_usage_pct=95.0,
-        ))
+        mock_device_health = AsyncMock(
+            return_value=_build_device_health(
+                status="disconnected",
+                cpu_usage_pct=95.0,
+            )
+        )
         mock_events = AsyncMock(return_value=[])
 
         with (

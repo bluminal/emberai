@@ -26,7 +26,6 @@ from unifi.tools.wifi import (
     unifi__wifi__get_wlans,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -313,9 +312,7 @@ class TestGetWlans:
 
     async def test_api_error_propagates(self) -> None:
         mock = AsyncMock()
-        mock.get_normalized = AsyncMock(
-            side_effect=APIError("Server error", status_code=500)
-        )
+        mock.get_normalized = AsyncMock(side_effect=APIError("Server error", status_code=500))
         mock.close = AsyncMock()
 
         with (
@@ -409,7 +406,15 @@ class TestGetAps:
         mock.get_normalized.assert_called_once_with("/api/s/branch/stat/device")
 
     async def test_ap_without_radio_table(self) -> None:
-        devices = [{"_id": "ap002", "type": "uap", "model": "U6-LR", "name": "Bare-AP", "mac": "11:22:33:44:55:66"}]
+        devices = [
+            {
+                "_id": "ap002",
+                "type": "uap",
+                "model": "U6-LR",
+                "name": "Bare-AP",
+                "mac": "11:22:33:44:55:66",
+            }
+        ]
         mock = _mock_client_normalized(devices)
 
         with patch("unifi.tools.wifi._get_client", return_value=mock):
@@ -816,9 +821,7 @@ class TestGetClientRf:
         with patch("unifi.tools.wifi._get_client", return_value=mock):
             await unifi__wifi__get_client_rf(client_mac="aa:bb:cc:dd:ee:ff", site_id="remote")
 
-        mock.get_single.assert_called_once_with(
-            "/api/s/remote/stat/sta/aa:bb:cc:dd:ee:ff"
-        )
+        mock.get_single.assert_called_once_with("/api/s/remote/stat/sta/aa:bb:cc:dd:ee:ff")
 
     async def test_missing_noise_snr_is_none(self) -> None:
         raw = {"mac": "aa:bb:cc:dd:ee:ff", "rssi": -55}

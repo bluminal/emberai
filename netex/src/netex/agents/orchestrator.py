@@ -55,6 +55,7 @@ logger = logging.getLogger("netex.orchestrator")
 # Intent classification
 # ---------------------------------------------------------------------------
 
+
 class IntentType:
     """Classification of operator intents."""
 
@@ -129,9 +130,8 @@ def classify_intent(
     else:
         intent_type = IntentType.CROSS_VENDOR
         for _name, match in plugin_matches.items():
-            if (
-                set(required_roles).issubset(set(match["roles"]))
-                and set(required_skills).issubset(set(match["skills"]))
+            if set(required_roles).issubset(set(match["roles"])) and set(required_skills).issubset(
+                set(match["skills"])
             ):
                 intent_type = IntentType.SINGLE_VENDOR
                 break
@@ -170,8 +170,7 @@ def resolve_plugin_for_role(
     plugins = registry.plugins_with_role(role)
     if not plugins:
         raise PluginNotFoundError(
-            f"No plugin provides the '{role}' role. "
-            "Install a compatible vendor plugin.",
+            f"No plugin provides the '{role}' role. Install a compatible vendor plugin.",
             required_role=role,
         )
     return plugins[0]["name"]
@@ -180,6 +179,7 @@ def resolve_plugin_for_role(
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
+
 
 class Orchestrator:
     """Cross-vendor workflow orchestrator.
@@ -241,19 +241,17 @@ class Orchestrator:
             installed plugin.
         """
         classification = classify_intent(
-            required_roles, required_skills, self.registry,
+            required_roles,
+            required_skills,
+            self.registry,
         )
 
         if classification["missing_roles"] or classification["missing_skills"]:
             missing_parts: list[str] = []
             if classification["missing_roles"]:
-                missing_parts.append(
-                    f"roles: {', '.join(classification['missing_roles'])}"
-                )
+                missing_parts.append(f"roles: {', '.join(classification['missing_roles'])}")
             if classification["missing_skills"]:
-                missing_parts.append(
-                    f"skills: {', '.join(classification['missing_skills'])}"
-                )
+                missing_parts.append(f"skills: {', '.join(classification['missing_skills'])}")
             raise PluginNotFoundError(
                 f"Cannot satisfy intent -- missing {'; '.join(missing_parts)}. "
                 "Install additional vendor plugins.",
@@ -264,10 +262,9 @@ class Orchestrator:
         if classification["intent_type"] == IntentType.SINGLE_VENDOR:
             # Find the single plugin that can handle everything
             for name, match in classification["plugins"].items():
-                if (
-                    set(required_roles).issubset(set(match["roles"]))
-                    and set(required_skills).issubset(set(match["skills"]))
-                ):
+                if set(required_roles).issubset(set(match["roles"])) and set(
+                    required_skills
+                ).issubset(set(match["skills"])):
                     result["target_plugin"] = name
                     break
         else:
@@ -336,7 +333,8 @@ class Orchestrator:
 
         # Run NetworkSecurityAgent
         security_findings = await self.security_agent.review_plan(
-            change_steps, self.registry,
+            change_steps,
+            self.registry,
         )
 
         result = {
@@ -559,11 +557,13 @@ class Orchestrator:
                     data={"rollback": True},
                     success=True,
                 )
-                step_results.append({
-                    "step_number": step_number,
-                    "description": description,
-                    "success": True,
-                })
+                step_results.append(
+                    {
+                        "step_number": step_number,
+                        "description": description,
+                        "success": True,
+                    }
+                )
                 rolled_back += 1
 
             except Exception as exc:
@@ -574,12 +574,14 @@ class Orchestrator:
                     data={"rollback": True, "error": str(exc)},
                     success=False,
                 )
-                step_results.append({
-                    "step_number": step_number,
-                    "description": description,
-                    "success": False,
-                    "error": str(exc),
-                })
+                step_results.append(
+                    {
+                        "step_number": step_number,
+                        "description": description,
+                        "success": False,
+                        "error": str(exc),
+                    }
+                )
                 break
 
         # Transition to final state

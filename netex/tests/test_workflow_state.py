@@ -22,12 +22,21 @@ from netex.workflows.workflow_state import (
 # WorkflowState enum
 # ---------------------------------------------------------------------------
 
+
 class TestWorkflowState:
     def test_all_states_exist(self) -> None:
         expected = [
-            "created", "resolving", "planning", "awaiting_confirmation",
-            "executing", "completed", "failed", "rolling_back",
-            "rolled_back", "rollback_failed", "cancelled",
+            "created",
+            "resolving",
+            "planning",
+            "awaiting_confirmation",
+            "executing",
+            "completed",
+            "failed",
+            "rolling_back",
+            "rolled_back",
+            "rollback_failed",
+            "cancelled",
         ]
         for state_value in expected:
             assert WorkflowState(state_value) is not None
@@ -47,6 +56,7 @@ class TestWorkflowState:
 # ---------------------------------------------------------------------------
 # Workflow construction
 # ---------------------------------------------------------------------------
+
 
 class TestWorkflowConstruction:
     def test_default_construction(self) -> None:
@@ -76,6 +86,7 @@ class TestWorkflowConstruction:
 # ---------------------------------------------------------------------------
 # State transitions
 # ---------------------------------------------------------------------------
+
 
 class TestTransitions:
     def test_valid_happy_path(self) -> None:
@@ -213,6 +224,7 @@ class TestTransitions:
 # Step logging
 # ---------------------------------------------------------------------------
 
+
 class TestStepLogging:
     def test_log_step_in_executing(self) -> None:
         wf = Workflow()
@@ -274,6 +286,7 @@ class TestStepLogging:
 # Properties
 # ---------------------------------------------------------------------------
 
+
 class TestProperties:
     def test_is_terminal(self) -> None:
         wf = Workflow()
@@ -300,6 +313,7 @@ class TestProperties:
 # ---------------------------------------------------------------------------
 # Serialization
 # ---------------------------------------------------------------------------
+
 
 class TestSerialization:
     def test_to_dict(self) -> None:
@@ -387,6 +401,7 @@ class TestSerialization:
 # ---------------------------------------------------------------------------
 # StepLogEntry
 # ---------------------------------------------------------------------------
+
 
 class TestStepLogEntry:
     def test_to_dict(self) -> None:
