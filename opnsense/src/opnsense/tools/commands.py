@@ -1645,3 +1645,96 @@ async def opnsense_dns_configure(
         f"- **Listening interfaces:** {', '.join(current_list)}\n"
         f"- **Status:** Reconfigured and applied"
     )
+
+
+# ---------------------------------------------------------------------------
+# DNS-over-TLS forwarding configuration
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_dns_forward(
+    server: str,
+    tls_hostname: str,
+    port: int = 853,
+    description: str = "",
+    apply: bool = False,
+) -> str:
+    """Configure DNS-over-TLS forwarding to an upstream resolver.
+
+    Adds a DoT forwarding server to Unbound and enables forwarding mode.
+    Local DNS (DHCP hostnames, overrides) still resolves locally; only
+    external queries are forwarded.
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        server: DNS server IP address (e.g. '45.90.28.0' for NextDNS).
+        tls_hostname: TLS verification hostname (e.g. 'fe1de8.dns.nextdns.io').
+        port: DNS-over-TLS port (default 853).
+        description: Human-readable description.
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    plan = format_change_plan(steps=[
+        {"description": f"Add DoT forwarder: {server} ({tls_hostname}:{port})"},
+        {"description": "Enable DNS forwarding mode"},
+        {"description": "Reconfigure Unbound"},
+    ])
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    client = _get_client()
+    try:
+        # Step 1: Add DoT forwarding entry
+        dot_result = await client.write(
+            "unbound", "settings", "addDot",
+            data={
+                "dot": {
+                    "enabled": "1",
+                    "type": "dot",
+                    "server": server,
+                    "port": str(port),
+                    "verify": tls_hostname,
+                    "description": description or f"DoT: {tls_hostname}",
+                },
+            },
+        )
+
+        dot_uuid = dot_result.get("uuid", "")
+
+        # Step 2: Enable forwarding mode
+        await client.write(
+            "unbound", "settings", "set",
+            data={
+                "unbound": {
+                    "forwarding": {
+                        "enabled": "1",
+                    },
+                },
+            },
+        )
+
+        # Step 3: Reconfigure
+        await client.reconfigure("unbound", "service")
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Configured DoT forwarding to %s (%s:%d, uuid=%s)",
+        tls_hostname, server, port, dot_uuid,
+        extra={"component": "commands"},
+    )
+
+    return (
+        f"## DNS-over-TLS Forwarding Configured\n\n"
+        f"- **Server:** {server}\n"
+        f"- **TLS Hostname:** {tls_hostname}\n"
+        f"- **Port:** {port}\n"
+        f"- **UUID:** {dot_uuid}\n"
+        f"- **Forwarding mode:** Enabled\n"
+        f"- **Description:** {description or f'DoT: {tls_hostname}'}"
+    )
