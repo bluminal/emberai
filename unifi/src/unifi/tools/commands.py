@@ -693,7 +693,7 @@ async def unifi_wlan_create(
     Without ``apply``: returns a plan-only preview.
 
     Args:
-        name: SSID name (e.g., "Neffroad").
+        name: SSID name (e.g., "MyNetwork").
         passphrase: WiFi password (min 8 characters for WPA).
         network_name: Name of the network to associate with (resolved to
             its ``_id`` internally).

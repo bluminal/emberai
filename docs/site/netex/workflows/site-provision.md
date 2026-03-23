@@ -1,10 +1,10 @@
-# Provisioning the Neffroad Network
+# Provisioning the Ridgeline Network
 
 > **Difficulty:** Advanced | **Time:** 30-60 minutes | **Risk:** Write operation (full site provisioning)
 
 ## Problem Statement
 
-You are building a complete segmented home network from scratch. The Neffroad network is a 7-VLAN home deployment serving as the reference implementation for `netex network provision-site`. This workflow provisions the entire network from a single YAML manifest.
+You are building a complete segmented home network from scratch. The Ridgeline network is a 7-VLAN home deployment serving as the reference implementation for `netex network provision-site`. This workflow provisions the entire network from a single YAML manifest.
 
 ## Prerequisites
 
@@ -15,10 +15,10 @@ You are building a complete segmented home network from scratch. The Neffroad ne
 - UniFi controller reachable and authenticated
 - **Out-of-band access** available (serial console, IPMI, or physical access)
 
-## The Neffroad Manifest
+## The Ridgeline Manifest
 
 ```yaml
-name: Neffroad
+name: Ridgeline
 description: 7-VLAN segmented home network
 
 vlans:
@@ -152,13 +152,13 @@ access_policy:
     description: Quarantine fully isolated
 
 wifi:
-  - ssid: Neffroad-WiFi
+  - ssid: Ridgeline-WiFi
     vlan_name: trusted
     security: wpa3
-  - ssid: Neffroad-Guest
+  - ssid: Ridgeline-Guest
     vlan_name: guest
     security: wpa2-wpa3
-  - ssid: Neffroad-IoT
+  - ssid: Ridgeline-IoT
     vlan_name: iot
     security: wpa2
     band: "2.4"
@@ -208,7 +208,7 @@ Attach the YAML file or paste its contents. Netex executes three phases:
 ### Step 2: Verify the Deployment
 
 ```
-"netex verify-policy --manifest neffroad-network.yaml"
+"netex verify-policy --manifest site-network.yaml"
 ```
 
 Runs the full test suite:

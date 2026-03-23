@@ -1126,7 +1126,7 @@ async def opnsense_dhcp_reserve_batch(
                     data={
                         "host": {
                             "host": dev["hostname"],
-                            "domain": "home.neffroad.net",
+                            "domain": "home.local",
                             "ip": dev["ip"],
                             "hwaddr": dev["mac"],
                             "descr": f"Static reservation for {dev['hostname']}",
@@ -1475,7 +1475,7 @@ async def opnsense_dhcp_configure(
         start_addr: Start of DHCP pool (e.g. '172.16.20.100').
         end_addr: End of DHCP pool (e.g. '172.16.20.199').
         description: Human-readable description.
-        domain: DNS domain for this range (e.g. 'home.neffroad.net').
+        domain: DNS domain for this range (e.g. 'home.local').
         apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
     """
     plan_steps = [

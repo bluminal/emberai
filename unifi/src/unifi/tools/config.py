@@ -593,7 +593,7 @@ async def unifi__config__create_wlan(
     network_id should be the ``_id`` returned from ``create_network``.
 
     Args:
-        name: SSID name (e.g., "Neffroad").
+        name: SSID name (e.g., "MyNetwork").
         passphrase: WiFi password (min 8 characters for WPA).
         network_id: The ``_id`` of the network to associate with.
         security: Security mode (e.g., "wpapsk", "wpa3").

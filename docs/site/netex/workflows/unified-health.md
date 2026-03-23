@@ -65,7 +65,7 @@ For any finding that needs investigation, use the vendor-specific command:
 If your UniFi deployment has multiple sites:
 
 ```
-"netex health --site neffroad"
+"netex health --site ridgeline"
 ```
 
 Filters the health check to a specific site while still including gateway-level data.

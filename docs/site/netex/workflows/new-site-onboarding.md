@@ -53,7 +53,7 @@ Build your site manifest YAML based on your requirements. Start with the key que
 - What WiFi SSIDs do you need? (Typically one per user-facing VLAN)
 - What switch port profiles do you need? (Trunk for APs/switches, access for devices)
 
-See the [Neffroad manifest](neffroad-provision.md) for a complete 7-VLAN example.
+See the [Ridgeline manifest](site-provision.md) for a complete 7-VLAN example.
 
 ### Phase 3: Provision
 
@@ -133,7 +133,7 @@ This is a full site provisioning operation. Since it is a new site with no exist
 
 ## Related Workflows
 
-- [Neffroad Provisioning](neffroad-provision.md)
+- [Site Provisioning](site-provision.md)
 - [Guest WiFi Isolation](guest-wifi-isolation.md)
 - [Post-Change Policy Sync](post-change-policy-sync.md)
 - [Unified Health Check](unified-health.md)

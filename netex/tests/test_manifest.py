@@ -33,7 +33,7 @@ MINIMAL_MANIFEST = textwrap.dedent("""\
 """)
 
 FULL_MANIFEST = textwrap.dedent("""\
-    name: Neffroad
+    name: Ridgeline
     description: 7-VLAN home network
     vlans:
       - vlan_id: 10
@@ -292,7 +292,7 @@ class TestParseManifest:
 
     def test_full_yaml(self) -> None:
         manifest = parse_manifest(FULL_MANIFEST)
-        assert manifest.name == "Neffroad"
+        assert manifest.name == "Ridgeline"
         assert len(manifest.vlans) == 3
         assert len(manifest.access_policy) == 3
         assert len(manifest.wifi) == 2

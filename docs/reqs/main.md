@@ -5,7 +5,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.8.0 — Neffroad validation & new commands |
+| Version | 0.8.0 — Ridgeline validation & new commands |
 | Date | March 2026 |
 | Owner | A.J. · Bluminal Labs LLC |
 | Supersedes | Netex PRD v0.7.0 (SKILL.md manifests) |
@@ -25,7 +25,7 @@
 | 0.5.0 | March 2026 | A.J. | Added §5.2 NetworkSecurityAgent: read-only umbrella agent with two roles — automatic security review of all change plans, and on-demand cross-vendor security audit across 10 domains. Updated §2.1, §7, §8, and §10.3. |
 | 0.6.0 | March 2026 | A.J. | Formalized multi-vendor extensibility: §2.1 reframed as open-ended Plugin Layer Model; §2.3 Future Vendor Plugin Candidates; new §2.4 Vendor Plugin Contract; §5.1 abstract model extended with future-vendor column; Open Questions expanded with items 8–10. |
 | 0.7.0 | March 2026 | A.J. | Added Appendices A, B, C: complete SKILL.md manifests for unifi, opnsense, and netex plugins. Each manifest includes YAML frontmatter, full Claude instruction content, skill groups with tool signatures, commands, and usage examples. These are the literal files the development team implements first. |
-| 0.8.0 | March 2026 | A.J. | Neffroad real-world validation update. Added 6 new tools (`add_alias`, `add_dhcp_reservation`, `configure_vlan` atomic, `create_port_profile`, `assign_port_profile`, `get_lldp_neighbors`) and 5 new commands (`netex network provision-site`, `netex verify-policy`, `netex vlan provision-batch`, `opnsense firewall policy-from-matrix`, `opnsense dhcp reserve-batch`) identified through analysis of a complete 7-VLAN home network buildout. Updated §3, §4, §5, §8 roadmap, §9 workflow catalog, and all three SKILL.md appendices. |
+| 0.8.0 | March 2026 | A.J. | Ridgeline real-world validation update. Added 6 new tools (`add_alias`, `add_dhcp_reservation`, `configure_vlan` atomic, `create_port_profile`, `assign_port_profile`, `get_lldp_neighbors`) and 5 new commands (`netex network provision-site`, `netex verify-policy`, `netex vlan provision-batch`, `opnsense firewall policy-from-matrix`, `opnsense dhcp reserve-batch`) identified through analysis of a complete 7-VLAN home network buildout. Updated §3, §4, §5, §8 roadmap, §9 workflow catalog, and all three SKILL.md appendices. |
 
 ---
 
@@ -521,7 +521,7 @@ The unifi and opnsense plugins are deliberately structured with parallel skill g
 - Week 16–17: Core umbrella commands: vlan configure/audit, topology, health, firewall audit, secure audit.
 - Week 16–17: Core umbrella commands: vlan configure/audit, topology, health, firewall audit, secure audit.
 - Week 17–18: New commands: `network provision-site`, `verify-policy`, `vlan provision-batch`. unifi port-profile commands.
-- Week 18: Umbrella SKILL.md, Neffroad workflow docs, marketplace listing.
+- Week 18: Umbrella SKILL.md, Ridgeline workflow docs, marketplace listing.
 
 ---
 
@@ -661,7 +661,7 @@ Every workflow example follows this 7-section structure — mandatory for all co
 
 | Workflow | Intent | Commands involved |
 |---|---|---|
-| **Neffroad: provision a segmented home network** | **FLAGSHIP:** provision a complete 7-VLAN home network with firewall policy, WiFi SSIDs, and port profiles from a manifest. Full walkthrough at `docs/netex/workflows/advanced/neffroad-provision.md`. | `netex network provision-site` → `netex verify-policy` |
+| **Ridgeline: provision a segmented home network** | **FLAGSHIP:** provision a complete 7-VLAN home network with firewall policy, WiFi SSIDs, and port profiles from a manifest. Full walkthrough at `docs/netex/workflows/advanced/site-provision.md`. | `netex network provision-site` → `netex verify-policy` |
 | Guest WiFi isolation setup | Guest VLAN + SSID + inter-VLAN isolation rules across both systems. | `netex vlan configure` → `netex firewall audit` |
 | Troubleshoot cross-VLAN connectivity | Diagnose why VLAN 30 can reach VLAN 10 through both firewall layers. | `netex firewall audit` → `opnsense diagnose` |
 | Post-change policy sync and validation | Detect drift and reconcile after a maintenance window. | `netex policy sync --dry-run` → `netex vlan audit` → `netex firewall audit` |
@@ -767,7 +767,7 @@ If the session path cannot be determined, default to HIGH and state the reason.
 
 #### `netex network provision-site --manifest <file> [--dry-run] [--apply]`
 
-The site bootstrap command. Accepts a complete network manifest (VLANs, DHCP, access matrix, WiFi SSIDs, port profiles) and orchestrates the entire provisioning sequence in dependency order across all installed vendor plugins. Runs a **single** OutageRiskAgent pass and NSA review for the entire batch — not one per operation. Presents one unified ordered plan and executes with one confirmation. `--dry-run` produces the full plan without executing. Validated against the Neffroad 7-VLAN home network buildout. See [Provisioning the Neffroad network](netex/workflows/advanced/neffroad-provision.md).
+The site bootstrap command. Accepts a complete network manifest (VLANs, DHCP, access matrix, WiFi SSIDs, port profiles) and orchestrates the entire provisioning sequence in dependency order across all installed vendor plugins. Runs a **single** OutageRiskAgent pass and NSA review for the entire batch — not one per operation. Presents one unified ordered plan and executes with one confirmation. `--dry-run` produces the full plan without executing. Validated against the Ridgeline 7-VLAN home network buildout. See [Provisioning the Ridgeline network](netex/workflows/advanced/site-provision.md).
 
 | Property | Detail |
 |---|---|
@@ -1940,7 +1940,7 @@ Execution order: gateway interfaces → DHCP → aliases → rules
   → edge networks → WiFi → port profiles.
 Single operator confirmation. Rollback plan presented before execution.
 --dry-run: full plan without executing.
-See: docs/netex/workflows/advanced/neffroad-provision.md
+See: docs/netex/workflows/advanced/site-provision.md
 
 ### netex verify-policy [--manifest <file>] [--vlan <id>]
 Runs expected-allow and expected-block connectivity tests derived from
@@ -1958,8 +1958,8 @@ provision-site workflow.
 
 ## Examples
 
-# Provision a complete segmented home network (Neffroad)
-User: "Provision my home network from this plan" [attaches neffroad-network.yaml]
+# Provision a complete segmented home network (Ridgeline)
+User: "Provision my home network from this plan" [attaches site-network.yaml]
 -> Phase 1:
      Validate manifest — check all 7 VLAN IDs against both systems
      OutageRiskAgent: single batch assessment → LOW (new trunk, clean state)
@@ -1967,7 +1967,7 @@ User: "Provision my home network from this plan" [attaches neffroad-network.yaml
        adds it to the derived ruleset automatically
 -> Phase 2: present 38-step plan across OPNsense + UniFi with rollback
 -> Phase 3: operator types CONFIRM → execute all 38 steps
--> suggest: netex verify-policy --manifest neffroad-network.yaml
+-> suggest: netex verify-policy --manifest site-network.yaml
 
 # Provision a guest WiFi VLAN end-to-end
 User: "Set up a guest WiFi VLAN — ID 50, 10.50.0.0/24, bind to Guest-WiFi SSID,
