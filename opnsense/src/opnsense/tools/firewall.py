@@ -300,9 +300,12 @@ async def opnsense__firewall__add_rule(
         "rule": {
             "interface": interface.strip(),
             "action": action.lower(),
+            "direction": "in",
+            "quick": "1",
             "source_net": src,
             "destination_net": dst,
-            "ipprotocol": protocol,
+            "ipprotocol": "inet",
+            "protocol": protocol,
             "description": description,
             "enabled": "1",
         },
@@ -319,15 +322,28 @@ async def opnsense__firewall__add_rule(
         )
 
         if not is_action_success(write_result):
+            validations = write_result.get("validations", {})
+            detail = f"validations={validations}" if validations else f"response={write_result}"
             raise APIError(
                 f"Failed to add firewall rule: "
-                f"{write_result.get('result', 'unknown error')}",
+                f"{write_result.get('result', 'unknown error')} -- {detail}",
                 status_code=400,
                 endpoint="/api/firewall/filter/addRule",
                 response_body=str(write_result),
             )
 
-        await client.reconfigure("firewall", "filter")
+        # OPNsense 26.x uses savepoint/apply/cancelRollback for firewall
+        savepoint_result = await client.post(
+            "firewall", "filter", "savepoint",
+        )
+        revision = savepoint_result.get("revision", "")
+        if revision:
+            await client.post(
+                "firewall", "filter", f"apply/{revision}",
+            )
+            await client.post(
+                "firewall", "filter", f"cancelRollback/{revision}",
+            )
 
     finally:
         await client.close()

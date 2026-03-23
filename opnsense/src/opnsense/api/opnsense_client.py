@@ -318,6 +318,163 @@ class OPNsenseClient:
         endpoint = self.build_url(module, controller, command)
         return await self._request("POST", endpoint, json_data=data)
 
+    async def post_legacy(
+        self,
+        path: str,
+        form_data: dict[str, str],
+    ) -> str:
+        """POST form data to a legacy OPNsense PHP page.
+
+        Legacy pages require session-based auth (not API key). This method
+        automatically logs in using OPNSENSE_USERNAME/OPNSENSE_PASSWORD env
+        vars, extracts CSRF tokens, and submits the form.
+
+        Parameters
+        ----------
+        path:
+            Page path (e.g., '/interfaces_assign.php').
+        form_data:
+            Form fields as key-value pairs (form-encoded POST body).
+
+        Returns
+        -------
+        str
+            The HTML response body.
+
+        Raises
+        ------
+        APIError
+            On non-2xx responses or login failure.
+        NetworkError
+            On connection failures, timeouts, or SSL errors.
+        """
+        import os
+        import re as _re
+
+        url = path if path.startswith("/") else f"/{path}"
+
+        try:
+            # Create a session-based client (separate from API client)
+            if not hasattr(self, "_legacy_client") or self._legacy_client is None:
+                username = os.environ.get("OPNSENSE_USERNAME", "")
+                password = os.environ.get("OPNSENSE_PASSWORD", "")
+                if not username or not password:
+                    raise APIError(
+                        "OPNSENSE_USERNAME and OPNSENSE_PASSWORD env vars required "
+                        "for legacy page operations (interface assignment, IP config).",
+                        status_code=401,
+                        endpoint=url,
+                    )
+
+                self._legacy_client = httpx.AsyncClient(
+                    base_url=self._base_url,
+                    verify=self._verify_ssl,
+                    timeout=httpx.Timeout(self._timeout),
+                    follow_redirects=True,
+                )
+
+                # Login: GET the login page to get CSRF token
+                login_resp = await self._legacy_client.get("/")
+                csrf_key, csrf_val = self._extract_csrf(login_resp.text)
+
+                # POST credentials
+                login_data: dict[str, str] = {
+                    "usernamefld": username,
+                    "passwordfld": password,
+                    "login": "1",
+                }
+                if csrf_key and csrf_val:
+                    login_data[csrf_key] = csrf_val
+
+                login_result = await self._legacy_client.post(
+                    "/",
+                    data=login_data,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+
+                # Check if login succeeded (should redirect to dashboard)
+                if "Username or Password incorrect" in login_result.text:
+                    raise APIError(
+                        "OPNsense web UI login failed: incorrect credentials.",
+                        status_code=401,
+                        endpoint="/",
+                    )
+
+                logger.info("Authenticated to OPNsense web UI for legacy operations")
+
+            # GET the target page to extract fresh CSRF token
+            get_response = await self._legacy_client.get(url)
+            if get_response.status_code >= 400:
+                raise APIError(
+                    f"Legacy page GET failed: {get_response.status_code}",
+                    status_code=get_response.status_code,
+                    endpoint=url,
+                    response_body=get_response.text[:500],
+                )
+
+            csrf_key, csrf_val = self._extract_csrf(get_response.text)
+
+            # POST with CSRF token + form data
+            post_data = dict(form_data)
+            if csrf_key and csrf_val:
+                post_data[csrf_key] = csrf_val
+
+            response = await self._legacy_client.post(
+                url,
+                data=post_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            if response.status_code >= 400:
+                raise APIError(
+                    f"Legacy page POST failed: {response.status_code}",
+                    status_code=response.status_code,
+                    endpoint=url,
+                    response_body=response.text[:500],
+                )
+            return response.text
+
+        except (APIError, NetworkError):
+            raise
+        except httpx.ConnectError as exc:
+            raise NetworkError(str(exc), original_error=exc) from exc
+        except httpx.TimeoutException as exc:
+            raise NetworkError(f"Timeout: {exc}", original_error=exc) from exc
+
+    @staticmethod
+    def _extract_csrf(html: str) -> tuple[str, str]:
+        """Extract CSRF field name and value from an OPNsense HTML page.
+
+        OPNsense uses a random CSRF field name per session. The token is
+        embedded as a hidden form input.
+
+        Returns (field_name, token_value) or ("", "") if not found.
+        """
+        import re as _re
+
+        # Pattern: <input type="hidden" name="RANDOM_NAME" value="TOKEN" />
+        # The CSRF field is the first hidden input that's not a known field
+        matches = _re.findall(
+            r'<input\s+type=["\']hidden["\']\s+name=["\']([^"\']+)["\']\s+'
+            r'value=["\']([^"\']*)["\']',
+            html,
+        )
+        for name, value in matches:
+            # Skip known non-CSRF hidden fields
+            if name in ("if", "id", "action", "referer", "act", "sequence"):
+                continue
+            if value and len(value) > 10:  # CSRF tokens are long
+                return name, value
+
+        # Fallback: try X-CSRFToken pattern from JavaScript
+        match = _re.search(
+            r'X-CSRFToken["\'],\s*["\']([^"\']+)["\']',
+            html,
+        )
+        if match:
+            return "", match.group(1)  # Use X-CSRFToken header instead
+
+        return "", ""
+
     # ------------------------------------------------------------------
     # Public API — Write + Reconfigure pattern (Task 82)
     # ------------------------------------------------------------------
@@ -443,6 +600,9 @@ class OPNsenseClient:
     async def close(self) -> None:
         """Close the underlying httpx client and release resources."""
         await self._client.aclose()
+        if hasattr(self, "_legacy_client") and self._legacy_client is not None:
+            await self._legacy_client.aclose()
+            self._legacy_client = None
         logger.debug("Closed OPNsenseClient for %s", self._base_url)
 
     # ------------------------------------------------------------------

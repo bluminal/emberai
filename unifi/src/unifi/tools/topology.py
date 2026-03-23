@@ -441,9 +441,20 @@ async def unifi__topology__assign_port_profile(
     client = _get_client()
     try:
         # Step 1: Fetch current device to get existing port_overrides
-        device_raw = await client.get_single(
-            f"/api/s/{site_id}/stat/device/{device_id}",
+        # Use the list endpoint and filter — stat/device/{id} GET returns 400
+        all_devices = await client.get_normalized(
+            f"/api/s/{site_id}/stat/device",
         )
+        device_raw = None
+        for d in all_devices.data:
+            if d.get("_id") == device_id:
+                device_raw = d
+                break
+        if device_raw is None:
+            raise ValidationError(
+                f"Device '{device_id}' not found.",
+                details={"field": "device_id", "value": device_id},
+            )
 
         # Step 2: Look up the port profile by name
         portconf_resp = await client.get_normalized(

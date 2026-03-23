@@ -406,11 +406,37 @@ async def unifi__config__create_port_profile(
             ) from exc
         _validate_vlan_id(tag_int, "tagged_vlans")
 
+    # --- Resolve VLAN tag numbers to network ObjectIDs ---
+    from unifi.api.response import normalize_response as _norm_resp
+
+    client = _get_client()
+    try:
+        nets_resp = await client.get_normalized(f"/api/s/{site_id}/rest/networkconf")
+    finally:
+        await client.close()
+
+    # Build tag-to-ObjectID lookup
+    tag_to_oid: dict[int, str] = {}
+    for net in nets_resp.data:
+        oid = net.get("_id", "")
+        tag_val = net.get("vlan")
+        if tag_val is not None and oid:
+            try:
+                tag_to_oid[int(tag_val)] = oid
+            except (ValueError, TypeError):
+                pass
+        # Default LAN (no vlan tag) → VLAN 1
+        if not net.get("vlan_enabled", False) and oid:
+            tag_to_oid[1] = oid
+
+    native_oid = tag_to_oid.get(native_vlan, str(native_vlan))
+    tagged_oids = [tag_to_oid.get(int(t), t) for t in tagged_list]
+
     # --- Build API payload ---
     body: dict[str, Any] = {
         "name": name.strip(),
-        "native_networkconf_id": str(native_vlan),
-        "tagged_networkconf_ids": tagged_list,
+        "native_networkconf_id": native_oid,
+        "tagged_networkconf_ids": tagged_oids,
         "poe_mode": "auto" if poe else "off",
     }
 
@@ -446,5 +472,250 @@ async def unifi__config__create_port_profile(
         "native_vlan": native_vlan,
         "tagged_vlans": tagged_list,
         "poe": poe,
+        "site_id": site_id,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tool 6: Create Network (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+@write_gate("UNIFI")
+async def unifi__config__create_network(
+    name: str,
+    vlan_id: int,
+    purpose: str = "corporate",
+    dhcp_enabled: bool = False,
+    igmp_snooping: bool = True,
+    site_id: str = "default",
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Create a VLAN-tagged network on the UniFi controller.
+
+    Write-gated: requires UNIFI_WRITE_ENABLED=true and apply=True.
+
+    Creates a network (networkconf) that can be associated with switch
+    port profiles and WLANs.  DHCP is disabled by default since OPNsense
+    typically handles DHCP for the network.
+
+    Args:
+        name: Network name (e.g., "Trusted").
+        vlan_id: VLAN ID (1-4094).
+        purpose: Network purpose ("corporate" or "guest").
+        dhcp_enabled: Whether UniFi should run DHCP (usually False when
+            OPNsense handles DHCP).
+        igmp_snooping: Enable IGMP snooping.
+        site_id: UniFi site ID. Defaults to "default".
+        apply: Must be True to execute (write gate).
+    """
+    # --- Input validation ---
+    if not name or not name.strip():
+        raise ValidationError(
+            "Network name must not be empty.",
+            details={"field": "name"},
+        )
+
+    _validate_vlan_id(vlan_id, "vlan_id")
+
+    # --- Build API payload ---
+    body: dict[str, Any] = {
+        "name": name.strip(),
+        "purpose": purpose.strip(),
+        "vlan_enabled": True,
+        "vlan": str(vlan_id),
+        "dhcpd_enabled": dhcp_enabled,
+        "igmp_snooping": igmp_snooping,
+    }
+
+    endpoint = f"/api/s/{site_id}/rest/networkconf"
+
+    client = _get_client()
+    try:
+        raw_response = await client.post(endpoint, data=body)
+    finally:
+        await client.close()
+
+    # Parse the response envelope to extract the created network
+    normalized = normalize_response(raw_response)
+
+    network_data = normalized.data[0] if normalized.data else {}
+    network_id = network_data.get("_id", "")
+
+    logger.info(
+        "Created network '%s' (id=%s) for site '%s': "
+        "vlan_id=%d, purpose=%s, dhcp=%s, igmp_snooping=%s",
+        name,
+        network_id,
+        site_id,
+        vlan_id,
+        purpose,
+        dhcp_enabled,
+        igmp_snooping,
+        extra={"component": "config"},
+    )
+
+    return {
+        "network_id": network_id,
+        "name": name.strip(),
+        "vlan_id": vlan_id,
+        "purpose": purpose,
+        "dhcp_enabled": dhcp_enabled,
+        "site_id": site_id,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tool 7: Create WLAN (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+@write_gate("UNIFI")
+async def unifi__config__create_wlan(
+    name: str,
+    passphrase: str,
+    network_id: str,
+    security: str = "wpapsk",
+    wlan_band: str = "both",
+    enabled: bool = True,
+    site_id: str = "default",
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Create a wireless network (SSID) on the UniFi controller.
+
+    Write-gated: requires UNIFI_WRITE_ENABLED=true and apply=True.
+
+    Creates a WLAN (wlanconf) associated with an existing network.  The
+    network_id should be the ``_id`` returned from ``create_network``.
+
+    Args:
+        name: SSID name (e.g., "Neffroad").
+        passphrase: WiFi password (min 8 characters for WPA).
+        network_id: The ``_id`` of the network to associate with.
+        security: Security mode (e.g., "wpapsk", "wpa3").
+        wlan_band: Band ("2g", "5g", "both").
+        enabled: Whether SSID is active.
+        site_id: UniFi site ID. Defaults to "default".
+        apply: Must be True to execute (write gate).
+    """
+    # --- Input validation ---
+    if not name or not name.strip():
+        raise ValidationError(
+            "WLAN name must not be empty.",
+            details={"field": "name"},
+        )
+
+    if not passphrase or len(passphrase) < 8:
+        raise ValidationError(
+            "Passphrase must be at least 8 characters for WPA.",
+            details={"field": "passphrase"},
+        )
+
+    if not network_id or not network_id.strip():
+        raise ValidationError(
+            "Network ID must not be empty.",
+            details={"field": "network_id"},
+        )
+
+    # --- Look up default user group (required for WLAN creation) ---
+    client = _get_client()
+    try:
+        usergroup_resp = await client.get_normalized(
+            f"/api/s/{site_id}/rest/usergroup",
+        )
+        usergroup_id = ""
+        for ug in usergroup_resp.data:
+            usergroup_id = ug.get("_id", "")
+            if ug.get("attr_no_delete"):  # Default user group
+                break
+
+        # --- Build API payload ---
+        body: dict[str, Any] = {
+            "name": name.strip(),
+            "x_passphrase": passphrase,
+            "networkconf_id": network_id.strip(),
+            "security": security.strip(),
+            "wpa_enc": "ccmp",
+            "wpa_mode": "wpa2",
+            "enabled": enabled,
+            "wlan_band": "both",
+            "wlan_bands": ["2g", "5g"],
+            "ap_group_mode": "all",
+        }
+        if usergroup_id:
+            body["usergroup_id"] = usergroup_id
+        if wlan_band.strip().lower() == "2g":
+            body["wlan_band"] = "2g"
+            body["wlan_bands"] = ["2g"]
+        elif wlan_band.strip().lower() == "5g":
+            body["wlan_band"] = "5g"
+            body["wlan_bands"] = ["5g"]
+
+        # Check if WLAN with this name already exists — update instead of create
+        existing_wlans = await client.get_normalized(
+            f"/api/s/{site_id}/rest/wlanconf",
+        )
+        existing_wlan_id = None
+        for wlan in existing_wlans.data:
+            if wlan.get("name", "").strip().lower() == name.strip().lower():
+                existing_wlan_id = wlan.get("_id", "")
+                break
+
+        if existing_wlan_id:
+            # Update existing WLAN via PUT
+            endpoint = f"/api/s/{site_id}/rest/wlanconf/{existing_wlan_id}"
+            raw_response = await client.put(endpoint, data=body)
+        else:
+            # Create new WLAN — use an existing WLAN as template if available
+            # to ensure all required fields are populated
+            template_wlan = None
+            for wlan in existing_wlans.data:
+                if wlan.get("security") == "wpapsk":
+                    template_wlan = dict(wlan)
+                    break
+
+            if template_wlan:
+                # Remove identity/unique fields from template
+                for key in ("_id", "site_id", "external_id", "x_iapp_key"):
+                    template_wlan.pop(key, None)
+                # Override with our values
+                template_wlan.update(body)
+                body = template_wlan
+
+            endpoint = f"/api/s/{site_id}/rest/wlanconf"
+            raw_response = await client.post(endpoint, data=body)
+    finally:
+        await client.close()
+
+    # Parse the response envelope to extract the created WLAN
+    normalized = normalize_response(raw_response)
+
+    wlan_data = normalized.data[0] if normalized.data else {}
+    wlan_id = wlan_data.get("_id", "")
+
+    logger.info(
+        "Created WLAN '%s' (id=%s) for site '%s': "
+        "network=%s, security=%s, band=%s, enabled=%s",
+        name,
+        wlan_id,
+        site_id,
+        network_id,
+        security,
+        wlan_band,
+        enabled,
+        extra={"component": "config"},
+    )
+
+    return {
+        "wlan_id": wlan_id,
+        "name": name.strip(),
+        "network_id": network_id,
+        "security": security,
+        "wlan_band": wlan_band,
+        "enabled": enabled,
         "site_id": site_id,
     }

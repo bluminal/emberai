@@ -64,6 +64,8 @@ OPNsense has an additional pattern: write (saves config) and reconfigure (applie
 | `OPNSENSE_API_KEY` | opnsense | API key (Basic Auth username) |
 | `OPNSENSE_API_SECRET` | opnsense | API secret (Basic Auth password) |
 | `OPNSENSE_VERIFY_SSL` | opnsense | Set to "false" for self-signed certs |
+| `OPNSENSE_USERNAME` | opnsense | Web UI username (for legacy page operations) |
+| `OPNSENSE_PASSWORD` | opnsense | Web UI password (for legacy page operations) |
 
 ## Key Architectural Rules
 

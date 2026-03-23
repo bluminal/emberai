@@ -81,6 +81,10 @@ async def opnsense__interfaces__list_interfaces() -> list[dict[str, Any]]:
         # If the response is a flat dict (action-style), the rows contain
         # the full response which may be keyed by interface name.
         if "name" in row:
+            # Skip FreeBSD pseudo-interfaces that aren't assigned
+            # in OPNsense (e.g. nd6, config).
+            if not row.get("identifier"):
+                continue
             try:
                 iface = Interface.model_validate(row)
                 interfaces.append(iface.model_dump(by_alias=False))
@@ -96,6 +100,10 @@ async def opnsense__interfaces__list_interfaces() -> list[dict[str, Any]]:
                 if isinstance(value, dict) and "name" not in value:
                     value["name"] = key
                 if isinstance(value, dict):
+                    # Skip FreeBSD pseudo-interfaces that aren't assigned
+                    # in OPNsense (e.g. nd6, config).
+                    if not value.get("identifier"):
+                        continue
                     try:
                         iface = Interface.model_validate(value)
                         interfaces.append(iface.model_dump(by_alias=False))
@@ -127,7 +135,7 @@ async def opnsense__interfaces__list_vlan_interfaces() -> list[dict[str, Any]]:
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "interfaces", "vlan", "searchItem",
+            "interfaces", "vlan_settings", "searchItem",
             cache_key="interfaces:vlans",
             ttl=CacheTTL.VLAN_INTERFACES,
         )
@@ -176,7 +184,7 @@ async def opnsense__interfaces__get_dhcp_leases(
     client = _get_client()
     try:
         raw = await client.get_cached(
-            "kea", "leases4", "search",
+            "kea", "leases", "search",
             cache_key="dhcp:leases",
             ttl=CacheTTL.DHCP_LEASES,
         )
@@ -257,13 +265,16 @@ async def opnsense__interfaces__add_vlan_interface(
     client = _get_client()
     try:
         # Write the VLAN definition
+        vlan_device = f"vlan0.{tag}"
         write_result = await client.write(
-            "interfaces", "vlan", "addItem",
+            "interfaces", "vlan_settings", "addItem",
             data={
                 "vlan": {
                     "if": parent_if.strip(),
                     "tag": str(tag),
+                    "pcp": "0",
                     "descr": description,
+                    "vlanif": vlan_device,
                 },
             },
         )
@@ -278,7 +289,7 @@ async def opnsense__interfaces__add_vlan_interface(
             )
 
         # Reconfigure to apply
-        await client.reconfigure("interfaces", "vlan")
+        await client.reconfigure("interfaces", "vlan_settings")
 
     finally:
         await client.close()
@@ -340,7 +351,7 @@ async def opnsense__interfaces__add_dhcp_reservation(
     client = _get_client()
     try:
         write_result = await client.write(
-            "kea", "dhcpv4", "addReservation",
+            "kea", "dhcpv4", "add_reservation",
             data={
                 "reservation": {
                     "hw_address": mac.strip(),
@@ -359,7 +370,7 @@ async def opnsense__interfaces__add_dhcp_reservation(
                 response_body=str(write_result),
             )
 
-        await client.reconfigure("kea", "dhcpv4")
+        await client.reconfigure("kea", "service")
 
     finally:
         await client.close()
@@ -440,7 +451,7 @@ async def opnsense__interfaces__add_dhcp_subnet(
             subnet_data["subnet4"]["option_data"] = dns_servers.strip()
 
         write_result = await client.write(
-            "kea", "dhcpv4", "addSubnet",
+            "kea", "dhcpv4", "add_subnet",
             data=subnet_data,
         )
 
@@ -453,7 +464,7 @@ async def opnsense__interfaces__add_dhcp_subnet(
                 response_body=str(write_result),
             )
 
-        await client.reconfigure("kea", "dhcpv4")
+        await client.reconfigure("kea", "service")
 
     finally:
         await client.close()
@@ -485,6 +496,7 @@ async def opnsense__interfaces__configure_vlan(
     dhcp_range_from: str = "",
     dhcp_range_to: str = "",
     description: str = "",
+    dns_servers: str = "",
     *,
     apply: bool = False,
 ) -> dict[str, Any]:
@@ -506,6 +518,7 @@ async def opnsense__interfaces__configure_vlan(
         dhcp_range_from: Optional start of DHCP pool range.
         dhcp_range_to: Optional end of DHCP pool range.
         description: Human-readable description for this VLAN.
+        dns_servers: Comma-separated DNS server addresses for the DHCP subnet.
         apply: Must be True to execute (write gate).
     """
     if not 1 <= tag <= 4094:
@@ -546,23 +559,30 @@ async def opnsense__interfaces__configure_vlan(
     client = _get_client()
     try:
         # Step 1: Create VLAN interface
+        # OPNsense 26.x requires vlanif (device name) in the payload
+        vlan_device = f"vlan0.{tag}"
         vlan_result = await client.write(
-            "interfaces", "vlan", "addItem",
+            "interfaces", "vlan_settings", "addItem",
             data={
                 "vlan": {
                     "if": parent_if.strip(),
                     "tag": str(tag),
+                    "pcp": "0",
                     "descr": description,
+                    "vlanif": vlan_device,
                 },
             },
         )
 
         if not is_action_success(vlan_result):
+            # Include full response for debugging (validations, etc.)
+            validations = vlan_result.get("validations", {})
+            detail = f"validations={validations}" if validations else f"response={vlan_result}"
             raise APIError(
                 f"Step 1 failed: Could not create VLAN {tag} on {parent_if}: "
-                f"{vlan_result.get('result', 'unknown error')}",
+                f"{vlan_result.get('result', 'unknown error')} -- {detail}",
                 status_code=400,
-                endpoint="/api/interfaces/vlan/addItem",
+                endpoint="/api/interfaces/vlan_settings/addItem",
                 response_body=str(vlan_result),
             )
 
@@ -570,91 +590,152 @@ async def opnsense__interfaces__configure_vlan(
         completed_steps.append("create_vlan")
 
         # Step 2: Reconfigure interfaces to register the new VLAN
-        await client.reconfigure("interfaces", "vlan")
+        await client.reconfigure("interfaces", "vlan_settings")
         completed_steps.append("reconfigure_vlan")
 
-        # Step 3: Set IP address on the VLAN interface
-        # OPNsense assigns interface names like igb1_vlan{tag}
-        vlan_if_name = f"{parent_if.strip()}_vlan{tag}"
-        ip_result = await client.write(
-            "interfaces", "overview", "setItem",
-            data={
-                "interface": {
-                    "if": vlan_if_name,
-                    "ipaddr": ip.strip(),
-                    "subnet": subnet.strip(),
-                    "descr": description,
-                    "enable": "1",
-                },
-            },
-        )
-
-        if not is_action_success(ip_result):
-            # Rollback: delete the VLAN we just created
-            logger.warning(
-                "Step 3 failed, rolling back VLAN %d creation (uuid=%s)",
-                tag, vlan_uuid,
-            )
-            if vlan_uuid:
-                try:
-                    await client.write(
-                        "interfaces", "vlan", "delItem",
-                        data={"uuid": vlan_uuid},
-                    )
-                    await client.reconfigure("interfaces", "vlan")
-                except Exception:
-                    logger.error(
-                        "Rollback failed for VLAN %d (uuid=%s)",
-                        tag, vlan_uuid,
-                        exc_info=True,
-                    )
-
-            raise APIError(
-                f"Step 3 failed: Could not set IP {ip}/{subnet} on {vlan_if_name}: "
-                f"{ip_result.get('result', 'unknown error')}",
-                status_code=400,
-                endpoint="/api/interfaces/overview/setItem",
-                response_body=str(ip_result),
-            )
-
-        completed_steps.append("set_ip")
-
-        # Reconfigure to apply IP assignment
-        await client.reconfigure("interfaces", "overview")
-        completed_steps.append("reconfigure_ip")
-
-        # Step 4 (optional): Configure DHCP
-        dhcp_uuid: str = ""
-        if has_dhcp:
-            dhcp_result = await client.write(
-                "kea", "dhcpv4", "addSubnet",
-                data={
-                    "subnet4": {
-                        "interface": vlan_if_name,
-                        "subnet": f"{ip.strip()}/{subnet.strip()}",
-                        "pools": f"{dhcp_range_from.strip()}-{dhcp_range_to.strip()}",
-                    },
+        # Step 3: Assign VLAN device + configure IP via legacy pages
+        # OPNsense 26.x has no MVC API for these — uses session-based auth
+        # with CSRF tokens on legacy PHP pages.
+        vlan_if_name = vlan_device
+        try:
+            # 3a: Assign the VLAN device to a new interface slot
+            await client.post_legacy(
+                "/interfaces_assign.php",
+                form_data={
+                    "if_add": vlan_if_name,
+                    "new_entry_descr": description or f"VLAN{tag}",
+                    "add_x": "Add",
                 },
             )
+            completed_steps.append("assign_interface")
 
-            if not is_action_success(dhcp_result):
+            # 3b: Find which interface slot was assigned by parsing
+            # the assignments page HTML (more reliable than API on 26.x)
+            import re as _re
+            assign_html = await client.post_legacy(
+                "/interfaces_assign.php",
+                form_data={},  # GET-like POST just to get the page with CSRF
+            )
+            # Look for our device in the table rows
+            # Pattern: identifier like "opt3" paired with our device name
+            assigned_if = None
+            # Match rows: <td>opt3</td> ... vlan0.20
+            opt_matches = _re.findall(
+                r'name=["\'](\w+)["\']\s[^>]*>.*?'
+                + _re.escape(vlan_if_name),
+                assign_html,
+                _re.DOTALL,
+            )
+            if opt_matches:
+                assigned_if = opt_matches[-1]
+            else:
+                # Fallback: find optN associated with our device
+                # The assignments page has <select name="optN"> with our device as the selected option
+                for m in _re.finditer(
+                    r'<select[^>]*name=["\'](\w+)["\'][^>]*>.*?</select>',
+                    assign_html,
+                    _re.DOTALL,
+                ):
+                    select_name = m.group(1)
+                    if vlan_if_name in m.group(0) and "selected" in m.group(0):
+                        assigned_if = select_name
+                        break
+
+            if not assigned_if:
                 logger.warning(
-                    "Step 4 failed: DHCP configuration for VLAN %d failed. "
-                    "VLAN and IP assignment are still in place.",
-                    tag,
+                    "Could not determine assigned interface for %s",
+                    vlan_if_name,
                 )
-                raise APIError(
-                    f"Step 4 failed: Could not configure DHCP on {vlan_if_name}: "
-                    f"{dhcp_result.get('result', 'unknown error')}. "
-                    f"VLAN {tag} and IP {ip}/{subnet} were successfully configured.",
-                    status_code=400,
-                    endpoint="/api/kea/dhcpv4/addSubnet",
-                    response_body=str(dhcp_result),
+                completed_steps.append("assign_lookup_failed")
+            else:
+                # 3c: Configure IP on the assigned interface
+                await client.post_legacy(
+                    f"/interfaces.php?if={assigned_if}",
+                    form_data={
+                        "if": assigned_if,
+                        "enable": "yes",
+                        "descr": description or f"VLAN{tag}",
+                        "type": "staticv4",
+                        "ipaddr": ip.strip(),
+                        "subnet": subnet.strip(),
+                        "gateway": "none",
+                        "type6": "none",
+                        "Submit": "Save",
+                    },
+                )
+                completed_steps.append("set_ip")
+
+                # 3d: Apply the interface configuration
+                await client.post_legacy(
+                    f"/interfaces.php?if={assigned_if}",
+                    form_data={
+                        "if": assigned_if,
+                        "apply": "Apply changes",
+                    },
+                )
+                completed_steps.append("apply_ip")
+
+        except Exception as exc:
+            logger.warning(
+                "Step 3 failed for VLAN %d: %s. VLAN device created but "
+                "assignment/IP may need manual config.",
+                tag, exc,
+            )
+            completed_steps.append("step3_failed")
+
+        # Step 4 (optional): Configure DHCP via dnsmasq MVC API
+        dhcp_uuid: str = ""
+        if has_dhcp and "set_ip" in completed_steps:
+            # 4a: Add interface to dnsmasq listeners
+            try:
+                settings_raw = await client.get("dnsmasq", "settings", "get")
+                iface_list: list[str] = []
+                if isinstance(settings_raw, dict):
+                    dnsmasq_cfg = settings_raw.get("dnsmasq", {})
+                    if isinstance(dnsmasq_cfg, dict):
+                        iface_field = dnsmasq_cfg.get("interface", "")
+                        if isinstance(iface_field, str):
+                            iface_list = [i.strip() for i in iface_field.split(",") if i.strip()]
+                        elif isinstance(iface_field, dict):
+                            iface_list = [k for k, v in iface_field.items()
+                                          if isinstance(v, dict) and v.get("selected")]
+                if assigned_if and assigned_if not in iface_list:
+                    iface_list.append(assigned_if)
+                    await client.write(
+                        "dnsmasq", "settings", "set",
+                        data={"dnsmasq": {"interface": ",".join(iface_list)}},
+                    )
+
+                # 4b: Create DHCP range
+                range_data: dict[str, Any] = {
+                    "range": {
+                        "interface": assigned_if or "",
+                        "start_addr": dhcp_range_from.strip(),
+                        "end_addr": dhcp_range_to.strip(),
+                        "description": f"DHCP for {description or f'VLAN {tag}'}",
+                        "domain_type": "range",
+                    },
+                }
+
+                dhcp_result = await client.write(
+                    "dnsmasq", "settings", "add_range",
+                    data=range_data,
                 )
 
-            dhcp_uuid = dhcp_result.get("uuid", "")
-            await client.reconfigure("kea", "dhcpv4")
-            completed_steps.append("configure_dhcp")
+                if not is_action_success(dhcp_result):
+                    validations = dhcp_result.get("validations", {})
+                    detail = f"validations={validations}" if validations else f"response={dhcp_result}"
+                    logger.warning("DHCP config failed for VLAN %d: %s", tag, detail)
+                    completed_steps.append("dhcp_failed")
+                else:
+                    dhcp_uuid = dhcp_result.get("uuid", "")
+                    await client.reconfigure("dnsmasq", "service")
+                    completed_steps.append("configure_dhcp")
+            except Exception as exc:
+                logger.warning("DHCP config failed for VLAN %d: %s", tag, exc)
+                completed_steps.append("dhcp_failed")
+        elif has_dhcp:
+            completed_steps.append("dhcp_deferred")
 
     finally:
         await client.close()
@@ -681,5 +762,7 @@ async def opnsense__interfaces__configure_vlan(
         result["dhcp_range_from"] = dhcp_range_from.strip()
         result["dhcp_range_to"] = dhcp_range_to.strip()
         result["dhcp_uuid"] = dhcp_uuid
+        if dns_servers:
+            result["dns_servers"] = dns_servers.strip()
 
     return result

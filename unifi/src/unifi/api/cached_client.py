@@ -130,6 +130,14 @@ class CachedGatewayClient:
 
         return result
 
+    async def put(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Uncached PUT. Flushes cache for the endpoint prefix after success."""
+        result = await self._client.put(endpoint, data=data)
+        prefix = self._extract_endpoint_prefix(endpoint)
+        logger.debug("PUT succeeded for %s; flushing cache prefix '%s'", endpoint, prefix)
+        await self._cache.flush_by_prefix(prefix)
+        return result
+
     async def flush(self, endpoint: str | None = None) -> None:
         """Manually flush cache for a specific endpoint prefix or all entries.
 

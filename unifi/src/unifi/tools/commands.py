@@ -3,8 +3,9 @@
 
 These tools represent the user-facing ``unifi scan``, ``unifi health``,
 ``unifi clients``, ``unifi diagnose``, ``unifi wifi``, ``unifi optimize``,
-``unifi secure``, ``unifi config``, ``unifi port-profile create``, and
-``unifi port-profile assign`` commands.  Each is a minimal shim that forwards
+``unifi secure``, ``unifi config``, ``unifi port-profile create``,
+``unifi port-profile assign``, ``unifi network create``, and
+``unifi wlan create`` commands.  Each is a minimal shim that forwards
 to the corresponding agent function, keeping the tool surface lean and the
 business logic testable independently.
 
@@ -199,11 +200,16 @@ async def _verify_vlans_exist(
     vlans = await unifi__topology__get_vlans(site_id)
 
     # Build lookup by VLAN tag ID
+    # Note: model maps _id -> vlan_id (ObjectID), actual tag is in "vlan"
     vlan_by_id: dict[int, dict[str, Any]] = {}
     for v in vlans:
-        tag = v.get("vlan_id") or v.get("vlan")
+        # Try "vlan" first (actual tag number), then "vlan_id"
+        tag = v.get("vlan") or v.get("vlan_id")
         if tag is not None:
-            vlan_by_id[int(tag)] = v
+            try:
+                vlan_by_id[int(tag)] = v
+            except (ValueError, TypeError):
+                pass  # Skip non-numeric IDs (MongoDB ObjectIDs)
         # Default LAN (no VLAN tag) is conventionally VLAN 1
         if not v.get("vlan_enabled", False):
             vlan_by_id[1] = v
@@ -524,5 +530,256 @@ async def unifi_port_profile_assign(
         f"- **Port:** {result['port_idx']}\n"
         f"- **Profile:** {result['profile_applied']}\n"
         f"- **Profile ID:** {result['profile_id']}\n"
+        f"- **Site:** {result['site_id']}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Network creation command (three-phase confirmation model)
+# ---------------------------------------------------------------------------
+
+
+async def _lookup_network_by_name(
+    name: str,
+    site_id: str,
+) -> dict[str, Any] | None:
+    """Look up a network by name from the VLAN list.
+
+    Returns the network dict if found, or ``None``.
+    """
+    from unifi.tools.topology import unifi__topology__get_vlans
+
+    vlans = await unifi__topology__get_vlans(site_id)
+
+    name_lower = name.strip().lower()
+    for v in vlans:
+        if v.get("name", "").strip().lower() == name_lower:
+            return v
+
+    return None
+
+
+@mcp_server.tool()
+async def unifi_network_create(
+    name: str,
+    vlan_id: int,
+    purpose: str = "corporate",
+    dhcp_enabled: bool = False,
+    igmp_snooping: bool = True,
+    site_id: str = "default",
+    apply: bool = False,
+) -> str:
+    """Create a VLAN-tagged network on the UniFi controller.
+
+    Three-phase confirmation model:
+
+    - **Phase 1:** Check if a network with the same name already exists.
+    - **Phase 2:** Present a structured change plan for operator review.
+    - **Phase 3:** Execute on confirmation (requires ``apply=True`` and
+      ``UNIFI_WRITE_ENABLED=true``).
+
+    Without ``apply``: returns a plan-only preview showing what would be
+    created.
+
+    Args:
+        name: Network name (e.g., "Trusted").
+        vlan_id: VLAN ID (1-4094).
+        purpose: Network purpose ("corporate" or "guest").
+        dhcp_enabled: Whether UniFi should run DHCP (usually False when
+            OPNsense handles DHCP).
+        igmp_snooping: Enable IGMP snooping.
+        site_id: UniFi site ID. Defaults to "default".
+        apply: If True, execute the write. Requires UNIFI_WRITE_ENABLED=true.
+    """
+    from unifi.ask import PlanStep, format_plan_confirmation
+    from unifi.safety import check_write_enabled
+
+    # --- Phase 1: Check for duplicate network name ---
+    existing = await _lookup_network_by_name(name, site_id)
+    if existing is not None:
+        existing_vlan = existing.get("vlan_id") or existing.get("vlan", "N/A")
+        return (
+            f"## Network Already Exists\n\n"
+            f"A network named '{name}' already exists on site '{site_id}' "
+            f"(VLAN {existing_vlan}).\n\n"
+            f"Choose a different name or use the existing network."
+        )
+
+    # --- Phase 2: Present change plan ---
+    steps = [
+        PlanStep(
+            number=1,
+            system="unifi",
+            action="Create network",
+            detail=(
+                f"Name: {name}, VLAN ID: {vlan_id}, Purpose: {purpose}, "
+                f"DHCP: {'enabled' if dhcp_enabled else 'disabled'}, "
+                f"IGMP snooping: {'enabled' if igmp_snooping else 'disabled'}"
+            ),
+            expected_outcome=(
+                f"Network '{name}' (VLAN {vlan_id}) available for port profile "
+                f"and WLAN association."
+            ),
+        ),
+    ]
+
+    plan = format_plan_confirmation(steps)
+
+    if not apply:
+        write_status = (
+            "Write operations are enabled. Re-run with apply=True to execute."
+            if check_write_enabled("UNIFI")
+            else "Write operations are disabled. Set UNIFI_WRITE_ENABLED=true and use apply=True."
+        )
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    # --- Phase 3: Execute ---
+    from unifi.tools.config import unifi__config__create_network
+
+    result = await unifi__config__create_network(
+        name=name,
+        vlan_id=vlan_id,
+        purpose=purpose,
+        dhcp_enabled=dhcp_enabled,
+        igmp_snooping=igmp_snooping,
+        site_id=site_id,
+        apply=True,
+    )
+
+    logger.info(
+        "Network '%s' created via command layer (id=%s)",
+        name,
+        result.get("network_id", ""),
+        extra={"component": "commands"},
+    )
+
+    return (
+        f"## Network Created\n\n"
+        f"- **Name:** {result['name']}\n"
+        f"- **Network ID:** {result['network_id']}\n"
+        f"- **VLAN ID:** {result['vlan_id']}\n"
+        f"- **Purpose:** {result['purpose']}\n"
+        f"- **DHCP:** {'enabled' if result['dhcp_enabled'] else 'disabled'}\n"
+        f"- **Site:** {result['site_id']}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# WLAN creation command (three-phase confirmation model)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def unifi_wlan_create(
+    name: str,
+    passphrase: str,
+    network_name: str,
+    security: str = "wpapsk",
+    wlan_band: str = "both",
+    enabled: bool = True,
+    site_id: str = "default",
+    apply: bool = False,
+) -> str:
+    """Create a wireless network (SSID) on the UniFi controller.
+
+    Three-phase confirmation model:
+
+    - **Phase 1:** Verify the target network exists by name and resolve its
+      ``_id``. Verify passphrase length.
+    - **Phase 2:** Present a structured change plan for operator review.
+    - **Phase 3:** Execute on confirmation (requires ``apply=True`` and
+      ``UNIFI_WRITE_ENABLED=true``).
+
+    Without ``apply``: returns a plan-only preview.
+
+    Args:
+        name: SSID name (e.g., "Neffroad").
+        passphrase: WiFi password (min 8 characters for WPA).
+        network_name: Name of the network to associate with (resolved to
+            its ``_id`` internally).
+        security: Security mode (e.g., "wpapsk", "wpa3").
+        wlan_band: Band ("2g", "5g", "both").
+        enabled: Whether SSID is active.
+        site_id: UniFi site ID. Defaults to "default".
+        apply: If True, execute the write. Requires UNIFI_WRITE_ENABLED=true.
+    """
+    from unifi.ask import PlanStep, format_plan_confirmation
+    from unifi.errors import ValidationError
+    from unifi.safety import check_write_enabled
+
+    # --- Phase 1: Verify network exists and resolve ID ---
+    if not passphrase or len(passphrase) < 8:
+        raise ValidationError(
+            "Passphrase must be at least 8 characters for WPA.",
+            details={"field": "passphrase"},
+        )
+
+    network = await _lookup_network_by_name(network_name, site_id)
+    if network is None:
+        return (
+            f"## Network Not Found\n\n"
+            f"No network named '{network_name}' was found on site '{site_id}'.\n\n"
+            f"Use `unifi_network_create` to create one first."
+        )
+
+    network_id = network.get("_id") or network.get("vlan_id", "")
+    network_vlan = network.get("vlan") or network.get("vlan_id", "N/A")
+
+    # --- Phase 2: Present change plan ---
+    steps = [
+        PlanStep(
+            number=1,
+            system="unifi",
+            action="Create WLAN",
+            detail=(
+                f"SSID: {name}, Network: {network_name} (VLAN {network_vlan}), "
+                f"Security: {security}, Band: {wlan_band}, "
+                f"Enabled: {'yes' if enabled else 'no'}"
+            ),
+            expected_outcome=(
+                f"WLAN '{name}' broadcasting on network '{network_name}'."
+            ),
+        ),
+    ]
+
+    plan = format_plan_confirmation(steps)
+
+    if not apply:
+        write_status = (
+            "Write operations are enabled. Re-run with apply=True to execute."
+            if check_write_enabled("UNIFI")
+            else "Write operations are disabled. Set UNIFI_WRITE_ENABLED=true and use apply=True."
+        )
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    # --- Phase 3: Execute ---
+    from unifi.tools.config import unifi__config__create_wlan
+
+    result = await unifi__config__create_wlan(
+        name=name,
+        passphrase=passphrase,
+        network_id=network_id,
+        security=security,
+        wlan_band=wlan_band,
+        enabled=enabled,
+        site_id=site_id,
+        apply=True,
+    )
+
+    logger.info(
+        "WLAN '%s' created via command layer (id=%s)",
+        name,
+        result.get("wlan_id", ""),
+        extra={"component": "commands"},
+    )
+
+    return (
+        f"## WLAN Created\n\n"
+        f"- **SSID:** {result['name']}\n"
+        f"- **WLAN ID:** {result['wlan_id']}\n"
+        f"- **Network:** {network_name} ({result['network_id']})\n"
+        f"- **Security:** {result['security']}\n"
+        f"- **Band:** {result['wlan_band']}\n"
+        f"- **Enabled:** {'yes' if result['enabled'] else 'no'}\n"
         f"- **Site:** {result['site_id']}"
     )

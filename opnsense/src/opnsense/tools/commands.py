@@ -3,8 +3,10 @@
 
 These tools represent the user-facing ``opnsense_scan``, ``opnsense_health``,
 ``opnsense_diagnose``, ``opnsense_firewall``, ``opnsense_firewall_policy_from_matrix``,
-``opnsense_vlan``, ``opnsense_dhcp_reserve_batch``, ``opnsense_vpn``, ``opnsense_dns``,
-``opnsense_secure``, and ``opnsense_firmware`` commands.
+``opnsense_vlan``, ``opnsense_vlan_create``, ``opnsense_alias_create``,
+``opnsense_rule_create``, ``opnsense_dhcp_configure``, ``opnsense_dns_configure``,
+``opnsense_dhcp_reserve_batch``, ``opnsense_vpn``,
+``opnsense_dns``, ``opnsense_secure``, and ``opnsense_firmware`` commands.
 
 Each command is a minimal shim that forwards to the corresponding agent function
 or composes multiple tool calls, keeping the tool surface lean and the business
@@ -1211,3 +1213,413 @@ async def opnsense_firmware() -> str:
         return await firmware_report(client)
     finally:
         await client.close()
+
+
+# ---------------------------------------------------------------------------
+# VLAN creation command (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_vlan_create(
+    tag: int,
+    parent_if: str,
+    ip: str,
+    subnet: str,
+    dhcp_range_from: str = "",
+    dhcp_range_to: str = "",
+    description: str = "",
+    dns_servers: str = "",
+    apply: bool = False,
+) -> str:
+    """Create a complete VLAN: interface, IP, and optionally DHCP.
+
+    Atomic 4-step operation with rollback on failure:
+    1. Create VLAN interface on parent
+    2. Assign to OPNsense interface
+    3. Set IP address
+    4. (Optional) Configure DHCP subnet
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        tag: 802.1Q VLAN tag (1-4094).
+        parent_if: Parent physical interface (e.g. 'igb2').
+        ip: IP address for the VLAN gateway (e.g. '172.16.20.1').
+        subnet: CIDR prefix length (e.g. '24').
+        dhcp_range_from: Start of DHCP pool (e.g. '172.16.20.100').
+        dhcp_range_to: End of DHCP pool (e.g. '172.16.20.199').
+        description: Human-readable name (e.g. 'Admin').
+        dns_servers: Comma-separated DNS servers for DHCP clients.
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    has_dhcp = bool(dhcp_range_from and dhcp_range_to)
+
+    # --- Plan preview ---
+    plan_steps: list[dict[str, str]] = [
+        {"description": f"Create VLAN {tag} on {parent_if}" + (f" ({description})" if description else "")},
+        {"description": f"Assign IP {ip}/{subnet}"},
+    ]
+    if has_dhcp:
+        plan_steps.append({"description": f"Configure DHCP: {dhcp_range_from} - {dhcp_range_to}"})
+        if dns_servers:
+            plan_steps.append({"description": f"Set DNS servers: {dns_servers}"})
+
+    plan = format_change_plan(steps=plan_steps)
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    # --- Execute ---
+    from opnsense.tools.interfaces import opnsense__interfaces__configure_vlan
+
+    result = await opnsense__interfaces__configure_vlan(
+        tag=tag,
+        parent_if=parent_if,
+        ip=ip,
+        subnet=subnet,
+        dhcp_range_from=dhcp_range_from,
+        dhcp_range_to=dhcp_range_to,
+        description=description,
+        dns_servers=dns_servers,
+        apply=True,
+    )
+
+    logger.info(
+        "VLAN %d created via command layer (uuid=%s)",
+        tag,
+        result.get("vlan_uuid", ""),
+        extra={"component": "commands"},
+    )
+
+    lines = [
+        "## VLAN Created",
+        "",
+        f"- **Tag:** {result['tag']}",
+        f"- **Parent:** {result['parent_if']}",
+        f"- **IP:** {result['ip']}/{result['subnet']}",
+        f"- **Description:** {result.get('description', '')}",
+        f"- **UUID:** {result.get('vlan_uuid', '')}",
+        f"- **Steps completed:** {', '.join(result.get('completed_steps', []))}",
+    ]
+    if has_dhcp:
+        lines.append(f"- **DHCP:** {result.get('dhcp_range_from', '')} - {result.get('dhcp_range_to', '')}")
+        if dns_servers:
+            lines.append(f"- **DNS:** {result.get('dns_servers', '')}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Firewall alias creation command (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_alias_create(
+    name: str,
+    alias_type: str,
+    content: str,
+    description: str = "",
+    apply: bool = False,
+) -> str:
+    """Create a firewall alias (named address/port group).
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        name: Alias name (e.g. 'RFC1918').
+        alias_type: Type: 'host', 'network', 'port', or 'url'.
+        content: Newline-separated values (e.g. '10.0.0.0/8\\n172.16.0.0/12').
+        description: Human-readable description.
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    plan = format_change_plan(steps=[
+        {"description": f"Create {alias_type} alias '{name}'"},
+        {"description": f"Content: {content[:80]}{'...' if len(content) > 80 else ''}"},
+    ])
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    from opnsense.tools.firewall import opnsense__firewall__add_alias
+
+    result = await opnsense__firewall__add_alias(
+        name=name,
+        alias_type=alias_type,
+        content=content,
+        description=description,
+        apply=True,
+    )
+
+    return (
+        f"## Alias Created\n\n"
+        f"- **Name:** {result['name']}\n"
+        f"- **Type:** {result['alias_type']}\n"
+        f"- **UUID:** {result.get('uuid', '')}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Firewall rule creation command (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_rule_create(
+    interface: str,
+    action: str,
+    src: str,
+    dst: str,
+    protocol: str = "any",
+    description: str = "",
+    position: int | None = None,
+    apply: bool = False,
+) -> str:
+    """Create a firewall filter rule.
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        interface: Interface name (e.g. 'lan', 'opt1').
+        action: 'pass', 'block', or 'reject'.
+        src: Source address, CIDR, alias name, or 'any'.
+        dst: Destination address, CIDR, alias name, or 'any'.
+        protocol: IP protocol (default 'any').
+        description: Rule description.
+        position: Optional rule sequence/position.
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    plan = format_change_plan(steps=[
+        {"description": f"{action.upper()} {src} → {dst} on {interface}"},
+        {"description": f"Protocol: {protocol}"},
+    ])
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    from opnsense.tools.firewall import opnsense__firewall__add_rule
+
+    result = await opnsense__firewall__add_rule(
+        interface=interface,
+        action=action,
+        src=src,
+        dst=dst,
+        protocol=protocol,
+        description=description,
+        position=position,
+        apply=True,
+    )
+
+    return (
+        f"## Rule Created\n\n"
+        f"- **Interface:** {result['interface']}\n"
+        f"- **Action:** {result['action']}\n"
+        f"- **Source:** {result['source']}\n"
+        f"- **Destination:** {result['destination']}\n"
+        f"- **Protocol:** {result['protocol']}\n"
+        f"- **UUID:** {result.get('uuid', '')}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# DHCP configuration command (dnsmasq MVC API)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_dhcp_configure(
+    interface: str,
+    start_addr: str,
+    end_addr: str,
+    description: str = "",
+    domain: str = "",
+    apply: bool = False,
+) -> str:
+    """Configure DHCP on an interface via dnsmasq.
+
+    Adds the interface to dnsmasq listeners, creates a DHCP range,
+    and reconfigures the service.
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        interface: OPNsense interface identifier (e.g. 'opt3', 'opt4').
+        start_addr: Start of DHCP pool (e.g. '172.16.20.100').
+        end_addr: End of DHCP pool (e.g. '172.16.20.199').
+        description: Human-readable description.
+        domain: DNS domain for this range (e.g. 'home.neffroad.net').
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    plan_steps = [
+        {"description": f"Add {interface} to dnsmasq listeners"},
+        {"description": f"Create DHCP range: {start_addr} - {end_addr}"},
+    ]
+    if domain:
+        plan_steps.append({"description": f"Set domain: {domain}"})
+
+    plan = format_change_plan(steps=plan_steps)
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    client = _get_client()
+    try:
+        # Step 1: Add interface to dnsmasq listeners
+        settings_raw = await client.get("dnsmasq", "settings", "get")
+        iface_list: list[str] = []
+        if isinstance(settings_raw, dict):
+            dnsmasq_cfg = settings_raw.get("dnsmasq", {})
+            if isinstance(dnsmasq_cfg, dict):
+                iface_field = dnsmasq_cfg.get("interface", "")
+                if isinstance(iface_field, str):
+                    iface_list = [i.strip() for i in iface_field.split(",") if i.strip()]
+                elif isinstance(iface_field, dict):
+                    # OPNsense multi-select: {"opt3": {"selected": 1, ...}, ...}
+                    iface_list = [k for k, v in iface_field.items()
+                                  if isinstance(v, dict) and v.get("selected")]
+        if interface not in iface_list:
+            iface_list.append(interface)
+
+        await client.write(
+            "dnsmasq", "settings", "set",
+            data={"dnsmasq": {"interface": ",".join(iface_list)}},
+        )
+
+        # Step 2: Create DHCP range
+        range_data: dict[str, Any] = {
+            "range": {
+                "interface": interface,
+                "start_addr": start_addr,
+                "end_addr": end_addr,
+                "description": description,
+                "domain_type": "range",
+            },
+        }
+        if domain:
+            range_data["range"]["domain"] = domain
+
+        range_result = await client.write(
+            "dnsmasq", "settings", "add_range",
+            data=range_data,
+        )
+
+        range_uuid = range_result.get("uuid", "")
+
+        # Step 3: Reconfigure
+        await client.reconfigure("dnsmasq", "service")
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Configured DHCP on %s: %s-%s (uuid=%s)",
+        interface, start_addr, end_addr, range_uuid,
+        extra={"component": "commands"},
+    )
+
+    return (
+        f"## DHCP Configured\n\n"
+        f"- **Interface:** {interface}\n"
+        f"- **Range:** {start_addr} - {end_addr}\n"
+        f"- **Domain:** {domain or '(default)'}\n"
+        f"- **UUID:** {range_uuid}\n"
+        f"- **Description:** {description}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# DNS (Unbound) configuration command
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_dns_configure(
+    interfaces: str,
+    apply: bool = False,
+) -> str:
+    """Configure Unbound DNS to listen on specified interfaces.
+
+    Reads current Unbound settings, adds the specified interfaces to
+    the active listener list, and reconfigures the service.
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        interfaces: Comma-separated OPNsense interface identifiers
+            to add (e.g. 'opt3,opt4,opt5,opt6,opt7,opt8,opt9').
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    new_ifaces = [i.strip() for i in interfaces.split(",") if i.strip()]
+
+    plan = format_change_plan(steps=[
+        {"description": f"Add interfaces to Unbound DNS: {', '.join(new_ifaces)}"},
+        {"description": "Reconfigure Unbound to apply"},
+    ])
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    client = _get_client()
+    try:
+        # Get current Unbound settings
+        settings_raw = await client.get("unbound", "settings", "get")
+
+        # Parse current active interfaces
+        current_list: list[str] = []
+        if isinstance(settings_raw, dict):
+            unbound_cfg = settings_raw.get("unbound", {})
+            if isinstance(unbound_cfg, dict):
+                general = unbound_cfg.get("general", {})
+                if isinstance(general, dict):
+                    iface_field = general.get("active_interface", "")
+                    if isinstance(iface_field, str):
+                        current_list = [i.strip() for i in iface_field.split(",") if i.strip()]
+                    elif isinstance(iface_field, dict):
+                        current_list = [k for k, v in iface_field.items()
+                                        if isinstance(v, dict) and v.get("selected")]
+
+        # Merge new interfaces
+        for iface in new_ifaces:
+            if iface not in current_list:
+                current_list.append(iface)
+
+        # Set updated interfaces
+        await client.write(
+            "unbound", "settings", "set",
+            data={
+                "unbound": {
+                    "general": {
+                        "active_interface": ",".join(current_list),
+                    },
+                },
+            },
+        )
+
+        # Reconfigure
+        await client.reconfigure("unbound", "service")
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Configured Unbound DNS to listen on: %s",
+        ", ".join(current_list),
+        extra={"component": "commands"},
+    )
+
+    return (
+        f"## DNS Configured\n\n"
+        f"- **Listening interfaces:** {', '.join(current_list)}\n"
+        f"- **Status:** Reconfigured and applied"
+    )
