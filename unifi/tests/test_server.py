@@ -530,13 +530,13 @@ class TestMain:
             main(["--check"])
         assert exc_info.value.code == 1
 
-    def test_missing_env_exits(self) -> None:
-        """Starting without required env vars should exit 1."""
+    def test_missing_env_starts_gracefully(self) -> None:
+        """Starting without required env vars should log a warning and proceed."""
         from unifi.server import main
 
-        with pytest.raises(SystemExit) as exc_info:
+        with patch.object(mcp_server, "run") as mock_run:
             main(["--transport", "stdio"])
-        assert exc_info.value.code == 1
+            mock_run.assert_called_once_with(transport="stdio")
 
     def test_startup_calls_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """With valid config, main() should call mcp_server.run()."""

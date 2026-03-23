@@ -94,7 +94,12 @@ def _mock_client_for_port_assign(
     profile_name: str = "Trunk-AP",
     profile_id: str = "prof001",
 ) -> AsyncMock:
-    """Create a mock client for assign_port_profile (GET device, GET portconf, PUT)."""
+    """Create a mock client for assign_port_profile (GET device, GET portconf, PUT).
+
+    The implementation calls get_normalized twice:
+      1. ``/api/s/{site_id}/stat/device`` -- returns device list
+      2. ``/api/s/{site_id}/rest/portconf`` -- returns port profiles
+    """
     mock_client = AsyncMock()
 
     device_data = {
@@ -103,9 +108,14 @@ def _mock_client_for_port_assign(
         "name": "Test-Switch",
         "port_overrides": existing_overrides or [],
     }
-    mock_client.get_single = AsyncMock(return_value=device_data)
 
-    portconf_data = NormalizedResponse(
+    device_list_resp = NormalizedResponse(
+        data=[device_data],
+        count=1,
+        meta={"rc": "ok"},
+    )
+
+    portconf_resp = NormalizedResponse(
         data=[
             {"_id": profile_id, "name": profile_name},
             {"_id": "prof002", "name": "All"},
@@ -113,7 +123,15 @@ def _mock_client_for_port_assign(
         count=2,
         meta={"rc": "ok"},
     )
-    mock_client.get_normalized = AsyncMock(return_value=portconf_data)
+
+    async def _mock_get_normalized(endpoint: str) -> NormalizedResponse:
+        if "stat/device" in endpoint:
+            return device_list_resp
+        if "rest/portconf" in endpoint:
+            return portconf_resp
+        return NormalizedResponse(data=[], count=0, meta={"rc": "ok"})
+
+    mock_client.get_normalized = AsyncMock(side_effect=_mock_get_normalized)
 
     mock_client.put = AsyncMock(
         return_value={
@@ -483,7 +501,9 @@ class TestCreatePortProfileSuccess:
                 apply=True,
             )
 
-        mock_client.close.assert_called_once()
+        # _get_client() is called twice (networkconf lookup + POST), so close()
+        # is called twice on the same mock
+        assert mock_client.close.call_count == 2
 
     async def test_client_closed_on_success(self) -> None:
         mock_client = _mock_client_for_portconf_create()
@@ -498,7 +518,9 @@ class TestCreatePortProfileSuccess:
                 apply=True,
             )
 
-        mock_client.close.assert_called_once()
+        # _get_client() is called twice (networkconf lookup + POST), so close()
+        # is called twice on the same mock
+        assert mock_client.close.call_count == 2
 
 
 # ===========================================================================
@@ -589,19 +611,23 @@ class TestAssignPortProfileValidation:
 
     async def test_profile_not_found_raises_validation_error(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_single = AsyncMock(
-            return_value={
-                "_id": "dev123",
-                "port_overrides": [],
-            }
-        )
-        mock_client.get_normalized = AsyncMock(
-            return_value=NormalizedResponse(
-                data=[{"_id": "prof001", "name": "Other-Profile"}],
-                count=1,
-                meta={"rc": "ok"},
-            )
-        )
+
+        async def _mock_get_normalized(endpoint: str) -> NormalizedResponse:
+            if "stat/device" in endpoint:
+                return NormalizedResponse(
+                    data=[{"_id": "dev123", "port_overrides": []}],
+                    count=1,
+                    meta={"rc": "ok"},
+                )
+            if "rest/portconf" in endpoint:
+                return NormalizedResponse(
+                    data=[{"_id": "prof001", "name": "Other-Profile"}],
+                    count=1,
+                    meta={"rc": "ok"},
+                )
+            return NormalizedResponse(data=[], count=0, meta={"rc": "ok"})
+
+        mock_client.get_normalized = AsyncMock(side_effect=_mock_get_normalized)
         mock_client.close = AsyncMock()
 
         with (
@@ -721,17 +747,15 @@ class TestAssignPortProfileSuccess:
             )
 
         assert result["site_id"] == "branch"
-        # Verify correct site_id in all API calls
-        mock_client.get_single.assert_called_once_with(
-            "/api/s/branch/stat/device/dev123",
-        )
-        mock_client.get_normalized.assert_called_once_with(
-            "/api/s/branch/rest/portconf",
-        )
+        # Verify correct site_id in all API calls (get_normalized called twice)
+        get_norm_calls = mock_client.get_normalized.call_args_list
+        assert len(get_norm_calls) == 2
+        assert get_norm_calls[0].args[0] == "/api/s/branch/stat/device"
+        assert get_norm_calls[1].args[0] == "/api/s/branch/rest/portconf"
 
     async def test_api_error_on_get_device_propagates(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get_single = AsyncMock(
+        mock_client.get_normalized = AsyncMock(
             side_effect=APIError("Device not found", status_code=404)
         )
         mock_client.close = AsyncMock()

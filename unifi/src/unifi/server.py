@@ -325,7 +325,7 @@ def main(argv: list[str] | None = None) -> None:
             "component": "startup",
             "detail": {
                 "transport": args.transport,
-                "host": config["UNIFI_LOCAL_HOST"],
+                "host": config.get("UNIFI_LOCAL_HOST", ""),
                 "write_enabled": write_enabled,
                 "cache_ttl": cache_ttl,
             },

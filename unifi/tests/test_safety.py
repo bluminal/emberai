@@ -107,7 +107,7 @@ class TestCheckWriteEnabled:
                 )
 
     def test_uses_plugin_name_for_env_var(self) -> None:
-        with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}):
+        with patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}, clear=True):
             assert check_write_enabled("OPNSENSE") is True
             assert check_write_enabled("UNIFI") is False
 

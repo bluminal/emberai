@@ -25,9 +25,9 @@ class VLAN(BaseModel):
     model_config = ConfigDict(strict=True, populate_by_name=True)
 
     vlan_id: str = Field(alias="_id", description="Unique network/VLAN identifier")
-    vlan: str | None = Field(
+    vlan: int | str | None = Field(
         default=None,
-        description="802.1Q VLAN tag number (e.g. '20', '30')",
+        description="802.1Q VLAN tag number (e.g. 20, 30, '20', '30')",
     )
     vlan_enabled: bool = Field(
         default=False,

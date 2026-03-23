@@ -70,10 +70,8 @@ class TestGetClient:
         monkeypatch.delenv("UNIFI_LOCAL_HOST", raising=False)
         monkeypatch.delenv("UNIFI_LOCAL_KEY", raising=False)
 
-        client = _get_client()
-
-        assert client._host == ""
-        assert client._api_key == ""
+        with pytest.raises(APIError, match="credentials not configured"):
+            _get_client()
 
 
 # ---------------------------------------------------------------------------

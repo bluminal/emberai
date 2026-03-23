@@ -113,12 +113,12 @@ def _connection_info(client: dict[str, Any]) -> str:
             return f"Port {port}"
         return "Wired"
 
-    ap = str(client.get("ap_id", ""))
-    ssid = str(client.get("ssid", ""))
+    ap = client.get("ap_id") or ""
+    ssid = client.get("ssid") or ""
     if ap and ssid:
         return f"{ap} ({ssid})"
     if ap:
-        return ap
+        return str(ap)
     return "Wireless"
 
 
