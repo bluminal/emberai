@@ -362,6 +362,27 @@ The plan uses a depth-first approach (D2) that restructures the PRD's breadth-fi
 **Parallelizable:** Tasks 139, 141-143, 146-147 can run concurrently (6 tasks). Task 140 depends on 139. Tasks 144-145, 148-149 depend on 139-142. Max 8 concurrent.
 **Milestone Value:** Complete netex umbrella with all PRD Section 5 commands. Full documentation suite. All three plugins published to EmberAI marketplace.
 
+### Milestone 4.5: OPNsense 26.x API Compatibility Fixes
+
+Deployed against a real OPNsense SG-4860 running 26.1.4 + UniFi network (5 devices, 8 VLANs), 7 API gaps were discovered where existing opnsense tools return 404, empty results, or malformed data. These must be resolved before network verification can complete.
+
+**Discovery note:** OPNsense 26.x API documentation is sparse. Each task below includes an introspection/research phase -- the developer will need to probe the live API (`/api/<module>/<controller>` endpoints), inspect the OPNsense source on GitHub, or use the web UI's network inspector to identify correct endpoints and response formats before implementing the fix. Reference `docs/MEMORY.md` and the known API path changes table for prior findings.
+
+| # | Task | Complexity | Dependencies | Status |
+|---|------|-----------|--------------|--------|
+| 170 | **GAP A: Fix `list_interfaces` to return logical interface names.** Currently returns 12 entries all named "config" instead of logical names (WAN, LAN, opt1-opt9). The alias table correctly maps opt3-opt9 to proper names, so the data exists in the system. Investigate whether `/api/interfaces/overview/interfacesInfo` (known 26.x endpoint) or another endpoint returns logical names with IP assignments. Update response parsing to expose interface role, description, IP address, and status. | M | None | pending |
+| 171 | **GAP B: Fix firewall rules API returning 0 rules.** Despite aliases and rules existing (confirmed via web UI), `list_rules` returns empty. Investigate whether the 26.x endpoint changed from `/api/firewall/filter/searchRule` or whether the response envelope/pagination format changed. Verify against the known-working alias endpoint format. | M | None | pending |
+| 172 | **GAP C: Fix gateway/routing API returning 0 gateways.** WAN (Starlink) is functional but gateway listing shows nothing. Investigate correct 26.x endpoint for gateway status (may have moved from `/api/routes/gateway/searchGateway` or response format changed). Verify against live system where WAN is confirmed operational. | M | None | pending |
+| 173 | **GAP D: Fix VPN endpoint 404.** `/api/ipsec/sessions/search` returns 404 on 26.x. Investigate correct 26.x endpoints for IPsec session listing, WireGuard peer status, and OpenVPN instance status. Update all VPN skill tools (`list_ipsec_sessions`, `list_wireguard_peers`, `list_openvpn_instances`, `get_vpn_status`). Handle case where VPN services are not installed/enabled (graceful degradation, not error). | S-M | None | pending |
+| 174 | **GAP E: Fix Unbound DNS endpoint 404.** `/api/unbound/host/searchHost` returns 404 on 26.x. Investigate correct 26.x endpoint for DNS host overrides (may be under `/api/unbound/settings/` based on known working patterns for Unbound configuration). Update `get_dns_overrides` and related DNS tools. | S-M | None | pending |
+| 175 | **GAP F: Fix diagnostics ping endpoint 404.** `/api/diagnostics/interface/getPing` returns 404 on 26.x. Investigate correct 26.x diagnostics endpoints for ping, traceroute, and DNS lookup. This may involve a POST-then-poll pattern (start diagnostic, poll for results) rather than a synchronous GET. Update `run_ping`, `run_traceroute`, and `dns_lookup` tools. | S-M | None | pending |
+| 176 | **GAP G: Fix VLAN listing returning 0 VLANs.** Despite 7 VLANs configured (confirmed by alias table and web UI), `opnsense_vlan` shows 0. The VLAN search endpoint was already fixed to `/api/interfaces/vlan_settings/searchItem` (per prior work), so this is likely a response parsing issue -- investigate whether the 26.x response envelope or field names differ from what the parser expects. | M | None | pending |
+| 177 | **Write tests for all 7 gap fixes.** Add mock API response fixtures captured from real OPNsense 26.x responses. Test each fixed tool with both the new 26.x format and, where applicable, graceful handling of missing services (VPN not installed, Unbound not configured). Per-gap test coverage in `opnsense/tests/test_26x_compat.py`. | M | Tasks 170-176 | pending |
+| 178 | **Re-run full network verification after fixes.** Execute `opnsense scan`, `netex topology`, and `netex verify-policy` against the live SG-4860 + UniFi environment. Confirm all 7 gaps produce correct data. Document any remaining discrepancies as new open questions. | M | Task 177 | pending |
+
+**Parallelizable:** Tasks 170-176 can all run concurrently (7 tasks). Task 177 depends on 170-176. Task 178 depends on 177.
+**Milestone Value:** OPNsense plugin works correctly against real 26.x hardware. All read tools return accurate data for interfaces, firewall rules, gateways, VPNs, DNS, diagnostics, and VLANs. Network verification can complete end-to-end.
+
 ---
 
 ## Plan Phase 5: Advanced Features + Scale (v0.4.0-plan - v0.5.0-plan)
