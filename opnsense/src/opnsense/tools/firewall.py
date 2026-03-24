@@ -46,6 +46,12 @@ def _coerce_rule_booleans(row: dict[str, Any]) -> dict[str, Any]:
     for field in _BOOL_FIELDS_RULE:
         if field in coerced and isinstance(coerced[field], str):
             coerced[field] = coerced[field].lower() in _STR_BOOL_TRUE
+    # Coerce sequence (position) from string to int
+    if "sequence" in coerced and isinstance(coerced["sequence"], str):
+        try:
+            coerced["sequence"] = int(coerced["sequence"])
+        except (ValueError, TypeError):
+            coerced["sequence"] = None
     return coerced
 
 
