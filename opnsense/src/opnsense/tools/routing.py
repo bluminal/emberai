@@ -127,6 +127,7 @@ async def opnsense__routing__list_routes() -> list[dict[str, Any]]:
             "searchRoute",
             cache_key="routing:routes",
             ttl=CacheTTL.ROUTES,
+            params={"rowCount": -1, "current": 1},
         )
 
         # Probe Quagga availability (non-blocking, does not fail the request)

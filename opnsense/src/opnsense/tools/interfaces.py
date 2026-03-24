@@ -142,6 +142,7 @@ async def opnsense__interfaces__list_vlan_interfaces() -> list[dict[str, Any]]:
             "searchItem",
             cache_key="interfaces:vlans",
             ttl=CacheTTL.VLAN_INTERFACES,
+            params={"rowCount": -1, "current": 1},
         )
     finally:
         await client.close()
@@ -193,6 +194,7 @@ async def opnsense__interfaces__get_dhcp_leases(
             "search",
             cache_key="dhcp:leases",
             ttl=CacheTTL.DHCP_LEASES,
+            params={"rowCount": -1, "current": 1},
         )
     finally:
         await client.close()

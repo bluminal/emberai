@@ -98,6 +98,7 @@ async def opnsense__firewall__list_rules(
             "searchRule",
             cache_key="firewall:rules",
             ttl=CacheTTL.FIREWALL_RULES,
+            params={"rowCount": -1, "current": 1},
         )
     finally:
         await client.close()
@@ -183,6 +184,7 @@ async def opnsense__firewall__list_aliases() -> list[dict[str, Any]]:
             "searchItem",
             cache_key="firewall:aliases",
             ttl=CacheTTL.FIREWALL_ALIASES,
+            params={"rowCount": -1, "current": 1},
         )
     finally:
         await client.close()
@@ -228,6 +230,7 @@ async def opnsense__firewall__list_nat_rules() -> list[dict[str, Any]]:
             "searchRule",
             cache_key="firewall:nat_rules",
             ttl=CacheTTL.NAT_RULES,
+            params={"rowCount": -1, "current": 1},
         )
     finally:
         await client.close()
