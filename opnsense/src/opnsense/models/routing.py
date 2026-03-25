@@ -47,20 +47,34 @@ class Gateway(BaseModel):
 
     Returned by ``opnsense__routing__list_gateways()``.
 
-    API field mapping (``/api/routes/gateway/status``):
-        ``name``        -> ``name``
-        ``address``     -> ``gateway``
-        ``interface``   -> ``interface``
-        ``monitor``     -> ``monitor``
-        ``status``      -> ``status``
-        ``priority``    -> ``priority``
-        ``delay``       -> ``rtt_ms``
+    OPNsense 26.x returns gateway status with these raw fields::
+
+        {
+            "name": "WAN_DHCP",
+            "address": "100.94.200.2",    # or "~" when unknown
+            "status": "none",             # dpinger raw: none/down/delay/loss
+            "status_translated": "Online", # human-readable
+            "loss": "0.0 %",             # or "~"
+            "delay": "4.2 ms",           # or "~" or numeric
+            "stddev": "0.8 ms",          # or "~" or numeric
+            "monitor": "1.1.1.1"         # or "~"
+        }
+
+    The tool layer normalizes these raw values before validation:
+    - ``"~"`` sentinels are converted to ``""`` (strings) or ``None`` (numerics)
+    - ``delay``/``loss``/``stddev`` strings are parsed to floats
+    - ``status`` is mapped from dpinger codes to human-readable values
+    - ``address`` is mapped to the ``gateway`` field
+
+    The model intentionally does NOT use ``strict=True`` because the
+    coercion layer produces clean Python types, but extra fields from the
+    API (like ``status_translated``) should be silently ignored.
     """
 
-    model_config = ConfigDict(strict=True, populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     name: str = Field(
-        description="Gateway name (e.g. 'WAN_GW', 'LAN_GW')",
+        description="Gateway name (e.g. 'WAN_DHCP', 'WAN_GW')",
     )
     gateway: str = Field(
         default="",
@@ -69,15 +83,19 @@ class Gateway(BaseModel):
     )
     interface: str = Field(
         default="",
-        description="Interface this gateway is bound to",
+        description="Interface this gateway is bound to (not present in all 26.x responses)",
     )
     monitor: str = Field(
         default="",
         description="Monitor IP used for gateway health checks",
     )
     status: str = Field(
+        default="unknown",
+        description="Gateway status: 'online', 'offline', 'unknown', 'degraded'",
+    )
+    status_translated: str = Field(
         default="",
-        description="Gateway status (e.g. 'online', 'offline', 'unknown')",
+        description="OPNsense-translated status string (e.g. 'Online', 'Offline')",
     )
     priority: int = Field(
         default=255,
@@ -87,6 +105,14 @@ class Gateway(BaseModel):
         default=None,
         alias="delay",
         description="Round-trip time to monitor IP in milliseconds",
+    )
+    loss_pct: float | None = Field(
+        default=None,
+        description="Packet loss percentage from dpinger",
+    )
+    stddev_ms: float | None = Field(
+        default=None,
+        description="RTT standard deviation in milliseconds from dpinger",
     )
 
 
