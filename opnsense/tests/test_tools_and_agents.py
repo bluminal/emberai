@@ -96,7 +96,8 @@ class TestListInterfaces:
             result = await opnsense__interfaces__list_interfaces()
 
         assert len(result) == 4
-        assert result[0]["name"] == "igb0"
+        assert result[0]["name"] == "wan"
+        assert result[0]["device"] == "igb0"
         assert result[0]["description"] == "WAN"
         mock_client.close.assert_awaited_once()
 
@@ -110,6 +111,7 @@ class TestListInterfaces:
 
         iface = result[0]
         assert "name" in iface
+        assert "device" in iface
         assert "description" in iface
         assert "ip" in iface
         assert "subnet" in iface
@@ -124,8 +126,9 @@ class TestListInterfaces:
 
             result = await opnsense__interfaces__list_interfaces()
 
-        vlan_iface = next(i for i in result if i["name"] == "igb1_vlan10")
+        vlan_iface = next(i for i in result if i["name"] == "opt1")
         assert vlan_iface["vlan_id"] == 10
+        assert vlan_iface["device"] == "igb1_vlan10"
         assert vlan_iface["if_type"] == "vlan"
 
     @pytest.mark.asyncio
@@ -142,7 +145,7 @@ class TestListInterfaces:
 
     @pytest.mark.asyncio
     async def test_empty_response(self) -> None:
-        mock_client = _make_mock_client(get_cached_response={"rows": []})
+        mock_client = _make_mock_client(get_cached_response={})
         with patch("opnsense.tools.interfaces._get_client", return_value=mock_client):
             from opnsense.tools.interfaces import opnsense__interfaces__list_interfaces
 
@@ -1317,7 +1320,7 @@ class TestInterfaceAgent:
             report = await run_interface_report()
 
         assert "Interface Inventory" in report
-        assert "igb0" in report
+        assert "wan" in report
         assert "WAN" in report
 
     @pytest.mark.asyncio
