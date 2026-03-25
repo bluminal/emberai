@@ -544,7 +544,7 @@ async def opnsense_diagnose(target: str) -> str:
             related = [v for v in vlans if v.get("parent_if") == iface.get("name")]
             if related:
                 vlan_rows = [
-                    [str(v.get("tag", "")), v.get("if_", ""), v.get("description", "")]
+                    [str(v.get("tag", "")), v.get("device", ""), v.get("description", "")]
                     for v in related
                 ]
                 sections.append(
@@ -966,7 +966,12 @@ async def opnsense_vlan(
     # VLAN table
     vlan_headers = ["Tag", "Interface", "Parent", "Description"]
     vlan_rows = [
-        [str(v.get("tag", "")), v.get("if_", ""), v.get("parent_if", ""), v.get("description", "")]
+        [
+            str(v.get("tag", "")),
+            v.get("device", ""),
+            v.get("parent_if", ""),
+            v.get("description", ""),
+        ]
         for v in vlans
     ]
     sections.append(format_table(vlan_headers, vlan_rows, title="VLAN Interfaces"))
@@ -975,7 +980,7 @@ async def opnsense_vlan(
         findings: list[Finding] = []
 
         # Check VLANs without IPs
-        vlan_if_names = {v.get("if_", "") for v in vlans}
+        vlan_if_names = {v.get("device", "") for v in vlans}
         iface_with_ip = {i.get("name", "") for i in interfaces if i.get("ip")}
         orphans = vlan_if_names - iface_with_ip
 
@@ -998,7 +1003,7 @@ async def opnsense_vlan(
             interfaces_with_rules = {r.get("interface", "") for r in rules}
 
             for vlan in vlans:
-                vlan_if = vlan.get("if_", "")
+                vlan_if = vlan.get("device", "")
                 if vlan_if and vlan_if not in interfaces_with_rules:
                     findings.append(
                         Finding(

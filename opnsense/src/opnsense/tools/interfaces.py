@@ -30,6 +30,37 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# OPNsense API coercion helpers
+# ---------------------------------------------------------------------------
+
+_VLAN_INT_FIELDS = ("tag", "pcp")
+
+
+def _coerce_vlan_fields(row: dict[str, Any]) -> dict[str, Any]:
+    """Coerce OPNsense 26.x VLAN search response fields for Pydantic strict mode.
+
+    OPNsense 26.x returns ``tag`` and ``pcp`` as strings (e.g. ``"10"``
+    instead of ``10``).  Since the VLANInterface model uses ``strict=True``,
+    these must be converted to native Python ints before validation.
+
+    Returns a shallow copy with coerced types.
+    """
+    coerced = dict(row)
+    for field in _VLAN_INT_FIELDS:
+        value = coerced.get(field)
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "" or stripped.lower() in ("null", "none"):
+                coerced[field] = None
+            else:
+                try:
+                    coerced[field] = int(stripped)
+                except (ValueError, TypeError):
+                    coerced[field] = None
+    return coerced
+
+
+# ---------------------------------------------------------------------------
 # Client factory
 # ---------------------------------------------------------------------------
 
@@ -151,19 +182,24 @@ async def opnsense__interfaces__list_vlan_interfaces() -> list[dict[str, Any]]:
 
     vlans: list[dict[str, Any]] = []
     for row in normalized.data:
+        coerced = _coerce_vlan_fields(row)
         try:
-            vlan = VLANInterface.model_validate(row)
+            vlan = VLANInterface.model_validate(coerced)
             vlans.append(vlan.model_dump(by_alias=False))
         except Exception:
             logger.warning(
-                "Skipping unparseable VLAN entry: %s",
-                row.get("uuid", row.get("tag", "unknown")),
+                "Skipping unparseable VLAN entry: uuid=%s, tag=%s, "
+                "available_fields=%s",
+                row.get("uuid", "?"),
+                row.get("tag", "?"),
+                list(row.keys()),
                 exc_info=True,
             )
 
     logger.info(
-        "Listed %d VLAN interfaces",
+        "Listed %d VLAN interfaces (from %d rows)",
         len(vlans),
+        normalized.count,
         extra={"component": "interfaces"},
     )
 

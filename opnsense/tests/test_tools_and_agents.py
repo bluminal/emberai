@@ -162,7 +162,7 @@ class TestListVlanInterfaces:
 
             result = await opnsense__interfaces__list_vlan_interfaces()
 
-        assert len(result) == 3
+        assert len(result) == 7
         assert result[0]["tag"] == 10
 
     @pytest.mark.asyncio
@@ -176,7 +176,7 @@ class TestListVlanInterfaces:
         vlan = result[0]
         assert "uuid" in vlan
         assert "tag" in vlan
-        assert "if_" in vlan
+        assert "device" in vlan
         assert "description" in vlan
         assert "parent_if" in vlan
 
@@ -1301,7 +1301,7 @@ class TestInterfaceAgent:
 
         assert "Interface & VLAN Inventory Report" in report
         assert "4 interfaces" in report
-        assert "3 VLANs" in report
+        assert "7 VLANs" in report
         assert "5 DHCP leases" in report
 
     @pytest.mark.asyncio

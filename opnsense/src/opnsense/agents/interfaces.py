@@ -101,13 +101,13 @@ async def run_interface_report() -> str:
 
     # --- VLAN definitions table ---
     if vlans:
-        vlan_headers = ["Tag", "Interface", "Parent", "Description"]
+        vlan_headers = ["Tag", "Device", "Parent", "Description"]
         vlan_rows: list[list[str]] = []
         for vlan in vlans:
             vlan_rows.append(
                 [
                     str(vlan.get("tag", "")),
-                    vlan.get("if_", ""),
+                    vlan.get("device", ""),
                     vlan.get("parent_if", ""),
                     vlan.get("description", ""),
                 ]
@@ -116,7 +116,7 @@ async def run_interface_report() -> str:
         sections.append(format_table(vlan_headers, vlan_rows, title="VLAN Definitions"))
 
         # Check for VLANs that lack a corresponding interface with an IP
-        vlan_if_names = {v.get("if_", "") for v in vlans}
+        vlan_if_names = {v.get("device", "") for v in vlans}
         iface_with_ip = {i.get("name", "") for i in interfaces if i.get("ip")}
         orphan_vlans = vlan_if_names - iface_with_ip
         for orphan in orphan_vlans:
