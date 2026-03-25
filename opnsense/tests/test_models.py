@@ -70,28 +70,29 @@ class TestInterface:
 
 class TestVLANInterface:
     def test_basic_parse_with_aliases(self) -> None:
+        """Test parsing with OPNsense 26.x field names (pre-coercion ints)."""
         data = {
             "uuid": "abc-123",
             "tag": 100,
-            "if": "vlan100",
+            "if": "igb0",
             "descr": "Guest VLAN",
-            "vlanif": "igb0",
+            "vlanif": "vlan0.100",
             "pcp": 3,
         }
         vlan = VLANInterface.model_validate(data)
         assert vlan.uuid == "abc-123"
         assert vlan.tag == 100
-        assert vlan.if_ == "vlan100"
-        assert vlan.description == "Guest VLAN"
         assert vlan.parent_if == "igb0"
+        assert vlan.description == "Guest VLAN"
+        assert vlan.device == "vlan0.100"
         assert vlan.pcp == 3
 
     def test_pcp_optional(self) -> None:
         data = {
             "uuid": "def-456",
             "tag": 20,
-            "if": "vlan20",
-            "vlanif": "igb1",
+            "if": "igb1",
+            "vlanif": "vlan0.20",
         }
         vlan = VLANInterface.model_validate(data)
         assert vlan.pcp is None
@@ -100,10 +101,20 @@ class TestVLANInterface:
         vlan = VLANInterface(
             uuid="x",
             tag=10,
-            if_="vlan10",
             parent_if="igb0",
+            device="vlan0.10",
         )
-        assert vlan.if_ == "vlan10"
+        assert vlan.parent_if == "igb0"
+        assert vlan.device == "vlan0.10"
+
+    def test_proto_defaults_empty(self) -> None:
+        vlan = VLANInterface(
+            uuid="x",
+            tag=10,
+            parent_if="igb0",
+            device="vlan0.10",
+        )
+        assert vlan.proto == ""
 
 
 # ---------------------------------------------------------------------------
@@ -399,8 +410,8 @@ class TestStrictMode:
             VLANInterface(  # type: ignore[arg-type]
                 uuid="x",
                 tag="ten",
-                if_="vlan10",
                 parent_if="igb0",
+                device="vlan0.10",
             )
 
 

@@ -2,30 +2,69 @@
   "rows": [
     {
       "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c01",
-      "tag": 10,
-      "if": "igb1_vlan10",
+      "tag": "10",
+      "if": "igb1",
       "descr": "Guest",
-      "vlanif": "igb1",
-      "pcp": null
+      "vlanif": "vlan0.10",
+      "pcp": "0",
+      "proto": ""
     },
     {
       "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
-      "tag": 30,
-      "if": "igb1_vlan30",
-      "descr": "IoT",
-      "vlanif": "igb1",
-      "pcp": null
+      "tag": "20",
+      "if": "igb1",
+      "descr": "Cameras",
+      "vlanif": "vlan0.20",
+      "pcp": "0",
+      "proto": ""
     },
     {
       "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c03",
-      "tag": 99,
-      "if": "igb1_vlan99",
+      "tag": "30",
+      "if": "igb1",
+      "descr": "IoT",
+      "vlanif": "vlan0.30",
+      "pcp": "0",
+      "proto": ""
+    },
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c04",
+      "tag": "40",
+      "if": "igb1",
+      "descr": "Kids",
+      "vlanif": "vlan0.40",
+      "pcp": "0",
+      "proto": ""
+    },
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c05",
+      "tag": "50",
+      "if": "igb1",
+      "descr": "Work",
+      "vlanif": "vlan0.50",
+      "pcp": "4",
+      "proto": ""
+    },
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c06",
+      "tag": "60",
+      "if": "igb1",
+      "descr": "Lab",
+      "vlanif": "vlan0.60",
+      "pcp": "0",
+      "proto": ""
+    },
+    {
+      "uuid": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c07",
+      "tag": "99",
+      "if": "igb1",
       "descr": "Management",
-      "vlanif": "igb1",
-      "pcp": 6
+      "vlanif": "vlan0.99",
+      "pcp": "6",
+      "proto": ""
     }
   ],
-  "rowCount": 3,
-  "total": 3,
+  "rowCount": 7,
+  "total": 7,
   "current": 1
 }

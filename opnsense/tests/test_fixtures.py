@@ -32,7 +32,7 @@ class TestLoadFixture:
     def test_load_vlan_interfaces(self) -> None:
         data = load_fixture("vlan_interfaces.json")
         assert "rows" in data
-        assert len(data["rows"]) == 3
+        assert len(data["rows"]) == 7
 
     def test_load_firewall_rules(self) -> None:
         data = load_fixture("firewall_rules.json")
@@ -124,13 +124,13 @@ class TestInterfacesFixtureData:
 
 
 class TestVLANInterfacesFixtureData:
-    """Verify vlan_interfaces.json matches OPNsense /api/interfaces/vlan/searchItem."""
+    """Verify vlan_interfaces.json matches OPNsense 26.x VLAN search response."""
 
     def test_has_pagination_metadata(self) -> None:
         data = load_fixture("vlan_interfaces.json")
         assert "rowCount" in data
         assert "total" in data
-        assert data["rowCount"] == 3
+        assert data["rowCount"] == 7
 
     def test_vlan_has_required_fields(self) -> None:
         data = load_fixture("vlan_interfaces.json")
@@ -140,16 +140,23 @@ class TestVLANInterfacesFixtureData:
                 f"VLAN {vlan.get('descr', '?')} missing fields"
             )
 
-    def test_vlan_tags_are_valid(self) -> None:
+    def test_vlan_tags_are_strings_in_26x(self) -> None:
+        """OPNsense 26.x returns tag as a string, not an integer."""
         data = load_fixture("vlan_interfaces.json")
         for vlan in data["rows"]:
-            assert 1 <= vlan["tag"] <= 4094, f"Invalid VLAN tag: {vlan['tag']}"
+            assert isinstance(vlan["tag"], str), (
+                f"26.x fixture should have string tags, got {type(vlan['tag'])}"
+            )
+            tag = int(vlan["tag"])
+            assert 1 <= tag <= 4094, f"Invalid VLAN tag: {tag}"
 
-    def test_pcp_is_optional(self) -> None:
+    def test_pcp_values(self) -> None:
         data = load_fixture("vlan_interfaces.json")
-        # First two VLANs have pcp=null, third has pcp=6
-        assert data["rows"][0]["pcp"] is None
-        assert data["rows"][2]["pcp"] == 6
+        # 26.x returns pcp as strings; Work VLAN (tag 50) has pcp=4, Management (tag 99) has pcp=6
+        work = next(v for v in data["rows"] if v["descr"] == "Work")
+        mgmt = next(v for v in data["rows"] if v["descr"] == "Management")
+        assert work["pcp"] == "4"
+        assert mgmt["pcp"] == "6"
 
 
 # ---------------------------------------------------------------------------

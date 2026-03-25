@@ -1009,7 +1009,7 @@ class TestOpnsenseVlan:
 
     async def test_vlan_list(self) -> None:
         """Default mode should list VLANs."""
-        vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
+        vlans = [{"tag": 10, "device": "vlan0.10", "parent_if": "igb1", "description": "LAN"}]
         with (
             patch(
                 "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
@@ -1051,7 +1051,7 @@ class TestOpnsenseVlan:
 
     async def test_vlan_audit(self) -> None:
         """Audit mode should check for VLANs without IPs."""
-        vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
+        vlans = [{"tag": 10, "device": "vlan0.10", "parent_if": "igb1", "description": "LAN"}]
         interfaces = [{"name": "igb0", "ip": "1.2.3.4"}]  # No VLAN interface has IP
         with (
             patch(
@@ -1079,7 +1079,7 @@ class TestOpnsenseVlan:
 
     async def test_vlan_configure_guidance(self) -> None:
         """Configure mode should show guidance."""
-        vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
+        vlans = [{"tag": 10, "device": "vlan0.10", "parent_if": "igb1", "description": "LAN"}]
         with (
             patch(
                 "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
@@ -1535,7 +1535,7 @@ class TestParameterPassthrough:
 
     async def test_vlan_audit_flag(self) -> None:
         """audit=True on vlan should include findings report."""
-        vlans = [{"tag": 10, "if_": "igb1_vlan10", "parent_if": "igb1", "description": "LAN"}]
+        vlans = [{"tag": 10, "device": "vlan0.10", "parent_if": "igb1", "description": "LAN"}]
         with (
             patch(
                 "opnsense.tools.interfaces.opnsense__interfaces__list_vlan_interfaces",
