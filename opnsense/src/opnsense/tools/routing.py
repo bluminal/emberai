@@ -15,6 +15,7 @@ by the ``@write_gate("OPNSENSE")`` decorator.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any
@@ -23,7 +24,7 @@ from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.api.response import is_action_success, normalize_response
 from opnsense.cache import CacheTTL
 from opnsense.errors import APIError, ValidationError
-from opnsense.models.routing import Gateway, Route
+from opnsense.models.routing import Gateway, GatewayGroup, GatewayGroupMember, Route
 from opnsense.safety import write_gate
 from opnsense.server import mcp_server
 
@@ -208,9 +209,214 @@ async def opnsense__routing__list_gateways() -> list[dict[str, Any]]:
     return gateways
 
 
+@mcp_server.tool()
+async def opnsense__routing__list_gateway_groups() -> list[dict[str, Any]]:
+    """List all gateway groups on the OPNsense firewall.
+
+    Returns gateway group inventory with UUID, name, failover trigger,
+    and member gateways with their tier and weight.
+
+    API endpoint: GET /api/routes/gateway/searchgroup
+    """
+    client = _get_client()
+    try:
+        raw = await client.get_cached(
+            "routes",
+            "gateway",
+            "searchgroup",
+            cache_key="routing:gateway_groups",
+            ttl=CacheTTL.GATEWAY_GROUPS,
+            params={"rowCount": -1, "current": 1},
+        )
+    finally:
+        await client.close()
+
+    normalized = normalize_response(raw)
+
+    groups: list[dict[str, Any]] = []
+    for row in normalized.data:
+        try:
+            group = _parse_gateway_group(row)
+            groups.append(group.model_dump(by_alias=False))
+        except Exception:
+            logger.warning(
+                "Skipping unparseable gateway group: %s",
+                row.get("name", row.get("uuid", "unknown")),
+                exc_info=True,
+            )
+
+    logger.info(
+        "Listed %d gateway groups",
+        len(groups),
+        extra={"component": "routing"},
+    )
+
+    return groups
+
+
+def _parse_gateway_group(row: dict[str, Any]) -> GatewayGroup:
+    """Parse a raw gateway group API response into a GatewayGroup model.
+
+    OPNsense may return members in different formats depending on version:
+    - As a list of dicts with gateway/tier/weight keys
+    - As a semicolon-delimited string: "GW1|1|1;GW2|2|1"
+    - As named keys on the group object itself (gateway name -> priority/weight)
+
+    This parser handles all known formats.
+    """
+    members: list[GatewayGroupMember] = []
+
+    raw_members = row.get("members", "")
+    if isinstance(raw_members, list):
+        # List of dicts format
+        for m in raw_members:
+            if isinstance(m, dict):
+                members.append(
+                    GatewayGroupMember(
+                        gateway=str(m.get("gateway", m.get("name", ""))),
+                        tier=int(m.get("tier", m.get("priority", 1))),
+                        weight=int(m.get("weight", 1)),
+                    )
+                )
+    elif isinstance(raw_members, str) and raw_members:
+        # Semicolon-delimited format: "GW1|1|1;GW2|2|1"
+        for entry in raw_members.split(";"):
+            parts = entry.strip().split("|")
+            if len(parts) >= 2:
+                members.append(
+                    GatewayGroupMember(
+                        gateway=parts[0].strip(),
+                        tier=int(parts[1]) if len(parts) > 1 else 1,
+                        weight=int(parts[2]) if len(parts) > 2 else 1,
+                    )
+                )
+
+    return GatewayGroup(
+        uuid=row.get("uuid", ""),
+        name=row.get("name", ""),
+        trigger=row.get("trigger", "down"),
+        members=members,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Write tools
 # ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+@write_gate("OPNSENSE")
+async def opnsense__routing__add_gateway_group(
+    name: str,
+    members: str,
+    trigger: str = "down",
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Add a new gateway group for failover or load balancing.
+
+    Write-gated: requires OPNSENSE_WRITE_ENABLED=true and apply=True.
+
+    Args:
+        name: Gateway group name (e.g. 'WAN1_Failover').
+        members: JSON string -- list of objects with 'gateway', 'tier',
+            and 'weight' keys. Example:
+            '[{"gateway": "WAN_DHCP", "tier": 1, "weight": 1},
+              {"gateway": "WAN2_DHCP", "tier": 2, "weight": 1}]'
+        trigger: Failover trigger. One of: 'down', 'packet_loss',
+            'high_latency', 'packet_loss_high_latency'. Default: 'down'.
+        apply: Must be True to execute (write gate).
+
+    API endpoint: POST /api/routes/gateway/addgroup
+    """
+    if not name or not name.strip():
+        raise ValidationError(
+            "Gateway group name must not be empty.",
+            details={"field": "name"},
+        )
+
+    valid_triggers = {"down", "packet_loss", "high_latency", "packet_loss_high_latency"}
+    if trigger not in valid_triggers:
+        raise ValidationError(
+            f"Trigger must be one of {valid_triggers}, got '{trigger}'",
+            details={"field": "trigger", "value": trigger},
+        )
+
+    try:
+        member_list = json.loads(members)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise ValidationError(
+            f"Members must be valid JSON: {exc}",
+            details={"field": "members"},
+        ) from exc
+
+    if not isinstance(member_list, list) or not member_list:
+        raise ValidationError(
+            "Members must be a non-empty JSON array.",
+            details={"field": "members"},
+        )
+
+    # Build the group payload in OPNsense format.
+    # OPNsense expects members as gateway-keyed entries with priority/weight.
+    group_data: dict[str, Any] = {
+        "group": {
+            "name": name.strip(),
+            "trigger": trigger,
+        },
+    }
+
+    # Add each member gateway with its tier/weight
+    for i, m in enumerate(member_list):
+        gw_name = m.get("gateway", "")
+        tier = m.get("tier", 1)
+        weight = m.get("weight", 1)
+        if not gw_name:
+            raise ValidationError(
+                f"Member at index {i} is missing 'gateway' field.",
+                details={"field": "members", "index": i},
+            )
+        group_data["group"][gw_name] = f"{tier}|{weight}"
+
+    client = _get_client()
+    try:
+        write_result = await client.write(
+            "routes",
+            "gateway",
+            "addgroup",
+            data=group_data,
+        )
+
+        if not is_action_success(write_result):
+            validations = write_result.get("validations", {})
+            detail = f"validations={validations}" if validations else f"response={write_result}"
+            raise APIError(
+                f"Failed to add gateway group '{name}': "
+                f"{write_result.get('result', 'unknown error')} -- {detail}",
+                status_code=400,
+                endpoint="/api/routes/gateway/addgroup",
+                response_body=str(write_result),
+            )
+
+        await client.reconfigure("routes", "gateway")
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Added gateway group: name='%s', trigger='%s', members=%d",
+        name,
+        trigger,
+        len(member_list),
+        extra={"component": "routing"},
+    )
+
+    return {
+        "status": "created",
+        "name": name.strip(),
+        "trigger": trigger,
+        "members": member_list,
+        "uuid": write_result.get("uuid", ""),
+    }
 
 
 @mcp_server.tool()

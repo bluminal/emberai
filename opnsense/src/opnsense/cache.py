@@ -60,6 +60,7 @@ class CacheTTL:
     DNS_OVERRIDES: float = 120.0  # 2 minutes -- DNS host overrides
     ROUTES: float = 120.0  # 2 minutes -- routing table
     GATEWAYS: float = 120.0  # 2 minutes -- gateway status
+    GATEWAY_GROUPS: float = 120.0  # 2 minutes -- gateway group config
     VPN_SESSIONS: float = 60.0  # 1 minute -- VPN tunnel status changes
     IDS_ALERTS: float = 30.0  # 30 seconds -- real-time security data
     CERTIFICATES: float = 300.0  # 5 minutes -- certificate inventory

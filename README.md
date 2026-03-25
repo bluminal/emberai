@@ -185,6 +185,50 @@ emberai/
   docs/           # Documentation site (MkDocs Material)
 ```
 
+## Plugin Knowledge Base
+
+Each plugin can maintain a `knowledge/` directory containing operational lessons learned -- gotchas, platform-specific behaviors, and hard-won debugging knowledge that isn't derivable from code or documentation alone.
+
+```
+opnsense/
+  knowledge/
+    INDEX.md              # Manifest of all knowledge entries (always loaded)
+    multi-wan.md          # Loaded when working with gateways/failover
+    vlan-creation.md      # Loaded when creating VLANs
+```
+
+### Convention
+
+**INDEX.md** is referenced from the plugin's SKILL.md and kept lightweight -- one line per entry with trigger keywords and a file path. It is always loaded into context so the AI knows what knowledge exists.
+
+**Knowledge files** contain the detailed operational knowledge. Each has YAML frontmatter with `triggers` (keywords that indicate the file should be read) and `severity` (how critical the knowledge is). Files are read on-demand, only when the current task matches a trigger.
+
+```yaml
+---
+title: Multi-WAN Gateway Groups & Failover
+triggers: [gateway, failover, multi-wan, wan2, policy routing, gateway group]
+severity: critical
+created: 2026-03-24
+---
+
+Content here...
+```
+
+### When to add knowledge
+
+Add a knowledge entry when you discover something that:
+- Caused an outage or service disruption
+- Took significant debugging to identify
+- Is a platform-specific behavior not documented in vendor docs
+- Would affect anyone attempting the same configuration
+- Cannot be derived from reading the code or API documentation
+
+### Severity levels
+
+- **critical** -- Can cause outages. Must be read before making changes in this area.
+- **important** -- Significant gotcha. Should be read to avoid wasted time.
+- **informational** -- Useful context. Read if you want deeper understanding.
+
 ---
 
 ## Development

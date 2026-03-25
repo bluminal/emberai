@@ -74,6 +74,10 @@ OPNsense has an additional pattern: write (saves config) and reconfigure (applie
 - **Plugin Registry** discovers vendor plugins dynamically -- netex never hardcodes vendor names.
 - **Vendor Plugin Contract v1.0.0** -- any conforming plugin can be orchestrated by netex.
 
+## Plugin Knowledge Base
+
+Each plugin may have a `knowledge/` directory with operational lessons learned. Before making changes in a topic area, check the relevant plugin's `knowledge/INDEX.md` for matching entries and read any files whose triggers match the current task. This is especially important for entries marked `severity: critical`.
+
 ## Documents
 
 - PRD: `docs/reqs/main.md`

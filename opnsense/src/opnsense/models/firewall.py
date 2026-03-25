@@ -61,6 +61,16 @@ class FirewallRule(BaseModel):
         alias="destination_net",
         description="Destination address or alias",
     )
+    source_port: str = Field(
+        default="",
+        alias="source_port",
+        description="Source port, range, or alias (e.g. '80', '1024-65535', alias name)",
+    )
+    destination_port: str = Field(
+        default="",
+        alias="destination_port",
+        description="Destination port, range, or alias (e.g. '443', '80-443', alias name)",
+    )
     log: bool = Field(
         default=False,
         description="Whether matching packets are logged",
@@ -73,6 +83,11 @@ class FirewallRule(BaseModel):
     interface: str = Field(
         default="",
         description="Interface this rule applies to (e.g. 'lan', 'wan', 'opt1')",
+    )
+    gateway: str = Field(
+        default="",
+        description="Gateway or gateway group for policy-based routing "
+        "(e.g. 'WAN1_Failover'). Empty means default gateway.",
     )
 
 

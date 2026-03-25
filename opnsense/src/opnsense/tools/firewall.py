@@ -279,6 +279,9 @@ async def opnsense__firewall__add_rule(
     protocol: str = "any",
     description: str = "",
     position: int | None = None,
+    gateway: str = "",
+    dst_port: str = "",
+    src_port: str = "",
     *,
     apply: bool = False,
 ) -> dict[str, Any]:
@@ -294,6 +297,11 @@ async def opnsense__firewall__add_rule(
         protocol: IP protocol (e.g. 'TCP', 'UDP', 'ICMP', 'any').
         description: Human-readable rule description.
         position: Optional rule position in the filter chain.
+        gateway: Optional gateway or gateway group name for policy-based
+            routing (e.g. 'WAN1_Failover'). Only applies to 'pass' rules.
+        dst_port: Optional destination port, range, or alias name
+            (e.g. '443', '80-443', 'Jailed_Allowed_Ports').
+        src_port: Optional source port, range, or alias name.
         apply: Must be True to execute (write gate).
 
     API endpoint: POST /api/firewall/filter/addRule
@@ -328,6 +336,20 @@ async def opnsense__firewall__add_rule(
 
     if position is not None:
         rule_data["rule"]["sequence"] = str(position)
+
+    if dst_port and dst_port.strip():
+        rule_data["rule"]["destination_port"] = dst_port.strip()
+
+    if src_port and src_port.strip():
+        rule_data["rule"]["source_port"] = src_port.strip()
+
+    if gateway and gateway.strip():
+        if action.lower() != "pass":
+            raise ValidationError(
+                "Gateway can only be set on 'pass' rules (policy-based routing).",
+                details={"field": "gateway", "action": action},
+            )
+        rule_data["rule"]["gateway"] = gateway.strip()
 
     client = _get_client()
     try:
@@ -372,16 +394,17 @@ async def opnsense__firewall__add_rule(
         await client.close()
 
     logger.info(
-        "Added firewall rule: %s %s -> %s on %s (protocol=%s)",
+        "Added firewall rule: %s %s -> %s on %s (protocol=%s, gateway=%s)",
         action,
         src,
         dst,
         interface,
         protocol,
+        gateway or "default",
         extra={"component": "firewall"},
     )
 
-    return {
+    result: dict[str, Any] = {
         "status": "created",
         "interface": interface.strip(),
         "action": action.lower(),
@@ -391,6 +414,13 @@ async def opnsense__firewall__add_rule(
         "description": description,
         "uuid": write_result.get("uuid", ""),
     }
+    if gateway and gateway.strip():
+        result["gateway"] = gateway.strip()
+    if dst_port and dst_port.strip():
+        result["dst_port"] = dst_port.strip()
+    if src_port and src_port.strip():
+        result["src_port"] = src_port.strip()
+    return result
 
 
 @mcp_server.tool()

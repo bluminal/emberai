@@ -1490,6 +1490,9 @@ async def opnsense_rule_create(
     protocol: str = "any",
     description: str = "",
     position: int | None = None,
+    gateway: str = "",
+    dst_port: str = "",
+    src_port: str = "",
     apply: bool = False,
 ) -> str:
     """Create a firewall filter rule.
@@ -1505,14 +1508,25 @@ async def opnsense_rule_create(
         protocol: IP protocol (default 'any').
         description: Rule description.
         position: Optional rule sequence/position.
+        gateway: Optional gateway or gateway group for policy-based routing
+            (e.g. 'WAN1_Failover'). Only valid on 'pass' rules.
+        dst_port: Optional destination port, range, or alias name
+            (e.g. '443', '80-443', 'Jailed_Allowed_Ports').
+        src_port: Optional source port, range, or alias name.
         apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
     """
-    plan = format_change_plan(
-        steps=[
-            {"description": f"{action.upper()} {src} → {dst} on {interface}"},
-            {"description": f"Protocol: {protocol}"},
-        ]
-    )
+    steps = [
+        {"description": f"{action.upper()} {src} → {dst} on {interface}"},
+        {"description": f"Protocol: {protocol}"},
+    ]
+    if dst_port:
+        steps.append({"description": f"Destination port: {dst_port}"})
+    if src_port:
+        steps.append({"description": f"Source port: {src_port}"})
+    if gateway:
+        steps.append({"description": f"Gateway: {gateway}"})
+
+    plan = format_change_plan(steps=steps)
 
     if not apply:
         write_status = describe_write_status("OPNSENSE")
@@ -1528,16 +1542,96 @@ async def opnsense_rule_create(
         protocol=protocol,
         description=description,
         position=position,
+        gateway=gateway,
+        dst_port=dst_port,
+        src_port=src_port,
+        apply=True,
+    )
+
+    lines = [
+        "## Rule Created\n",
+        f"- **Interface:** {result['interface']}",
+        f"- **Action:** {result['action']}",
+        f"- **Source:** {result['source']}",
+        f"- **Destination:** {result['destination']}",
+        f"- **Protocol:** {result['protocol']}",
+    ]
+    if result.get("dst_port"):
+        lines.append(f"- **Dst Port:** {result['dst_port']}")
+    if result.get("src_port"):
+        lines.append(f"- **Src Port:** {result['src_port']}")
+    if result.get("gateway"):
+        lines.append(f"- **Gateway:** {result['gateway']}")
+    lines.append(f"- **UUID:** {result.get('uuid', '')}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Gateway group creation command (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense_gateway_group_create(
+    name: str,
+    members: str,
+    trigger: str = "down",
+    apply: bool = False,
+) -> str:
+    """Create a gateway group for failover or load balancing.
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        name: Gateway group name (e.g. 'WAN1_Failover').
+        members: JSON string -- list of objects with 'gateway', 'tier',
+            and 'weight' keys. Example:
+            '[{"gateway": "WAN_DHCP", "tier": 1, "weight": 1},
+              {"gateway": "WAN2_DHCP", "tier": 2, "weight": 1}]'
+        trigger: Failover trigger. One of: 'down', 'packet_loss',
+            'high_latency', 'packet_loss_high_latency'. Default: 'down'.
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    import json as _json
+
+    try:
+        member_list = _json.loads(members)
+    except (ValueError, TypeError):
+        member_list = []
+
+    member_descriptions = [
+        f"{m.get('gateway', '?')} (tier {m.get('tier', '?')}, weight {m.get('weight', 1)})"
+        for m in (member_list if isinstance(member_list, list) else [])
+    ]
+
+    plan = format_change_plan(
+        steps=[
+            {"description": f"Create gateway group: {name}"},
+            {"description": f"Trigger: {trigger}"},
+            *[{"description": f"Member: {desc}"} for desc in member_descriptions],
+        ]
+    )
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    from opnsense.tools.routing import opnsense__routing__add_gateway_group
+
+    result = await opnsense__routing__add_gateway_group(
+        name=name,
+        members=members,
+        trigger=trigger,
         apply=True,
     )
 
     return (
-        f"## Rule Created\n\n"
-        f"- **Interface:** {result['interface']}\n"
-        f"- **Action:** {result['action']}\n"
-        f"- **Source:** {result['source']}\n"
-        f"- **Destination:** {result['destination']}\n"
-        f"- **Protocol:** {result['protocol']}\n"
+        f"## Gateway Group Created\n\n"
+        f"- **Name:** {result['name']}\n"
+        f"- **Trigger:** {result['trigger']}\n"
+        f"- **Members:** {len(result['members'])}\n"
         f"- **UUID:** {result.get('uuid', '')}"
     )
 

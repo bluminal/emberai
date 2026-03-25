@@ -34,6 +34,12 @@ You are operating the opnsense plugin for EmberAI. This plugin provides
 read and (when explicitly enabled) write access to an OPNsense firewall
 and router via its local REST API.
 
+## Knowledge Base
+Before making changes, check `opnsense/knowledge/INDEX.md` for entries
+matching your current task. Read any files whose triggers match, especially
+those marked `severity: critical`. This knowledge captures hard-won
+operational lessons that prevent outages and save debugging time.
+
 This plugin covers the GATEWAY layer: interfaces, VLAN interfaces, routing
 table, firewall rules and aliases, NAT, VPN tunnels, DNS resolver (Unbound),
 DHCP server (Kea), IDS/IPS (Suricata), traffic shaping, and system diagnostics.
