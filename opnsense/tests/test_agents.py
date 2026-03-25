@@ -235,7 +235,7 @@ class TestServicesAgent:
 
         client = _make_client_multi(
             {
-                ("unbound", "host", "searchHost"): dns_data,
+                ("unbound", "settings", "searchHostOverride"): dns_data,
                 ("kea", "leases4", "search"): load_fixture("dhcp_leases.json"),
             }
         )
@@ -253,7 +253,7 @@ class TestServicesAgent:
 
         client = _make_client_multi(
             {
-                ("unbound", "host", "searchHost"): {"rows": []},
+                ("unbound", "settings", "searchHostOverride"): {"rows": []},
                 ("kea", "leases4", "search"): {"rows": []},
             }
         )
@@ -269,7 +269,7 @@ class TestServicesAgent:
 
         client = _make_client_multi(
             {
-                ("unbound", "host", "searchHost"): {"rows": []},
+                ("unbound", "settings", "searchHostOverride"): {"rows": []},
                 ("kea", "leases4", "search"): load_fixture("dhcp_leases.json"),
             }
         )

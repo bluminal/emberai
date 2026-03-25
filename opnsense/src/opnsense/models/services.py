@@ -55,12 +55,15 @@ class DNSOverride(BaseModel):
 
     Returned by ``opnsense__services__get_dns_overrides()``.
 
-    API field mapping (``/api/unbound/host/searchHost``):
+    OPNsense 26.x API field mapping
+    (``/api/unbound/settings/searchHostOverride``):
+
         ``uuid``        -> ``uuid``
         ``hostname``    -> ``hostname``
         ``domain``      -> ``domain``
         ``server``      -> ``ip``
         ``description`` -> ``description``
+        ``enabled``     -> ``enabled``
     """
 
     model_config = ConfigDict(strict=True, populate_by_name=True)
@@ -83,4 +86,8 @@ class DNSOverride(BaseModel):
     description: str = Field(
         default="",
         description="Human-readable description of this override",
+    )
+    enabled: str = Field(
+        default="1",
+        description="Whether this override is active ('1' = enabled, '0' = disabled)",
     )
