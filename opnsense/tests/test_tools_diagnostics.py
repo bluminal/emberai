@@ -1,11 +1,12 @@
 """Tests for Diagnostics skill tools.
 
 Covers:
-- run_ping: parameter passing, response handling
-- run_traceroute: parameter passing
-- dns_lookup: parameter passing
+- run_ping: 26.x POST-then-poll pattern, parameter passing
+- run_traceroute: 26.x POST-then-poll pattern, parameter passing
+- dns_lookup: 26.x Unbound endpoint, parameter passing
 - get_lldp_neighbors: response format variants, interface filtering
 - run_host_discovery: polling success, timeout, partial results, error handling
+- _poll_for_result: shared polling helper, completion detection, timeout, errors
 """
 
 from __future__ import annotations
@@ -17,19 +18,175 @@ import pytest
 
 
 def _make_client(
-    get_returns: dict[str, Any] | None = None,
+    get_returns: dict[str, Any] | list[dict[str, Any]] | None = None,
     post_returns: dict[str, Any] | None = None,
 ) -> AsyncMock:
     client = AsyncMock()
     if get_returns is not None:
-        client.get = AsyncMock(return_value=get_returns)
+        if isinstance(get_returns, list):
+            client.get = AsyncMock(side_effect=get_returns)
+        else:
+            client.get = AsyncMock(return_value=get_returns)
     if post_returns is not None:
         client.post = AsyncMock(return_value=post_returns)
     return client
 
 
 # ---------------------------------------------------------------------------
-# run_ping
+# _poll_for_result (shared polling helper)
+# ---------------------------------------------------------------------------
+
+
+class TestPollForResult:
+    @pytest.mark.asyncio
+    async def test_completes_on_status_done(self) -> None:
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                {"status": "running", "result": "partial..."},
+                {"status": "done", "result": "PING 8.8.8.8: 3 packets..."},
+            ]
+        )
+
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["completed"] is True
+        assert result["result"]["status"] == "done"
+
+    @pytest.mark.asyncio
+    async def test_completes_on_status_completed(self) -> None:
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        client.get = AsyncMock(return_value={"status": "completed", "data": "ok"})
+
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["completed"] is True
+
+    @pytest.mark.asyncio
+    async def test_completes_on_output_stabilisation(self) -> None:
+        """When there is no explicit status field, completion is detected
+        by output length stabilisation between two consecutive polls."""
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                {"result": "line1\n"},
+                {"result": "line1\nline2\n"},
+                {"result": "line1\nline2\n"},  # same length = stabilised
+            ]
+        )
+
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["completed"] is True
+        assert result["result"]["result"] == "line1\nline2\n"
+
+    @pytest.mark.asyncio
+    async def test_timeout_returns_incomplete(self) -> None:
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        # Always returns running + growing output
+        call_count = 0
+
+        async def growing_output(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            return {"status": "running", "result": "x" * call_count}
+
+        client.get = AsyncMock(side_effect=growing_output)
+
+        with (
+            patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock),
+            patch("opnsense.tools.diagnostics._POLL_TIMEOUT_SECONDS", 4.0),
+            patch("opnsense.tools.diagnostics._POLL_INTERVAL_SECONDS", 2.0),
+        ):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["completed"] is False
+
+    @pytest.mark.asyncio
+    async def test_poll_error_continues(self) -> None:
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                Exception("Connection reset"),
+                {"status": "done", "result": "ok"},
+            ]
+        )
+
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["completed"] is True
+
+    @pytest.mark.asyncio
+    async def test_elapsed_seconds_tracked(self) -> None:
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                {"status": "running"},
+                {"status": "done", "result": "ok"},
+            ]
+        )
+
+        with (
+            patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock),
+            patch("opnsense.tools.diagnostics._POLL_INTERVAL_SECONDS", 2.0),
+        ):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["elapsed_seconds"] == 4.0
+
+    @pytest.mark.asyncio
+    async def test_empty_output_does_not_trigger_stabilisation(self) -> None:
+        """Empty output should not be considered stable."""
+        from opnsense.tools.diagnostics import _poll_for_result
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                {"result": ""},
+                {"result": ""},
+                {"status": "done", "result": "final"},
+            ]
+        )
+
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            result = await _poll_for_result(
+                client, "diagnostics", "interface", "pingStatus", label="test"
+            )
+
+        assert result["completed"] is True
+        assert result["result"]["result"] == "final"
+
+
+# ---------------------------------------------------------------------------
+# run_ping (26.x POST-then-poll)
 # ---------------------------------------------------------------------------
 
 
@@ -38,16 +195,27 @@ class TestRunPing:
     async def test_basic_ping(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__run_ping
 
-        result = {"loss": "0", "avg": "5.2", "min": "4.1", "max": "6.3"}
-        client = _make_client(post_returns=result)
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+        client.get = AsyncMock(
+            side_effect=[
+                {"status": "running", "result": "PING 8.8.8.8..."},
+                {"status": "done", "result": "PING 8.8.8.8: 3 packets, 0% loss, avg 5.2ms"},
+            ]
+        )
 
-        response = await opnsense__diagnostics__run_ping(client, "8.8.8.8")
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            response = await opnsense__diagnostics__run_ping(client, "8.8.8.8")
 
-        assert response == result
+        assert response["host"] == "8.8.8.8"
+        assert response["completed"] is True
+        assert "3 packets" in response["output"]
+
+        # Verify the start POST used the correct 26.x endpoint
         client.post.assert_called_once_with(
             "diagnostics",
             "interface",
-            "getPing",
+            "ping",
             data={"address": "8.8.8.8"},
         )
 
@@ -55,9 +223,12 @@ class TestRunPing:
     async def test_ping_with_count(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__run_ping
 
-        client = _make_client(post_returns={"loss": "0"})
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+        client.get = AsyncMock(return_value={"status": "done", "result": "ok"})
 
-        await opnsense__diagnostics__run_ping(client, "8.8.8.8", count=5)
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            await opnsense__diagnostics__run_ping(client, "8.8.8.8", count=5)
 
         call_data = client.post.call_args[1]["data"]
         assert call_data["count"] == "5"
@@ -66,20 +237,66 @@ class TestRunPing:
     async def test_ping_with_source_ip(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__run_ping
 
-        client = _make_client(post_returns={"loss": "0"})
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+        client.get = AsyncMock(return_value={"status": "done", "result": "ok"})
 
-        await opnsense__diagnostics__run_ping(
-            client,
-            "8.8.8.8",
-            source_ip="192.168.1.1",
-        )
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            await opnsense__diagnostics__run_ping(
+                client,
+                "8.8.8.8",
+                source_ip="192.168.1.1",
+            )
 
         call_data = client.post.call_args[1]["data"]
         assert call_data["source_address"] == "192.168.1.1"
 
+    @pytest.mark.asyncio
+    async def test_ping_timeout(self) -> None:
+        from opnsense.tools.diagnostics import opnsense__diagnostics__run_ping
+
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+
+        # Always running, never done -- growing output to avoid stabilisation
+        call_count = 0
+
+        async def growing(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            return {"status": "running", "result": "x" * call_count}
+
+        client.get = AsyncMock(side_effect=growing)
+
+        with (
+            patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock),
+            patch("opnsense.tools.diagnostics._POLL_TIMEOUT_SECONDS", 4.0),
+            patch("opnsense.tools.diagnostics._POLL_INTERVAL_SECONDS", 2.0),
+        ):
+            response = await opnsense__diagnostics__run_ping(client, "8.8.8.8")
+
+        assert response["completed"] is False
+        assert response["host"] == "8.8.8.8"
+
+    @pytest.mark.asyncio
+    async def test_ping_output_fallback_key(self) -> None:
+        """When the poll response uses 'output' instead of 'result'."""
+        from opnsense.tools.diagnostics import opnsense__diagnostics__run_ping
+
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+        client.get = AsyncMock(
+            return_value={"status": "done", "output": "PING output here"}
+        )
+
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            response = await opnsense__diagnostics__run_ping(client, "1.1.1.1")
+
+        assert response["output"] == "PING output here"
+
 
 # ---------------------------------------------------------------------------
-# run_traceroute
+# run_traceroute (26.x POST-then-poll)
 # ---------------------------------------------------------------------------
 
 
@@ -88,16 +305,30 @@ class TestRunTraceroute:
     async def test_basic_traceroute(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__run_traceroute
 
-        result = {"hops": [{"hop": 1, "addr": "192.168.1.1"}]}
-        client = _make_client(post_returns=result)
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+        client.get = AsyncMock(
+            side_effect=[
+                {"status": "running", "result": "1  192.168.1.1  1.2ms"},
+                {
+                    "status": "done",
+                    "result": "1  192.168.1.1  1.2ms\n2  10.0.0.1  5.3ms\n3  8.8.8.8  12.1ms",
+                },
+            ]
+        )
 
-        response = await opnsense__diagnostics__run_traceroute(client, "8.8.8.8")
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            response = await opnsense__diagnostics__run_traceroute(client, "8.8.8.8")
 
-        assert response == result
+        assert response["host"] == "8.8.8.8"
+        assert response["completed"] is True
+        assert "8.8.8.8" in response["output"]
+
+        # Verify the start POST used the correct 26.x endpoint
         client.post.assert_called_once_with(
             "diagnostics",
             "interface",
-            "getTrace",
+            "trace",
             data={"address": "8.8.8.8"},
         )
 
@@ -105,16 +336,45 @@ class TestRunTraceroute:
     async def test_traceroute_with_max_hops(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__run_traceroute
 
-        client = _make_client(post_returns={})
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+        client.get = AsyncMock(return_value={"status": "done", "result": "ok"})
 
-        await opnsense__diagnostics__run_traceroute(client, "8.8.8.8", max_hops=15)
+        with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
+            await opnsense__diagnostics__run_traceroute(client, "8.8.8.8", max_hops=15)
 
         call_data = client.post.call_args[1]["data"]
         assert call_data["maxttl"] == "15"
 
+    @pytest.mark.asyncio
+    async def test_traceroute_timeout(self) -> None:
+        from opnsense.tools.diagnostics import opnsense__diagnostics__run_traceroute
+
+        client = AsyncMock()
+        client.post = AsyncMock(return_value={"status": "started"})
+
+        call_count = 0
+
+        async def growing(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            return {"status": "running", "result": "hop" * call_count}
+
+        client.get = AsyncMock(side_effect=growing)
+
+        with (
+            patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock),
+            patch("opnsense.tools.diagnostics._POLL_TIMEOUT_SECONDS", 4.0),
+            patch("opnsense.tools.diagnostics._POLL_INTERVAL_SECONDS", 2.0),
+        ):
+            response = await opnsense__diagnostics__run_traceroute(client, "8.8.8.8")
+
+        assert response["completed"] is False
+        assert response["host"] == "8.8.8.8"
+
 
 # ---------------------------------------------------------------------------
-# dns_lookup
+# dns_lookup (26.x Unbound endpoint)
 # ---------------------------------------------------------------------------
 
 
@@ -123,17 +383,21 @@ class TestDNSLookup:
     async def test_basic_lookup(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__dns_lookup
 
-        result = {"address": "192.168.1.200", "hostname": "nas.home.local"}
+        result = {
+            "rows": [
+                {"hostname": "example.com", "address": "93.184.216.34", "type": "A"}
+            ]
+        }
         client = _make_client(get_returns=result)
 
-        response = await opnsense__diagnostics__dns_lookup(client, "192.168.1.200")
+        response = await opnsense__diagnostics__dns_lookup(client, "example.com")
 
         assert response == result
         client.get.assert_called_once_with(
+            "unbound",
             "diagnostics",
-            "dns",
-            "reverseResolve",
-            params={"address": "192.168.1.200"},
+            "lookup",
+            params={"hostname": "example.com"},
         )
 
     @pytest.mark.asyncio
@@ -149,11 +413,43 @@ class TestDNSLookup:
         )
 
         client.get.assert_called_once_with(
+            "unbound",
             "diagnostics",
-            "dns",
-            "reverseResolve",
-            params={"address": "example.com", "type": "MX"},
+            "lookup",
+            params={"hostname": "example.com", "type": "MX"},
         )
+
+    @pytest.mark.asyncio
+    async def test_reverse_lookup(self) -> None:
+        from opnsense.tools.diagnostics import opnsense__diagnostics__dns_lookup
+
+        result = {"rows": [{"hostname": "dns.google", "address": "8.8.8.8"}]}
+        client = _make_client(get_returns=result)
+
+        response = await opnsense__diagnostics__dns_lookup(client, "8.8.8.8")
+
+        assert response == result
+        client.get.assert_called_once_with(
+            "unbound",
+            "diagnostics",
+            "lookup",
+            params={"hostname": "8.8.8.8"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_lookup_aaaa_record(self) -> None:
+        from opnsense.tools.diagnostics import opnsense__diagnostics__dns_lookup
+
+        result = {
+            "rows": [{"hostname": "example.com", "address": "2606:2800:220:1::248", "type": "AAAA"}]
+        }
+        client = _make_client(get_returns=result)
+
+        response = await opnsense__diagnostics__dns_lookup(
+            client, "example.com", record_type="AAAA"
+        )
+
+        assert response == result
 
 
 # ---------------------------------------------------------------------------

@@ -265,29 +265,31 @@ opnsense__services__get_traffic_shaper()
 
 ### diagnostics skill
 opnsense__diagnostics__run_ping(host, count?=5, source_ip?)
-  -> {host, packets_sent, packets_recv, loss_pct, rtt_avg_ms, output}
-  API: POST /api/diagnostics/interface/getPing
+  -> {host, output, completed, elapsed_seconds}
+  API: POST /api/diagnostics/interface/ping + GET .../pingStatus
+  Note: 26.x async polling pattern. Starts ping, then polls for results.
 
 opnsense__diagnostics__run_traceroute(host, max_hops?=30)
-  -> {host, hops: [{hop, ip, hostname?, rtt_ms}]}
-  API: POST /api/diagnostics/interface/getTrace
+  -> {host, output, completed, elapsed_seconds}
+  API: POST /api/diagnostics/interface/trace + GET .../traceStatus
+  Note: 26.x async polling pattern. Starts traceroute, then polls for results.
 
 opnsense__diagnostics__run_host_discovery(interface)
   -> [{ip, mac, hostname?, last_seen}]
-  API: POST /api/hostdiscovery/scan/start + GET .../result
+  API: POST /api/diagnostics/interface/startScan + GET .../getScanResult
   Note: Discovery scan runs asynchronously. Poll for results.
 
 opnsense__diagnostics__get_lldp_neighbors(interface?)
   -> [{local_port, neighbor_system, neighbor_port, neighbor_ip?,
         neighbor_capabilities, ttl}]
-  API: GET /api/diagnostics/interface/getLldpNeighbors
+  API: GET /api/diagnostics/lldp/getNeighbors
   Returns LLDP neighbor table -- what device is connected to each port.
   Essential for physical topology verification and port assignment workflows.
   Read-only.
 
 opnsense__diagnostics__dns_lookup(hostname, record_type?="A")
   -> [{name, type, value, ttl}]
-  API: GET /api/diagnostics/dns/reverseResolve
+  API: GET /api/unbound/diagnostics/lookup
 
 
 ### firmware skill
