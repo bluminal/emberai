@@ -51,6 +51,35 @@ logger = logging.getLogger(__name__)
 # Threshold in seconds above which a successful request triggers a warning.
 _SLOW_REQUEST_THRESHOLD = 5.0
 
+# Maximum length for response bodies stored in error objects.
+_MAX_RESPONSE_BODY_LENGTH = 500
+
+
+def truncate_response_body(body: str, max_length: int = _MAX_RESPONSE_BODY_LENGTH) -> str:
+    """Truncate a response body to prevent leaking internal server details.
+
+    API error responses may contain PHP stack traces, internal file
+    paths, or other sensitive server-side information.  Truncating
+    prevents that data from propagating to MCP callers via
+    :class:`~opnsense.errors.APIError` details.
+
+    Parameters
+    ----------
+    body:
+        The raw response body text.
+    max_length:
+        Maximum allowed length before truncation.  Defaults to 500.
+
+    Returns
+    -------
+    str
+        The original body if within limits, or a truncated version
+        with ``"... [truncated]"`` appended.
+    """
+    if len(body) > max_length:
+        return body[:max_length] + "... [truncated]"
+    return body
+
 
 class OPNsenseClient:
     """Async HTTP client for the OPNsense REST API.
@@ -755,7 +784,7 @@ class OPNsenseClient:
         if 200 <= status < 300:
             return
 
-        body_text = response.text
+        body_text = truncate_response_body(response.text)
 
         if status == 401:
             logger.error(

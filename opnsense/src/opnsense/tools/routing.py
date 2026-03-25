@@ -19,7 +19,9 @@ import logging
 import os
 from typing import Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
+from pydantic import ValidationError as PydanticValidationError
+
+from opnsense.api.opnsense_client import OPNsenseClient, truncate_response_body
 from opnsense.api.response import is_action_success, normalize_response
 from opnsense.cache import CacheTTL
 from opnsense.errors import APIError, ValidationError
@@ -143,7 +145,7 @@ async def opnsense__routing__list_routes() -> list[dict[str, Any]]:
             coerced = _coerce_route_booleans(row)
             route = Route.model_validate(coerced)
             routes.append(route.model_dump(by_alias=False))
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable route entry: %s",
                 row.get("uuid", row.get("network", "unknown")),
@@ -192,7 +194,7 @@ async def opnsense__routing__list_gateways() -> list[dict[str, Any]]:
         try:
             gw = Gateway.model_validate(item)
             gateways.append(gw.model_dump(by_alias=False))
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable gateway entry: %s",
                 item.get("name", "unknown"),
@@ -267,7 +269,7 @@ async def opnsense__routing__add_route(
                 f"{write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint="/api/routes/routes/addRoute",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         await client.reconfigure("routes", "routes")
