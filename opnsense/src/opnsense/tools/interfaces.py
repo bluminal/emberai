@@ -16,7 +16,9 @@ import logging
 import os
 from typing import Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
+from pydantic import ValidationError as PydanticValidationError
+
+from opnsense.api.opnsense_client import OPNsenseClient, truncate_response_body
 from opnsense.api.response import is_action_success, normalize_response
 from opnsense.cache import CacheTTL
 from opnsense.errors import APIError, ValidationError
@@ -150,7 +152,7 @@ async def opnsense__interfaces__list_interfaces() -> list[dict[str, Any]]:
         try:
             iface = interface_from_info(logical_name, iface_data)
             interfaces.append(iface.model_dump(by_alias=False))
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable interface entry: %s",
                 logical_name,
@@ -196,7 +198,7 @@ async def opnsense__interfaces__list_vlan_interfaces() -> list[dict[str, Any]]:
         try:
             vlan = VLANInterface.model_validate(coerced)
             vlans.append(vlan.model_dump(by_alias=False))
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable VLAN entry: uuid=%s, tag=%s, "
                 "available_fields=%s",
@@ -258,7 +260,7 @@ async def opnsense__interfaces__get_dhcp_leases(
                 continue
 
             leases.append(lease_dict)
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable DHCP lease: %s",
                 row.get("address", row.get("hw_address", "unknown")),
@@ -341,7 +343,7 @@ async def opnsense__interfaces__add_vlan_interface(
                 f"{write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint="/api/interfaces/vlan/addItem",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         # Reconfigure to apply
@@ -427,7 +429,7 @@ async def opnsense__interfaces__add_dhcp_reservation(
                 f"{write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint="/api/kea/dhcpv4/addReservation",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         await client.reconfigure("kea", "service")
@@ -526,7 +528,7 @@ async def opnsense__interfaces__add_dhcp_subnet(
                 f"{write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint="/api/kea/dhcpv4/addSubnet",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         await client.reconfigure("kea", "service")
@@ -654,7 +656,7 @@ async def opnsense__interfaces__configure_vlan(
                 f"{vlan_result.get('result', 'unknown error')} -- {detail}",
                 status_code=400,
                 endpoint="/api/interfaces/vlan_settings/addItem",
-                response_body=str(vlan_result),
+                response_body=truncate_response_body(str(vlan_result)),
             )
 
         vlan_uuid = vlan_result.get("uuid", "")

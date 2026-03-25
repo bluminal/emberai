@@ -29,6 +29,7 @@ Usage::
 from __future__ import annotations
 
 import functools
+import inspect
 import os
 from enum import StrEnum
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
@@ -144,6 +145,16 @@ def write_gate(plugin_name: str = "UNIFI") -> Callable[[Callable[P, T]], Callabl
     env_var = _env_var_name(plugin_name)
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        # Fail fast at decoration time if the decorated function
+        # doesn't have 'apply' as a keyword-only parameter.
+        sig = inspect.signature(func)
+        apply_param = sig.parameters.get("apply")
+        if apply_param is None or apply_param.kind != inspect.Parameter.KEYWORD_ONLY:
+            raise TypeError(
+                f"@write_gate requires '{func.__name__}' to have "
+                f"'apply' as a keyword-only parameter"
+            )
+
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             # Step 1: Check environment variable
