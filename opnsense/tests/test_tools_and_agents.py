@@ -1080,7 +1080,7 @@ class TestListGateways:
             result = await opnsense__routing__list_gateways()
 
         assert len(result) == 2
-        assert result[0]["name"] == "WAN_GW"
+        assert result[0]["name"] == "WAN_DHCP"
 
     @pytest.mark.asyncio
     async def test_gateway_has_expected_fields(self) -> None:
@@ -1105,8 +1105,8 @@ class TestListGateways:
 
             result = await opnsense__routing__list_gateways()
 
-        assert result[0]["rtt_ms"] == 4.2
-        assert result[1]["rtt_ms"] == 12.7
+        assert result[0]["rtt_ms"] == pytest.approx(4.231)
+        assert result[1]["rtt_ms"] == pytest.approx(12.7)
 
 
 class TestQuaggraGracefulDegradation:

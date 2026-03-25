@@ -1,28 +1,25 @@
 {
   "items": [
     {
-      "name": "WAN_GW",
-      "address": "203.0.113.1",
-      "interface": "igb0",
-      "monitor": "8.8.8.8",
-      "status": "online",
-      "priority": 255,
-      "delay": 4.2,
-      "stddev": 0.8,
+      "name": "WAN_DHCP",
+      "address": "100.94.200.2",
+      "status": "none",
+      "status_translated": "Online",
       "loss": "0.0 %",
-      "status_translated": "Online"
+      "delay": "4.231 ms",
+      "stddev": "0.803 ms",
+      "monitor": "1.1.1.1"
     },
     {
-      "name": "VPN_GW",
-      "address": "10.10.0.1",
-      "interface": "wg0",
-      "monitor": "10.10.0.1",
-      "status": "online",
-      "priority": 255,
-      "delay": 12.7,
-      "stddev": 2.1,
-      "loss": "0.0 %",
-      "status_translated": "Online"
+      "name": "WAN2_DHCP",
+      "address": "192.168.10.1",
+      "status": "none",
+      "status_translated": "Online",
+      "loss": "0.1 %",
+      "delay": "12.7 ms",
+      "stddev": "2.1 ms",
+      "monitor": "8.8.8.8"
     }
-  ]
+  ],
+  "status": "ok"
 }

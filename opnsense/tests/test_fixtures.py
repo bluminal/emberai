@@ -237,23 +237,34 @@ class TestRoutesFixtureData:
 
 
 class TestGatewaysFixtureData:
-    """Verify gateways.json matches OPNsense /api/routes/gateway/status."""
+    """Verify gateways.json matches OPNsense 26.x /api/routes/gateway/status.
+
+    OPNsense 26.x returns dpinger metrics as strings with unit suffixes
+    (e.g. "4.2 ms", "0.0 %") and uses "~" as a null sentinel. The
+    ``interface`` field is not present in 26.x gateway status responses.
+    """
 
     def test_gateway_has_required_fields(self) -> None:
         data = load_fixture("gateways.json")
-        required_fields = {"name", "address", "interface", "status"}
+        # 26.x fields: name, address, status, status_translated, loss, delay, stddev, monitor
+        required_fields = {"name", "address", "status", "monitor"}
         for gw in data["items"]:
             assert required_fields.issubset(gw.keys())
 
-    def test_all_gateways_online(self) -> None:
+    def test_all_gateways_have_valid_status(self) -> None:
         data = load_fixture("gateways.json")
+        # dpinger raw statuses: none (online), down, delay, loss, delay+loss, force_down
+        valid_statuses = {"none", "down", "delay", "loss", "delay+loss", "force_down",
+                          "online", "offline"}
         for gw in data["items"]:
-            assert gw["status"] == "online"
+            assert gw["status"] in valid_statuses
 
-    def test_delay_is_numeric(self) -> None:
+    def test_delay_is_string_or_numeric(self) -> None:
         data = load_fixture("gateways.json")
         for gw in data["items"]:
-            assert isinstance(gw["delay"], (int, float))
+            delay = gw["delay"]
+            # 26.x returns strings like "4.2 ms" or "~"; older versions return float
+            assert isinstance(delay, (int, float, str))
 
 
 # ---------------------------------------------------------------------------

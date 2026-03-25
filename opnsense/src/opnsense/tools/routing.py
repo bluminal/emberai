@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any
 
 from opnsense.api.opnsense_client import OPNsenseClient
@@ -36,6 +37,99 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _STR_BOOL_TRUE = frozenset({"1", "true", "yes"})
+
+# OPNsense 26.x uses "~" as a sentinel for "no data available"
+_TILDE_SENTINEL = "~"
+
+# dpinger raw status -> normalized human-readable status
+_DPINGER_STATUS_MAP: dict[str, str] = {
+    "none": "online",
+    "down": "offline",
+    "delay": "degraded",
+    "loss": "degraded",
+    "delay+loss": "degraded",
+    "force_down": "offline",
+}
+
+
+def _parse_dpinger_metric(value: Any) -> float | None:
+    """Parse a dpinger metric value to a float.
+
+    OPNsense 26.x returns dpinger metrics in several formats:
+    - ``"~"``       -> None (no data)
+    - ``"4.2 ms"``  -> 4.2
+    - ``"0.0 %"``   -> 0.0
+    - ``4.2``       -> 4.2 (already numeric)
+    - ``""``        -> None
+
+    Returns None if the value cannot be parsed.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str):
+        return None
+
+    value = value.strip()
+    if not value or value == _TILDE_SENTINEL:
+        return None
+
+    # Strip common unit suffixes: "ms", "%", "s"
+    cleaned = re.sub(r"\s*(ms|%|s)\s*$", "", value, flags=re.IGNORECASE).strip()
+    try:
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return None
+
+
+def _coerce_gateway_fields(item: dict[str, Any]) -> dict[str, Any]:
+    """Coerce OPNsense 26.x gateway status fields to model-compatible types.
+
+    OPNsense 26.x ``/api/routes/gateway/status`` returns gateway entries with:
+    - ``"~"`` sentinels for missing data (address, monitor, metrics)
+    - String-formatted metrics: ``"4.2 ms"``, ``"0.0 %"``
+    - Raw dpinger status codes: ``"none"`` (online), ``"down"`` (offline)
+    - No ``interface`` or ``priority`` fields
+
+    This function normalizes all of these into the types expected by the
+    :class:`Gateway` model.
+    """
+    coerced = dict(item)
+
+    # Normalize "~" sentinels in string fields to empty string
+    for str_field in ("address", "monitor", "name"):
+        val = coerced.get(str_field)
+        if isinstance(val, str) and val.strip() == _TILDE_SENTINEL:
+            coerced[str_field] = ""
+
+    # Parse delay -> rtt_ms (float)
+    coerced["delay"] = _parse_dpinger_metric(coerced.get("delay"))
+
+    # Parse loss -> loss_pct (float)
+    coerced["loss_pct"] = _parse_dpinger_metric(coerced.pop("loss", None))
+
+    # Parse stddev -> stddev_ms (float)
+    coerced["stddev_ms"] = _parse_dpinger_metric(coerced.pop("stddev", None))
+
+    # Normalize status from dpinger codes to human-readable
+    raw_status = coerced.get("status", "")
+    if isinstance(raw_status, str):
+        normalized = _DPINGER_STATUS_MAP.get(raw_status.lower().strip(), "")
+        if normalized:
+            coerced["status"] = normalized
+        # If not in the map, keep the original value (it might already
+        # be human-readable, e.g. "online", "offline" from older versions)
+
+    # Ensure priority is an int (may be missing in 26.x)
+    priority = coerced.get("priority")
+    if priority is not None:
+        try:
+            coerced["priority"] = int(priority)
+        except (ValueError, TypeError):
+            coerced["priority"] = 255
+
+    return coerced
 
 
 def _coerce_route_booleans(row: dict[str, Any]) -> dict[str, Any]:
@@ -166,7 +260,11 @@ async def opnsense__routing__list_gateways() -> list[dict[str, Any]]:
     """List all gateways and their status on the OPNsense firewall.
 
     Returns gateway inventory with name, address, interface, monitor IP,
-    status, priority, and round-trip time.
+    status, priority, round-trip time, packet loss, and RTT stddev.
+
+    Handles OPNsense 26.x response format where dpinger metrics are
+    returned as strings with unit suffixes (e.g. "4.2 ms", "0.0 %")
+    and missing values use the "~" sentinel.
 
     API endpoint: GET /api/routes/gateway/status
     """
@@ -182,7 +280,8 @@ async def opnsense__routing__list_gateways() -> list[dict[str, Any]]:
     finally:
         await client.close()
 
-    # Gateway status returns an "items" array (action-style response)
+    # Gateway status returns an "items" array (action-style response).
+    # OPNsense 26.x: {"items": [...], "status": "ok"}
     items = raw.get("items", [])
     if not items and "rows" in raw:
         # Fall back to search-style if the API returns rows instead
@@ -191,7 +290,8 @@ async def opnsense__routing__list_gateways() -> list[dict[str, Any]]:
     gateways: list[dict[str, Any]] = []
     for item in items:
         try:
-            gw = Gateway.model_validate(item)
+            coerced = _coerce_gateway_fields(item)
+            gw = Gateway.model_validate(coerced)
             gateways.append(gw.model_dump(by_alias=False))
         except Exception:
             logger.warning(
@@ -274,7 +374,7 @@ def _parse_gateway_group(row: dict[str, Any]) -> GatewayGroup:
                 members.append(
                     GatewayGroupMember(
                         gateway=str(m.get("gateway", m.get("name", ""))),
-                        tier=int(m.get("tier", m.get("priority", 1))),
+                        tier=int(m.get("tier") or m.get("priority") or 1),
                         weight=int(m.get("weight", 1)),
                     )
                 )
