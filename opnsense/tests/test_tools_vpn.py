@@ -1,10 +1,10 @@
 """Tests for VPN skill tools.
 
 Covers:
-- list_ipsec_sessions: fixture parsing, model normalization
-- list_openvpn_instances: fixture parsing
-- list_wireguard_peers: fixture parsing, active/inactive detection
-- get_vpn_status: aggregation, summary counts, edge cases
+- list_ipsec_sessions: fixture parsing, model normalization, result structure
+- list_openvpn_instances: fixture parsing, result structure
+- list_wireguard_peers: fixture parsing, active/inactive detection, result structure
+- get_vpn_status: aggregation, summary counts, edge cases, metadata
 """
 
 from __future__ import annotations
@@ -56,10 +56,11 @@ class TestListIPSecSessions:
         fixture = load_fixture("ipsec_sessions.json")
         client = _make_client(fixture)
 
-        sessions = await opnsense__vpn__list_ipsec_sessions(client)
+        result = await opnsense__vpn__list_ipsec_sessions(client)
 
-        assert len(sessions) == 2
-        client.get.assert_called_once_with("ipsec", "sessions", "search")
+        assert len(result["items"]) == 2
+        assert result["_meta"]["available"] is True
+        assert result["_meta"]["endpoint_used"] == "/api/ipsec/sessions/search"
 
     @pytest.mark.asyncio
     async def test_normalizes_field_names(self) -> None:
@@ -68,9 +69,9 @@ class TestListIPSecSessions:
         fixture = load_fixture("ipsec_sessions.json")
         client = _make_client(fixture)
 
-        sessions = await opnsense__vpn__list_ipsec_sessions(client)
+        result = await opnsense__vpn__list_ipsec_sessions(client)
 
-        connected = sessions[0]
+        connected = result["items"][0]
         assert connected["session_id"] == "con-branch01"
         assert connected["status"] == "connected"
         assert connected["local_ts"] == "192.168.1.0/24"
@@ -85,9 +86,9 @@ class TestListIPSecSessions:
         fixture = load_fixture("ipsec_sessions.json")
         client = _make_client(fixture)
 
-        sessions = await opnsense__vpn__list_ipsec_sessions(client)
+        result = await opnsense__vpn__list_ipsec_sessions(client)
 
-        disconnected = sessions[1]
+        disconnected = result["items"][1]
         assert disconnected["status"] == "disconnected"
         assert disconnected["rx_bytes"] == 0
         assert disconnected["established_at"] is None
@@ -97,8 +98,9 @@ class TestListIPSecSessions:
         from opnsense.tools.vpn import opnsense__vpn__list_ipsec_sessions
 
         client = _make_client({"rows": []})
-        sessions = await opnsense__vpn__list_ipsec_sessions(client)
-        assert sessions == []
+        result = await opnsense__vpn__list_ipsec_sessions(client)
+        assert result["items"] == []
+        assert result["_meta"]["available"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -126,20 +128,22 @@ class TestListOpenVPNInstances:
             ],
         }
         client = _make_client(data)
-        instances = await opnsense__vpn__list_openvpn_instances(client)
+        result = await opnsense__vpn__list_openvpn_instances(client)
 
-        assert len(instances) == 1
-        assert instances[0]["role"] == "server"
-        assert instances[0]["protocol"] == "udp"
-        assert instances[0]["connected_clients"] == 3
+        assert len(result["items"]) == 1
+        assert result["items"][0]["role"] == "server"
+        assert result["items"][0]["protocol"] == "udp"
+        assert result["items"][0]["connected_clients"] == 3
+        assert result["_meta"]["available"] is True
 
     @pytest.mark.asyncio
     async def test_empty_response(self) -> None:
         from opnsense.tools.vpn import opnsense__vpn__list_openvpn_instances
 
         client = _make_client({"rows": []})
-        instances = await opnsense__vpn__list_openvpn_instances(client)
-        assert instances == []
+        result = await opnsense__vpn__list_openvpn_instances(client)
+        assert result["items"] == []
+        assert result["_meta"]["available"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -155,10 +159,11 @@ class TestListWireGuardPeers:
         fixture = load_fixture("wireguard_peers.json")
         client = _make_client(fixture)
 
-        peers = await opnsense__vpn__list_wireguard_peers(client)
+        result = await opnsense__vpn__list_wireguard_peers(client)
 
-        assert len(peers) == 3
-        client.get.assert_called_once_with("wireguard", "client", "search")
+        assert len(result["items"]) == 3
+        assert result["_meta"]["available"] is True
+        assert result["_meta"]["endpoint_used"] == "/api/wireguard/client/search"
 
     @pytest.mark.asyncio
     async def test_normalizes_field_names(self) -> None:
@@ -167,9 +172,9 @@ class TestListWireGuardPeers:
         fixture = load_fixture("wireguard_peers.json")
         client = _make_client(fixture)
 
-        peers = await opnsense__vpn__list_wireguard_peers(client)
+        result = await opnsense__vpn__list_wireguard_peers(client)
 
-        active_peer = peers[0]
+        active_peer = result["items"][0]
         assert active_peer["name"] == "mobile-laptop"
         assert active_peer["public_key"] == "xTIB+aR2WyIMAoPXhGfmPmU7cHNMf7j+9h7Kpvsgv2o="
         assert active_peer["allowed_ips"] == "10.99.0.2/32"
@@ -182,9 +187,9 @@ class TestListWireGuardPeers:
         fixture = load_fixture("wireguard_peers.json")
         client = _make_client(fixture)
 
-        peers = await opnsense__vpn__list_wireguard_peers(client)
+        result = await opnsense__vpn__list_wireguard_peers(client)
 
-        inactive = peers[1]
+        inactive = result["items"][1]
         assert inactive["name"] == "remote-office"
         assert inactive["endpoint"] is None
         assert inactive["last_handshake"] is None
@@ -233,6 +238,7 @@ class TestGetVPNStatus:
         assert "openvpn" in status
         assert "wireguard" in status
         assert "totals" in status
+        assert "_meta" in status
 
     @pytest.mark.asyncio
     async def test_ipsec_summary_counts(self) -> None:
