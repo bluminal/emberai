@@ -15,6 +15,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 from typing import Any
 
@@ -120,6 +121,22 @@ def _load_env() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
+def _mask_host(host: str) -> str:
+    """Mask internal IP/hostname for safe logging.
+
+    Replaces all but the last octet of IPv4 addresses with ``*``.
+    Non-IP hostnames are returned unchanged.
+    """
+    return re.sub(r"\d+\.\d+\.\d+\.(\d+)", r"*.*.*.\1", host)
+
+
+def _mask_key(key: str) -> str:
+    """Mask API key for safe logging -- shows only last 4 characters."""
+    if len(key) > 4:
+        return "****" + key[-4:]
+    return "****"
+
+
 async def _check_connectivity(
     host: str, api_key: str, api_secret: str, verify_ssl: bool
 ) -> tuple[bool, str]:
@@ -131,8 +148,10 @@ async def _check_connectivity(
     """
     # Normalise: ensure scheme is present
     url = host if host.startswith(("http://", "https://")) else f"https://{host}"
+    masked_url = _mask_host(url)
     # Use a lightweight API endpoint for the health probe
     probe_url = f"{url}/api/core/firmware/status"
+    masked_probe_url = f"{masked_url}/api/core/firmware/status"
 
     try:
         async with httpx.AsyncClient(
@@ -141,13 +160,13 @@ async def _check_connectivity(
             auth=(api_key, api_secret),
         ) as client:
             response = await client.get(probe_url)
-            return True, f"HTTP {response.status_code} from {probe_url}"
+            return True, f"HTTP {response.status_code} from {masked_probe_url}"
     except httpx.ConnectError as exc:
-        return False, f"Connection refused or unreachable: {url} ({exc})"
+        return False, f"Connection refused or unreachable: {masked_url} ({exc})"
     except httpx.TimeoutException:
-        return False, f"Connection timed out after 10 s: {url}"
+        return False, f"Connection timed out after 10 s: {masked_url}"
     except Exception as exc:
-        return False, f"Unexpected error connecting to {url}: {exc}"
+        return False, f"Unexpected error connecting to {masked_url}: {exc}"
 
 
 def _run_check() -> int:
@@ -169,8 +188,8 @@ def _run_check() -> int:
     for var_name, description in _REQUIRED_ENV_VARS:
         value = os.environ.get(var_name, "").strip()
         if value:
-            # Mask sensitive values
-            display = value if var_name == "OPNSENSE_HOST" else f"{value[:4]}****"
+            # Mask all values: hosts get octet-masked, keys/secrets get fully masked
+            display = _mask_host(value) if var_name == "OPNSENSE_HOST" else _mask_key(value)
             print(f"  [PASS] {var_name} = {display}")
         else:
             print(f"  [FAIL] {var_name} is not set -- {description}")
@@ -181,7 +200,7 @@ def _run_check() -> int:
         status = value if value else f"(default: {default})"
         # Mask API keys/secrets
         if ("KEY" in var_name or "SECRET" in var_name) and value:
-            status = f"{value[:4]}****"
+            status = _mask_key(value)
         print(f"  [INFO] {var_name} = {status}")
 
     print()
@@ -193,7 +212,8 @@ def _run_check() -> int:
     verify_ssl = os.environ.get("OPNSENSE_VERIFY_SSL", "true").strip().lower() != "false"
 
     if host and api_key and api_secret:
-        print(f"  Probing OPNsense at {host} ...")
+        masked_host = _mask_host(host)
+        print(f"  Probing OPNsense at {masked_host} ...")
         ok, detail = asyncio.run(_check_connectivity(host, api_key, api_secret, verify_ssl))
         if ok:
             print(f"  [PASS] OPNsense reachable: {detail}")

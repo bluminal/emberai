@@ -15,6 +15,8 @@ from unifi.server import (
     _check_connectivity,
     _configure_logging,
     _load_env,
+    _mask_host,
+    _mask_key,
     _parse_args,
     _run_check,
     mcp_server,
@@ -33,6 +35,7 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "UNIFI_LOCAL_HOST",
         "UNIFI_LOCAL_KEY",
         "UNIFI_WRITE_ENABLED",
+        "UNIFI_VERIFY_SSL",
         "UNIFI_API_KEY",
         "NETEX_CACHE_TTL",
     ):
@@ -172,9 +175,12 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, detail = await _check_connectivity("192.168.1.1")
+            ok, detail = await _check_connectivity("192.168.1.1", verify_ssl=True)
             assert ok is True
             assert "HTTP 200" in detail
+            # Detail should use masked URL, not raw IP
+            assert "192.168.1.1" not in detail
+            assert "*.*.*." in detail
 
     @pytest.mark.asyncio
     async def test_connection_refused(self) -> None:
@@ -185,7 +191,7 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, detail = await _check_connectivity("192.168.1.1")
+            ok, detail = await _check_connectivity("192.168.1.1", verify_ssl=True)
             assert ok is False
             assert "refused" in detail.lower() or "unreachable" in detail.lower()
 
@@ -198,7 +204,7 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, detail = await _check_connectivity("192.168.1.1")
+            ok, detail = await _check_connectivity("192.168.1.1", verify_ssl=True)
             assert ok is False
             assert "timed out" in detail.lower()
 
@@ -211,13 +217,13 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, detail = await _check_connectivity("192.168.1.1")
+            ok, detail = await _check_connectivity("192.168.1.1", verify_ssl=True)
             assert ok is False
             assert "something broke" in detail
 
     @pytest.mark.asyncio
     async def test_host_without_scheme_gets_https(self) -> None:
-        mock_response = httpx.Response(200, request=httpx.Request("GET", "https://192.168.1.1"))
+        mock_response = httpx.Response(200, request=httpx.Request("GET", "https://10.0.0.1"))
 
         with patch("unifi.server.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
@@ -226,7 +232,7 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, _detail = await _check_connectivity("10.0.0.1")
+            ok, _detail = await _check_connectivity("10.0.0.1", verify_ssl=False)
             assert ok is True
             mock_client.get.assert_called_once_with("https://10.0.0.1")
 
@@ -241,7 +247,7 @@ class TestCheckConnectivity:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client_cls.return_value = mock_client
 
-            ok, _detail = await _check_connectivity("http://192.168.1.1")
+            ok, _detail = await _check_connectivity("http://192.168.1.1", verify_ssl=True)
             assert ok is True
             mock_client.get.assert_called_once_with("http://192.168.1.1")
 
@@ -305,7 +311,24 @@ class TestRunCheck:
         output = capsys.readouterr().out
         # The key should be masked -- full value should NOT appear
         assert "super-secret-key-12345" not in output
-        assert "supe****" in output
+        # New masking: shows only last 4 chars with **** prefix
+        assert "****2345" in output
+
+    def test_host_ip_masked(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setenv("UNIFI_LOCAL_HOST", "10.20.30.40")
+        monkeypatch.setenv("UNIFI_LOCAL_KEY", "key-12345")
+
+        mock_check = AsyncMock(return_value=(True, "HTTP 200"))
+        with patch("unifi.server._check_connectivity", mock_check):
+            _run_check()
+
+        output = capsys.readouterr().out
+        # Full IP should NOT appear in output
+        assert "10.20.30.40" not in output
+        # Masked IP should appear (last octet preserved)
+        assert "*.*.*." in output
 
     def test_optional_vars_shown(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -335,6 +358,7 @@ class TestRunCheck:
 
         output = capsys.readouterr().out
         assert "(default: false)" in output
+        assert "(default: true)" in output  # UNIFI_VERIFY_SSL default
         assert "(default: 300)" in output
 
     def test_optional_api_key_masked(
@@ -350,7 +374,8 @@ class TestRunCheck:
 
         output = capsys.readouterr().out
         assert "cloud-secret-abc" not in output
-        assert "clou****" in output
+        # New masking: shows only last 4 chars with **** prefix
+        assert "****-abc" in output
 
 
 # ---------------------------------------------------------------------------
@@ -572,3 +597,36 @@ class TestMain:
 
         log = logging.getLogger("unifi")
         assert log.level == logging.DEBUG
+
+
+# ---------------------------------------------------------------------------
+# Masking helpers
+# ---------------------------------------------------------------------------
+
+
+class TestMaskHost:
+    def test_masks_ipv4(self) -> None:
+        assert _mask_host("192.168.1.1") == "*.*.*.1"
+
+    def test_masks_ipv4_with_scheme(self) -> None:
+        assert _mask_host("https://10.20.30.40") == "https://*.*.*.40"
+
+    def test_preserves_non_ip_hostnames(self) -> None:
+        assert _mask_host("unifi.local") == "unifi.local"
+
+    def test_preserves_hostname_with_scheme(self) -> None:
+        assert _mask_host("https://gateway.example.com") == "https://gateway.example.com"
+
+
+class TestMaskKey:
+    def test_masks_long_key(self) -> None:
+        assert _mask_key("super-secret-key-12345") == "****2345"
+
+    def test_masks_short_key(self) -> None:
+        assert _mask_key("ab") == "****"
+
+    def test_masks_exactly_four_chars(self) -> None:
+        assert _mask_key("abcd") == "****"
+
+    def test_masks_five_chars(self) -> None:
+        assert _mask_key("abcde") == "****bcde"

@@ -11,7 +11,9 @@ Typical usage::
         response = await client.get("/api/s/default/stat/device")
         devices = response["data"]
 
-SSL verification is **off** by default because UniFi gateways ship with
+SSL verification is **on** by default for secure-by-default posture.
+Set ``UNIFI_VERIFY_SSL=false`` (via the client factory) or pass
+``verify_ssl=False`` explicitly when connecting to gateways with
 self-signed certificates.  A warning is logged when verification is
 disabled so operators are aware.
 
@@ -51,7 +53,8 @@ class LocalGatewayClient:
         API key used for ``X-API-KEY`` authentication.
     verify_ssl:
         Whether to verify the gateway's TLS certificate.  Defaults to
-        ``False`` because UniFi gateways typically use self-signed certs.
+        ``True`` for secure-by-default posture.  Set to ``False`` for
+        gateways using self-signed certificates.
     timeout:
         Request timeout in seconds (applies to connect + read).
     """
@@ -60,7 +63,7 @@ class LocalGatewayClient:
         self,
         host: str,
         api_key: str,
-        verify_ssl: bool = False,
+        verify_ssl: bool = True,
         timeout: float = 30.0,
     ) -> None:
         self._host = host

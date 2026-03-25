@@ -39,7 +39,8 @@ def get_local_client() -> LocalGatewayClient:
             status_code=500,
             details={"missing_vars": missing},
         )
-    return LocalGatewayClient(host=host, api_key=key)
+    verify_ssl = os.environ.get("UNIFI_VERIFY_SSL", "true").lower() != "false"
+    return LocalGatewayClient(host=host, api_key=key, verify_ssl=verify_ssl)
 
 
 def get_cloud_client() -> CloudV1Client:

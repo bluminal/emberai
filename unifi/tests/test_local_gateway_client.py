@@ -91,13 +91,13 @@ class TestConstruction:
         client = LocalGatewayClient(host="http://192.168.1.1", api_key="test-key")
         assert client._base_url == "http://192.168.1.1/proxy/network"
 
-    def test_default_verify_ssl_false(self) -> None:
+    def test_default_verify_ssl_true(self) -> None:
         client = LocalGatewayClient(host="192.168.1.1", api_key="test-key")
-        assert client._verify_ssl is False
-
-    def test_custom_verify_ssl_true(self) -> None:
-        client = LocalGatewayClient(host="192.168.1.1", api_key="test-key", verify_ssl=True)
         assert client._verify_ssl is True
+
+    def test_custom_verify_ssl_false(self) -> None:
+        client = LocalGatewayClient(host="192.168.1.1", api_key="test-key", verify_ssl=False)
+        assert client._verify_ssl is False
 
     def test_default_timeout(self) -> None:
         client = LocalGatewayClient(host="192.168.1.1", api_key="test-key")
@@ -115,6 +115,12 @@ class TestConstruction:
     def test_ssl_enabled_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         with caplog.at_level(logging.WARNING):
             LocalGatewayClient(host="192.168.1.1", api_key="test-key", verify_ssl=True)
+        assert "SSL verification is disabled" not in caplog.text
+
+    def test_default_ssl_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Default constructor (verify_ssl=True) should not emit SSL warning."""
+        with caplog.at_level(logging.WARNING):
+            LocalGatewayClient(host="192.168.1.1", api_key="test-key")
         assert "SSL verification is disabled" not in caplog.text
 
 

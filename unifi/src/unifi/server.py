@@ -15,6 +15,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 from typing import Any
 
@@ -80,6 +81,7 @@ _REQUIRED_ENV_VARS: list[tuple[str, str]] = [
 
 _OPTIONAL_ENV_VARS: list[tuple[str, str, str]] = [
     ("UNIFI_WRITE_ENABLED", "false", "Enable write operations (true/false)"),
+    ("UNIFI_VERIFY_SSL", "true", "Verify TLS certificates (true/false)"),
     ("UNIFI_API_KEY", "", "API key for Cloud V1 / Site Manager (Phase 2)"),
     ("NETEX_CACHE_TTL", "300", "TTL in seconds for cached responses"),
 ]
@@ -119,26 +121,42 @@ def _load_env() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-async def _check_connectivity(host: str) -> tuple[bool, str]:
+def _mask_host(host: str) -> str:
+    """Mask internal IP/hostname for safe logging.
+
+    Replaces all but the last octet of IPv4 addresses with ``*``.
+    Non-IP hostnames are returned unchanged.
+    """
+    return re.sub(r"\d+\.\d+\.\d+\.(\d+)", r"*.*.*.\1", host)
+
+
+def _mask_key(key: str) -> str:
+    """Mask API key for safe logging -- shows only last 4 characters."""
+    if len(key) > 4:
+        return "****" + key[-4:]
+    return "****"
+
+
+async def _check_connectivity(host: str, verify_ssl: bool) -> tuple[bool, str]:
     """Attempt a lightweight GET to *host* and return (ok, detail).
 
-    Uses a short timeout to avoid blocking the health probe.  The local
-    gateway typically responds on HTTPS with a self-signed certificate,
-    so SSL verification is disabled for the probe.
+    Uses a short timeout to avoid blocking the health probe.  SSL
+    verification is controlled by the ``UNIFI_VERIFY_SSL`` setting.
     """
     # Normalise: ensure scheme is present
     url = host if host.startswith(("http://", "https://")) else f"https://{host}"
+    masked_url = _mask_host(url)
 
     try:
-        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+        async with httpx.AsyncClient(verify=verify_ssl, timeout=10.0) as client:
             response = await client.get(url)
-            return True, f"HTTP {response.status_code} from {url}"
+            return True, f"HTTP {response.status_code} from {masked_url}"
     except httpx.ConnectError as exc:
-        return False, f"Connection refused or unreachable: {url} ({exc})"
+        return False, f"Connection refused or unreachable: {masked_url} ({exc})"
     except httpx.TimeoutException:
-        return False, f"Connection timed out after 10 s: {url}"
+        return False, f"Connection timed out after 10 s: {masked_url}"
     except Exception as exc:
-        return False, f"Unexpected error connecting to {url}: {exc}"
+        return False, f"Unexpected error connecting to {masked_url}: {exc}"
 
 
 def _run_check() -> int:
@@ -160,8 +178,8 @@ def _run_check() -> int:
     for var_name, description in _REQUIRED_ENV_VARS:
         value = os.environ.get(var_name, "").strip()
         if value:
-            # Mask sensitive values
-            display = value if var_name == "UNIFI_LOCAL_HOST" else f"{value[:4]}****"
+            # Mask all values: IPs get octet-masked, keys get fully masked
+            display = _mask_host(value) if var_name == "UNIFI_LOCAL_HOST" else _mask_key(value)
             print(f"  [PASS] {var_name} = {display}")
         else:
             print(f"  [FAIL] {var_name} is not set -- {description}")
@@ -170,18 +188,20 @@ def _run_check() -> int:
     for var_name, default, _description in _OPTIONAL_ENV_VARS:
         value = os.environ.get(var_name, "").strip()
         status = value if value else f"(default: {default})"
-        # Mask API keys
+        # Mask API keys/secrets
         if "KEY" in var_name and value:
-            status = f"{value[:4]}****"
+            status = _mask_key(value)
         print(f"  [INFO] {var_name} = {status}")
 
     print()
 
     # --- connectivity probe ---
     host = os.environ.get("UNIFI_LOCAL_HOST", "").strip()
+    verify_ssl = os.environ.get("UNIFI_VERIFY_SSL", "true").strip().lower() != "false"
     if host:
-        print(f"  Probing gateway at {host} ...")
-        ok, detail = asyncio.run(_check_connectivity(host))
+        masked_host = _mask_host(host)
+        print(f"  Probing gateway at {masked_host} ...")
+        ok, detail = asyncio.run(_check_connectivity(host, verify_ssl))
         if ok:
             print(f"  [PASS] Gateway reachable: {detail}")
         else:
