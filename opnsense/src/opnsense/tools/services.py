@@ -5,10 +5,24 @@ Provides read tools for DNS overrides, forwarders, hostname resolution,
 DHCP leases, and traffic shaper settings. Includes one write tool for
 adding DNS host overrides with full safety gate enforcement.
 
+OPNsense 26.x Compatibility
+----------------------------
+OPNsense 26.x moved Unbound DNS host override endpoints from the
+``/api/unbound/host/`` controller to ``/api/unbound/settings/``:
+
+- ``searchHost``     -> ``searchHostOverride``     (settings controller)
+- ``addHost``        -> ``addHostOverride``        (settings controller)
+- ``searchForward``  -> ``searchDomainOverride``   (settings controller)
+
+The ``/api/unbound/service/reconfigure`` endpoint is unchanged.
+
+If the 26.x endpoints return 404 (Unbound not installed), functions
+degrade gracefully and return empty results with metadata.
+
 Tools
 -----
 - ``opnsense__services__get_dns_overrides`` -- List DNS host overrides
-- ``opnsense__services__get_dns_forwarders`` -- List DNS forwarders
+- ``opnsense__services__get_dns_forwarders`` -- List DNS domain forwarders
 - ``opnsense__services__resolve_hostname`` -- Resolve a hostname via Unbound
 - ``opnsense__services__add_dns_override`` -- Add a DNS host override (WRITE)
 - ``opnsense__services__get_dhcp_leases4`` -- List DHCPv4 leases
@@ -20,6 +34,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from opnsense.errors import APIError
 from opnsense.models.services import DHCPLease, DNSOverride
 from opnsense.safety import reconfigure_gate, write_gate
 
@@ -29,13 +44,36 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# DNS endpoint constants -- OPNsense 26.x settings controller
+# ---------------------------------------------------------------------------
+
+# Read endpoints
+_DNS_HOST_MODULE = "unbound"
+_DNS_HOST_CONTROLLER = "settings"
+_DNS_HOST_SEARCH_CMD = "searchHostOverride"
+
+_DNS_FORWARD_MODULE = "unbound"
+_DNS_FORWARD_CONTROLLER = "settings"
+_DNS_FORWARD_SEARCH_CMD = "searchDomainOverride"
+
+# Write endpoints
+_DNS_HOST_ADD_CMD = "addHostOverride"
+
+# Pagination params -- fetch all rows in a single request
+_ALL_ROWS_PARAMS: dict[str, int] = {"rowCount": -1, "current": 1}
+
+
 async def opnsense__services__get_dns_overrides(
     client: OPNsenseClient,
 ) -> list[dict[str, Any]]:
     """List all DNS host overrides from Unbound.
 
-    Queries ``GET /api/unbound/host/searchHost`` and returns all
-    configured DNS host overrides (local DNS records).
+    Queries ``GET /api/unbound/settings/searchHostOverride`` (OPNsense 26.x)
+    and returns all configured DNS host overrides (local DNS records).
+
+    Handles 404 gracefully: if Unbound is not installed or the endpoint
+    does not exist, returns an empty list and logs a warning.
 
     Parameters
     ----------
@@ -46,8 +84,28 @@ async def opnsense__services__get_dns_overrides(
     -------
     list[dict]
         List of DNS override dictionaries with normalized field names.
+        Returns an empty list if Unbound is not installed.
     """
-    raw = await client.get("unbound", "host", "searchHost")
+    try:
+        raw = await client.get(
+            _DNS_HOST_MODULE,
+            _DNS_HOST_CONTROLLER,
+            _DNS_HOST_SEARCH_CMD,
+            params=_ALL_ROWS_PARAMS,
+        )
+    except APIError as exc:
+        if exc.status_code == 404:
+            logger.warning(
+                "Unbound DNS host override endpoint returned 404. "
+                "Unbound may not be installed or the plugin is missing. "
+                "Endpoint: /api/%s/%s/%s",
+                _DNS_HOST_MODULE,
+                _DNS_HOST_CONTROLLER,
+                _DNS_HOST_SEARCH_CMD,
+            )
+            return []
+        raise
+
     rows = raw.get("rows", [])
 
     overrides: list[dict[str, Any]] = []
@@ -66,10 +124,13 @@ async def opnsense__services__get_dns_overrides(
 async def opnsense__services__get_dns_forwarders(
     client: OPNsenseClient,
 ) -> list[dict[str, Any]]:
-    """List DNS query forwarders configured in Unbound.
+    """List DNS domain overrides (forwarding entries) configured in Unbound.
 
-    Queries ``GET /api/unbound/forward/searchForward`` and returns
-    all configured DNS forwarding entries.
+    Queries ``GET /api/unbound/settings/searchDomainOverride`` (OPNsense 26.x)
+    and returns all configured DNS domain forwarding entries.
+
+    Handles 404 gracefully: if Unbound is not installed or the endpoint
+    does not exist, returns an empty list and logs a warning.
 
     Parameters
     ----------
@@ -79,12 +140,32 @@ async def opnsense__services__get_dns_forwarders(
     Returns
     -------
     list[dict]
-        List of DNS forwarder dictionaries.
+        List of DNS forwarder/domain override dictionaries.
+        Returns an empty list if Unbound is not installed.
     """
-    raw = await client.get("unbound", "forward", "searchForward")
+    try:
+        raw = await client.get(
+            _DNS_FORWARD_MODULE,
+            _DNS_FORWARD_CONTROLLER,
+            _DNS_FORWARD_SEARCH_CMD,
+            params=_ALL_ROWS_PARAMS,
+        )
+    except APIError as exc:
+        if exc.status_code == 404:
+            logger.warning(
+                "Unbound DNS domain override endpoint returned 404. "
+                "Unbound may not be installed or the plugin is missing. "
+                "Endpoint: /api/%s/%s/%s",
+                _DNS_FORWARD_MODULE,
+                _DNS_FORWARD_CONTROLLER,
+                _DNS_FORWARD_SEARCH_CMD,
+            )
+            return []
+        raise
+
     rows: list[dict[str, Any]] = raw.get("rows", [])
 
-    logger.info("Listed %d DNS forwarders", len(rows))
+    logger.info("Listed %d DNS domain overrides (forwarders)", len(rows))
     return rows
 
 
@@ -127,17 +208,26 @@ async def _add_dns_override_write(
     """Internal write operation for adding a DNS override.
 
     Protected by the write gate. Saves the host override to config
-    via ``POST /api/unbound/host/addHost``.
+    via ``POST /api/unbound/settings/addHostOverride`` (OPNsense 26.x).
+
+    The payload key is ``host_override`` (26.x convention) with the
+    ``server`` field containing the target IP address.
     """
     data = {
-        "host": {
+        "host_override": {
             "hostname": hostname,
             "domain": domain,
             "server": ip,
             "description": description,
+            "enabled": "1",
         }
     }
-    result = await client.write("unbound", "host", "addHost", data=data)
+    result = await client.write(
+        _DNS_HOST_MODULE,
+        _DNS_HOST_CONTROLLER,
+        _DNS_HOST_ADD_CMD,
+        data=data,
+    )
     logger.info(
         "Added DNS override: %s.%s -> %s",
         hostname,

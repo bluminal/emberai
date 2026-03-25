@@ -1,10 +1,10 @@
 """Tests for Services skill tools.
 
 Covers:
-- get_dns_overrides: fixture parsing
-- get_dns_forwarders: basic retrieval
+- get_dns_overrides: fixture parsing, 26.x endpoint, 404 graceful degradation
+- get_dns_forwarders: basic retrieval, 26.x endpoint, 404 graceful degradation
 - resolve_hostname: parameter passing
-- add_dns_override: write gate enforcement (env var + apply flag)
+- add_dns_override: write gate enforcement (env var + apply flag), 26.x endpoint
 - get_dhcp_leases4: fixture parsing, interface filtering
 - get_traffic_shaper: basic retrieval
 """
@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from opnsense.errors import WriteGateError
+from opnsense.errors import APIError, WriteGateError
 from opnsense.safety import WriteBlockReason
 from tests.fixtures import load_fixture
 
@@ -49,6 +49,7 @@ class TestGetDNSOverrides:
                     "domain": "home.local",
                     "server": "192.168.1.200",
                     "description": "NAS",
+                    "enabled": "1",
                 },
             ],
         }
@@ -60,6 +61,22 @@ class TestGetDNSOverrides:
         assert overrides[0]["hostname"] == "nas"
         assert overrides[0]["ip"] == "192.168.1.200"
         assert overrides[0]["domain"] == "home.local"
+        assert overrides[0]["enabled"] == "1"
+
+    @pytest.mark.asyncio
+    async def test_uses_26x_endpoint(self) -> None:
+        """Verify the 26.x settings controller endpoint is called."""
+        from opnsense.tools.services import opnsense__services__get_dns_overrides
+
+        client = _make_client({"rows": []})
+        await opnsense__services__get_dns_overrides(client)
+
+        client.get.assert_called_once_with(
+            "unbound",
+            "settings",
+            "searchHostOverride",
+            params={"rowCount": -1, "current": 1},
+        )
 
     @pytest.mark.asyncio
     async def test_empty_response(self) -> None:
@@ -68,6 +85,58 @@ class TestGetDNSOverrides:
         client = _make_client({"rows": []})
         overrides = await opnsense__services__get_dns_overrides(client)
         assert overrides == []
+
+    @pytest.mark.asyncio
+    async def test_404_returns_empty_list(self) -> None:
+        """404 from Unbound not installed should return empty list."""
+        from opnsense.tools.services import opnsense__services__get_dns_overrides
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=APIError(
+                "Not found (404): /api/unbound/settings/searchHostOverride",
+                status_code=404,
+                endpoint="/api/unbound/settings/searchHostOverride",
+            )
+        )
+
+        overrides = await opnsense__services__get_dns_overrides(client)
+        assert overrides == []
+
+    @pytest.mark.asyncio
+    async def test_non_404_error_propagates(self) -> None:
+        """Non-404 API errors should propagate."""
+        from opnsense.tools.services import opnsense__services__get_dns_overrides
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=APIError(
+                "Server error (500)",
+                status_code=500,
+                endpoint="/api/unbound/settings/searchHostOverride",
+            )
+        )
+
+        with pytest.raises(APIError) as exc_info:
+            await opnsense__services__get_dns_overrides(client)
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_unparseable_row_falls_back_to_raw(self) -> None:
+        """Rows that fail model validation are returned raw."""
+        from opnsense.tools.services import opnsense__services__get_dns_overrides
+
+        data = {
+            "rows": [
+                {"unexpected_field": "value"},  # Missing uuid, hostname
+            ],
+        }
+        client = _make_client(data)
+
+        overrides = await opnsense__services__get_dns_overrides(client)
+
+        assert len(overrides) == 1
+        assert overrides[0] == {"unexpected_field": "value"}
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +160,47 @@ class TestGetDNSForwarders:
 
         assert len(forwarders) == 1
         assert forwarders[0]["server"] == "1.1.1.1"
-        client.get.assert_called_once_with("unbound", "forward", "searchForward")
+        client.get.assert_called_once_with(
+            "unbound",
+            "settings",
+            "searchDomainOverride",
+            params={"rowCount": -1, "current": 1},
+        )
+
+    @pytest.mark.asyncio
+    async def test_404_returns_empty_list(self) -> None:
+        """404 from Unbound not installed should return empty list."""
+        from opnsense.tools.services import opnsense__services__get_dns_forwarders
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=APIError(
+                "Not found (404): /api/unbound/settings/searchDomainOverride",
+                status_code=404,
+                endpoint="/api/unbound/settings/searchDomainOverride",
+            )
+        )
+
+        forwarders = await opnsense__services__get_dns_forwarders(client)
+        assert forwarders == []
+
+    @pytest.mark.asyncio
+    async def test_non_404_error_propagates(self) -> None:
+        """Non-404 API errors should propagate."""
+        from opnsense.tools.services import opnsense__services__get_dns_forwarders
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=APIError(
+                "Server error (500)",
+                status_code=500,
+                endpoint="/api/unbound/settings/searchDomainOverride",
+            )
+        )
+
+        with pytest.raises(APIError) as exc_info:
+            await opnsense__services__get_dns_forwarders(client)
+        assert exc_info.value.status_code == 500
 
 
 # ---------------------------------------------------------------------------
@@ -198,13 +307,14 @@ class TestAddDNSOverrideWriteGate:
         assert "write_result" in result
         assert "reconfigure_result" in result
 
-        # Verify write was called with correct payload
+        # Verify write was called with correct 26.x payload
         client.write.assert_called_once()
         call_args = client.write.call_args
-        assert call_args[0] == ("unbound", "host", "addHost")
+        assert call_args[0] == ("unbound", "settings", "addHostOverride")
         data = call_args[1]["data"]
-        assert data["host"]["hostname"] == "test"
-        assert data["host"]["server"] == "1.2.3.4"
+        assert data["host_override"]["hostname"] == "test"
+        assert data["host_override"]["server"] == "1.2.3.4"
+        assert data["host_override"]["enabled"] == "1"
 
     @pytest.mark.asyncio
     async def test_reconfigure_called_after_write(self) -> None:

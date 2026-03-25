@@ -238,12 +238,14 @@ opnsense__security__get_certificates()
 
 ### services skill
 opnsense__services__get_dns_overrides()
-  -> [{uuid, hostname, domain, ip, description}]
-  API: GET /api/unbound/host/searchHost
+  -> [{uuid, hostname, domain, ip, description, enabled}]
+  API: GET /api/unbound/settings/searchHostOverride (26.x)
+  Graceful 404: returns [] if Unbound not installed
 
 opnsense__services__get_dns_forwarders()
   -> [{uuid, server, port, domain?, dot_enabled}]
-  API: GET /api/unbound/forward/searchForward
+  API: GET /api/unbound/settings/searchDomainOverride (26.x)
+  Graceful 404: returns [] if Unbound not installed
 
 opnsense__services__resolve_hostname(hostname)
   -> {hostname, ip, ttl, source}
