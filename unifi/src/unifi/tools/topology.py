@@ -21,6 +21,7 @@ from unifi.models.vlan import VLAN
 from unifi.safety import write_gate
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_cloud_client, get_local_client
+from unifi.validation import validate_path_param
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ async def unifi__topology__list_devices(site_id: str = "default") -> list[dict[s
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/device")
@@ -116,6 +118,8 @@ async def unifi__topology__get_device(
         device_id: The device MAC address or ID.
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
+    device_id = validate_path_param(device_id, "device_id")
     client = _get_client()
 
     try:
@@ -170,6 +174,7 @@ async def unifi__topology__get_vlans(site_id: str = "default") -> list[dict[str,
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
 
     async with client:
@@ -264,6 +269,7 @@ async def unifi__topology__get_uplinks(site_id: str = "default") -> list[dict[st
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/device")
@@ -429,6 +435,9 @@ async def unifi__topology__assign_port_profile(
         site_id: UniFi site ID. Defaults to "default".
         apply: Must be True to execute (write gate).
     """
+    site_id = validate_path_param(site_id, "site_id")
+    device_id = validate_path_param(device_id, "device_id")
+
     if port_idx < 1:
         raise ValidationError(
             f"Invalid port_idx: {port_idx}. Port indices are 1-based.",

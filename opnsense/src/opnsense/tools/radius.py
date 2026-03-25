@@ -20,9 +20,12 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
+from pydantic import ValidationError as PydanticValidationError
+
 from opnsense.models.radius import RadiusClient, RadiusUser
 from opnsense.safety import reconfigure_gate, write_gate
 from opnsense.server import mcp_server
+from opnsense.validation import validate_path_param
 
 if TYPE_CHECKING:
     from opnsense.api.opnsense_client import OPNsenseClient
@@ -166,6 +169,7 @@ async def _delete_user_write(
     apply: bool = False,
 ) -> dict[str, Any]:
     """Delete a RADIUS user by UUID (write-gated)."""
+    uuid = validate_path_param(uuid, "uuid")
     result = await client.write(
         "freeradius",
         "user",
@@ -235,7 +239,7 @@ async def opnsense__services__get_radius_status() -> dict[str, Any]:
         try:
             parsed = RadiusClient.model_validate(row)
             clients_list.append(parsed.model_dump())
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Failed to parse RADIUS client: %s",
                 row.get("name", "unknown"),
@@ -249,7 +253,7 @@ async def opnsense__services__get_radius_status() -> dict[str, Any]:
         try:
             parsed = RadiusUser.model_validate(row)
             users_list.append(parsed.model_dump())
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Failed to parse RADIUS user: %s",
                 row.get("username", "unknown"),
@@ -494,7 +498,7 @@ async def opnsense__services__list_radius_mac_vlans() -> list[dict[str, Any]]:
         try:
             parsed = RadiusUser.model_validate(row)
             users.append(parsed.model_dump())
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Failed to parse RADIUS user: %s",
                 row.get("username", "unknown"),

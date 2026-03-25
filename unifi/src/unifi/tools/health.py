@@ -22,6 +22,7 @@ from unifi.models.event import Event
 from unifi.models.health import FirmwareStatus, HealthStatus
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
+from unifi.validation import validate_path_param
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,7 @@ async def unifi__health__get_site_health(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/health")
@@ -170,6 +172,8 @@ async def unifi__health__get_device_health(
         device_id: The device MAC address or ID.
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
+    device_id = validate_path_param(device_id, "device_id")
     client = _get_client()
     try:
         raw_device = await client.get_single(
@@ -234,6 +238,7 @@ async def unifi__health__get_isp_metrics(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/health")
@@ -341,6 +346,7 @@ async def unifi__health__get_events(
         hours: Number of hours to look back. Defaults to 24.
         severity: Filter by severity: "critical", "warning", "info", or "all". Defaults to "all".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/event")
@@ -401,6 +407,7 @@ async def unifi__health__get_firmware_status(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     if _has_cloud_api_key():
         return await _firmware_status_cloud()
     return await _firmware_status_local(site_id)

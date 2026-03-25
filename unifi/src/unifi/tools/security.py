@@ -14,6 +14,7 @@ from typing import Any
 
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
+from unifi.validation import validate_path_param
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ async def unifi__security__get_firewall_rules(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/rest/firewallrule")
@@ -103,6 +105,7 @@ async def unifi__security__get_zbf_policies(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/rest/firewallzone")
@@ -147,6 +150,7 @@ async def unifi__security__get_acls(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/rest/firewallgroup")
@@ -195,6 +199,7 @@ async def unifi__security__get_port_forwards(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/rest/portforward")
@@ -288,6 +293,7 @@ async def unifi__security__get_ids_alerts(
         site_id: The UniFi site ID. Defaults to "default".
         hours: Number of hours to look back. Defaults to 24.
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/ips/event")

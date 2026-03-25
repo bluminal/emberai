@@ -16,13 +16,16 @@ import logging
 import os
 from typing import Any
 
-from opnsense.api.opnsense_client import OPNsenseClient
+from pydantic import ValidationError as PydanticValidationError
+
+from opnsense.api.opnsense_client import OPNsenseClient, truncate_response_body
 from opnsense.api.response import is_action_success, normalize_response
 from opnsense.cache import CacheTTL
 from opnsense.errors import APIError, ValidationError
 from opnsense.models.firewall import Alias, FirewallRule, NATRule
 from opnsense.safety import write_gate
 from opnsense.server import mcp_server
+from opnsense.validation import validate_path_param
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +126,7 @@ async def opnsense__firewall__list_rules(
                 continue
 
             rules.append(rule_dict)
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable firewall rule: %s",
                 row.get("uuid", row.get("description", "unknown")),
@@ -149,15 +152,11 @@ async def opnsense__firewall__get_rule(uuid: str) -> dict[str, Any]:
 
     API endpoint: GET /api/firewall/filter/getRule/{uuid}
     """
-    if not uuid or not uuid.strip():
-        raise ValidationError(
-            "UUID must not be empty.",
-            details={"field": "uuid"},
-        )
+    uuid = validate_path_param(uuid, "uuid")
 
     client = _get_client()
     try:
-        raw = await client.get("firewall", "filter", f"getRule/{uuid.strip()}")
+        raw = await client.get("firewall", "filter", f"getRule/{uuid}")
     finally:
         await client.close()
 
@@ -202,7 +201,7 @@ async def opnsense__firewall__list_aliases() -> list[dict[str, Any]]:
         try:
             alias = Alias.model_validate(row)
             aliases.append(alias.model_dump(by_alias=False))
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable alias entry: %s",
                 row.get("name", row.get("uuid", "unknown")),
@@ -248,7 +247,7 @@ async def opnsense__firewall__list_nat_rules() -> list[dict[str, Any]]:
         try:
             nat_rule = NATRule.model_validate(row)
             nat_rules.append(nat_rule.model_dump(by_alias=False))
-        except Exception:
+        except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable NAT rule: %s",
                 row.get("uuid", row.get("description", "unknown")),
@@ -368,7 +367,7 @@ async def opnsense__firewall__add_rule(
                 f"{write_result.get('result', 'unknown error')} -- {detail}",
                 status_code=400,
                 endpoint="/api/firewall/filter/addRule",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         # OPNsense 26.x uses savepoint/apply/cancelRollback for firewall
@@ -442,11 +441,7 @@ async def opnsense__firewall__toggle_rule(
 
     API endpoint: POST /api/firewall/filter/toggleRule/{uuid}/{state}
     """
-    if not uuid or not uuid.strip():
-        raise ValidationError(
-            "UUID must not be empty.",
-            details={"field": "uuid"},
-        )
+    uuid = validate_path_param(uuid, "uuid")
 
     state = "1" if enabled else "0"
     client = _get_client()
@@ -454,7 +449,7 @@ async def opnsense__firewall__toggle_rule(
         write_result = await client.write(
             "firewall",
             "filter",
-            f"toggleRule/{uuid.strip()}/{state}",
+            f"toggleRule/{uuid}/{state}",
         )
 
         if not is_action_success(write_result):
@@ -463,7 +458,7 @@ async def opnsense__firewall__toggle_rule(
                 f"{write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint=f"/api/firewall/filter/toggleRule/{uuid}/{state}",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         await client.reconfigure("firewall", "filter")
@@ -481,7 +476,7 @@ async def opnsense__firewall__toggle_rule(
 
     return {
         "status": action_str,
-        "uuid": uuid.strip(),
+        "uuid": uuid,
         "enabled": enabled,
     }
 
@@ -549,7 +544,7 @@ async def opnsense__firewall__add_alias(
                 f"Failed to add alias '{name}': {write_result.get('result', 'unknown error')}",
                 status_code=400,
                 endpoint="/api/firewall/alias/addItem",
-                response_body=str(write_result),
+                response_body=truncate_response_body(str(write_result)),
             )
 
         await client.reconfigure("firewall", "alias")

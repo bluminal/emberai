@@ -15,6 +15,7 @@ from unifi.errors import APIError, NetexError
 from unifi.models.client import Client
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
+from unifi.validation import validate_path_param
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ async def unifi__clients__list_clients(
         site_id: The UniFi site ID. Defaults to "default".
         vlan_id: Optional VLAN/network ID to filter clients by.
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/sta")
@@ -98,6 +100,8 @@ async def unifi__clients__get_client(
         client_mac: The client's MAC address.
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
+    client_mac = validate_path_param(client_mac, "client_mac")
     client = _get_client()
 
     try:
@@ -146,6 +150,8 @@ async def unifi__clients__get_client_traffic(
         client_mac: The client's MAC address.
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
+    client_mac = validate_path_param(client_mac, "client_mac")
     client = _get_client()
 
     try:
@@ -225,6 +231,7 @@ async def unifi__clients__search_clients(
         query: Search string to match against client fields.
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/sta")

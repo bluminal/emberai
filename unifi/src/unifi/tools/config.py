@@ -20,6 +20,7 @@ from unifi.errors import ValidationError
 from unifi.safety import write_gate
 from unifi.server import mcp_server
 from unifi.tools._client_factory import get_local_client
+from unifi.validation import validate_path_param
 
 if TYPE_CHECKING:
     from unifi.api.local_gateway_client import LocalGatewayClient
@@ -71,6 +72,7 @@ async def unifi__config__get_config_snapshot(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         raw_config = await _fetch_config_data(client, site_id)
@@ -189,6 +191,8 @@ async def unifi__config__diff_baseline(
         baseline_id: Identifier of the stored baseline to compare against.
             Defaults to "latest".
     """
+    site_id = validate_path_param(site_id, "site_id")
+    baseline_id = validate_path_param(baseline_id, "baseline_id")
     baseline_key = f"{site_id}:{baseline_id}"
     baseline = _baselines.get(baseline_key)
 
@@ -245,6 +249,7 @@ async def unifi__config__get_backup_state(
     Args:
         site_id: The UniFi site ID. Defaults to "default".
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         normalized = await client.get_normalized(f"/api/s/{site_id}/stat/sysinfo")
@@ -309,6 +314,7 @@ async def unifi__config__save_baseline(
         site_id: The UniFi site ID. Defaults to "default".
         apply: Must be True to execute (write gate).
     """
+    site_id = validate_path_param(site_id, "site_id")
     client = _get_client()
     try:
         raw_config = await _fetch_config_data(client, site_id)
@@ -395,6 +401,8 @@ async def unifi__config__create_port_profile(
         apply: Must be True to execute (write gate).
     """
     # --- Input validation ---
+    site_id = validate_path_param(site_id, "site_id")
+
     if not name or not name.strip():
         raise ValidationError(
             "Profile name must not be empty.",
@@ -516,6 +524,8 @@ async def unifi__config__create_network(
         apply: Must be True to execute (write gate).
     """
     # --- Input validation ---
+    site_id = validate_path_param(site_id, "site_id")
+
     if not name or not name.strip():
         raise ValidationError(
             "Network name must not be empty.",
@@ -607,6 +617,8 @@ async def unifi__config__create_wlan(
         apply: Must be True to execute (write gate).
     """
     # --- Input validation ---
+    site_id = validate_path_param(site_id, "site_id")
+
     if not name or not name.strip():
         raise ValidationError(
             "WLAN name must not be empty.",
@@ -671,6 +683,7 @@ async def unifi__config__create_wlan(
 
         if existing_wlan_id:
             # Update existing WLAN via PUT
+            existing_wlan_id = validate_path_param(existing_wlan_id, "existing_wlan_id")
             endpoint = f"/api/s/{site_id}/rest/wlanconf/{existing_wlan_id}"
             raw_response = await client.put(endpoint, data=body)
         else:
