@@ -20,7 +20,7 @@ from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.api.response import is_action_success, normalize_response
 from opnsense.cache import CacheTTL
 from opnsense.errors import APIError, ValidationError
-from opnsense.models.interface import Interface
+from opnsense.models.interface import interface_from_info
 from opnsense.models.services import DHCPLease
 from opnsense.models.vlan_interface import VLANInterface
 from opnsense.safety import write_gate
@@ -84,68 +84,78 @@ def _get_client() -> OPNsenseClient:
 # ---------------------------------------------------------------------------
 
 
+# Pseudo-interface names returned by OPNsense that are not real
+# assigned interfaces and should be filtered out.
+_PSEUDO_INTERFACE_NAMES: frozenset[str] = frozenset({
+    "config",
+    "nd6",
+    "pflog0",
+    "pfsync0",
+    "enc0",
+    "lo0",
+    "gif0",
+    "gre0",
+    "bridge0",
+})
+
+
 @mcp_server.tool()
 async def opnsense__interfaces__list_interfaces() -> list[dict[str, Any]]:
-    """List all network interfaces on the OPNsense firewall.
+    """List all assigned network interfaces on the OPNsense firewall.
 
-    Returns interface inventory with name, description, IP, subnet,
-    type, enabled status, and VLAN tag (if applicable).
+    Returns interface inventory with logical name (wan, lan, opt1, ...),
+    device name, description, IP address, subnet, type, enabled status,
+    operational status, and VLAN tag (if applicable).
 
-    API endpoint: GET /api/interfaces/overview/export
+    Uses the OPNsense 26.x ``interfacesInfo`` endpoint which returns a
+    flat dict keyed by logical interface name with full interface details.
+
+    API endpoint: GET /api/interfaces/overview/interfacesInfo
     """
     client = _get_client()
     try:
         raw = await client.get_cached(
             "interfaces",
             "overview",
-            "export",
+            "interfacesInfo",
             cache_key="interfaces:list",
             ttl=CacheTTL.INTERFACES,
         )
     finally:
         await client.close()
 
-    # The export endpoint returns a flat dict keyed by interface name,
-    # or a search-style response with rows.
-    normalized = normalize_response(raw)
-
     interfaces: list[dict[str, Any]] = []
-    for row in normalized.data:
-        # If the response is a flat dict (action-style), the rows contain
-        # the full response which may be keyed by interface name.
-        if "name" in row:
-            # Skip FreeBSD pseudo-interfaces that aren't assigned
-            # in OPNsense (e.g. nd6, config).
-            if not row.get("identifier"):
-                continue
-            try:
-                iface = Interface.model_validate(row)
-                interfaces.append(iface.model_dump(by_alias=False))
-            except Exception:
-                logger.warning(
-                    "Skipping unparseable interface entry: %s",
-                    row.get("name", "unknown"),
-                    exc_info=True,
-                )
-        else:
-            # Flat dict keyed by interface name -- iterate over values
-            for key, value in row.items():
-                if isinstance(value, dict) and "name" not in value:
-                    value["name"] = key
-                if isinstance(value, dict):
-                    # Skip FreeBSD pseudo-interfaces that aren't assigned
-                    # in OPNsense (e.g. nd6, config).
-                    if not value.get("identifier"):
-                        continue
-                    try:
-                        iface = Interface.model_validate(value)
-                        interfaces.append(iface.model_dump(by_alias=False))
-                    except Exception:
-                        logger.warning(
-                            "Skipping unparseable interface entry: %s",
-                            key,
-                            exc_info=True,
-                        )
+
+    # The interfacesInfo endpoint returns a flat dict keyed by logical
+    # interface name (e.g. "wan", "lan", "opt1").  Each value is a dict
+    # with device, description, IP, status, etc.
+    #
+    # The client wraps bare arrays in {"rows": [...], "_was_array": True},
+    # but interfacesInfo returns a plain dict so we get it as-is.
+    # normalize_response would wrap it in a single-item list -- we
+    # iterate the raw dict keys directly instead.
+    for logical_name, iface_data in raw.items():
+        # Skip internal metadata keys injected by the client layer
+        if logical_name.startswith("_"):
+            continue
+
+        # Skip non-dict entries (shouldn't happen, but be defensive)
+        if not isinstance(iface_data, dict):
+            continue
+
+        # Skip FreeBSD pseudo-interfaces that aren't assigned in OPNsense
+        if logical_name in _PSEUDO_INTERFACE_NAMES:
+            continue
+
+        try:
+            iface = interface_from_info(logical_name, iface_data)
+            interfaces.append(iface.model_dump(by_alias=False))
+        except Exception:
+            logger.warning(
+                "Skipping unparseable interface entry: %s",
+                logical_name,
+                exc_info=True,
+            )
 
     logger.info(
         "Listed %d interfaces",

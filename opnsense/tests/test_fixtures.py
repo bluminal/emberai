@@ -26,8 +26,9 @@ class TestLoadFixture:
 
     def test_load_interfaces(self) -> None:
         data = load_fixture("interfaces.json")
-        assert "rows" in data
-        assert len(data["rows"]) == 4
+        # 26.x interfacesInfo format: flat dict keyed by logical name
+        assert "wan" in data
+        assert len(data) == 4
 
     def test_load_vlan_interfaces(self) -> None:
         data = load_fixture("vlan_interfaces.json")
@@ -85,36 +86,36 @@ class TestLoadFixture:
 
 
 class TestInterfacesFixtureData:
-    """Verify interfaces.json has realistic OPNsense API response structure."""
+    """Verify interfaces.json has realistic OPNsense 26.x interfacesInfo structure."""
 
     def test_wan_interface(self) -> None:
         data = load_fixture("interfaces.json")
-        wan = data["rows"][0]
-        assert wan["name"] == "igb0"
+        wan = data["wan"]
+        assert wan["device"] == "igb0"
         assert wan["description"] == "WAN"
         assert wan["type"] == "ethernet"
         assert wan["vlan_tag"] is None
 
     def test_lan_interface(self) -> None:
         data = load_fixture("interfaces.json")
-        lan = data["rows"][1]
-        assert lan["name"] == "igb1"
+        lan = data["lan"]
+        assert lan["device"] == "igb1"
         assert lan["description"] == "LAN"
         assert lan["addr4"] == "192.168.1.1"
 
     def test_vlan_interface(self) -> None:
         data = load_fixture("interfaces.json")
-        guest = data["rows"][2]
+        guest = data["opt1"]
         assert guest["type"] == "vlan"
         assert guest["vlan_tag"] == 10
         assert guest["description"] == "Guest"
 
     def test_all_interfaces_have_required_fields(self) -> None:
         data = load_fixture("interfaces.json")
-        required_fields = {"name", "description", "addr4", "subnet4", "type", "status"}
-        for iface in data["rows"]:
+        required_fields = {"device", "description", "addr4", "subnet4", "type", "status"}
+        for logical_name, iface in data.items():
             assert required_fields.issubset(iface.keys()), (
-                f"Interface {iface['name']} missing fields: {required_fields - iface.keys()}"
+                f"Interface {logical_name} missing fields: {required_fields - iface.keys()}"
             )
 
 
@@ -411,7 +412,8 @@ class TestConftestFixtures:
 
     def test_interfaces_fixture(self, interfaces_data: dict[str, Any]) -> None:
         assert isinstance(interfaces_data, dict)
-        assert "rows" in interfaces_data
+        # 26.x interfacesInfo format: flat dict keyed by logical name
+        assert "wan" in interfaces_data
 
     def test_vlan_interfaces_fixture(self, vlan_interfaces_data: dict[str, Any]) -> None:
         assert isinstance(vlan_interfaces_data, dict)

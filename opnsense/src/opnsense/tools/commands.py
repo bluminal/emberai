@@ -444,10 +444,11 @@ async def opnsense_diagnose(target: str) -> str:
     matched_hosts: list[dict[str, Any]] = []
     target_lower = target_stripped.lower()
 
-    # Match interfaces by name or description
+    # Match interfaces by logical name, device name, description, or IP
     for iface in interfaces:
         if (
             iface.get("name", "").lower() == target_lower
+            or iface.get("device", "").lower() == target_lower
             or iface.get("description", "").lower() == target_lower
             or iface.get("ip", "").lower() == target_lower
         ):
@@ -518,8 +519,9 @@ async def opnsense_diagnose(target: str) -> str:
 
         sections.append(format_key_value(kv, title=f"Interface: {iface.get('name', '')}"))
 
-        # DHCP leases on this interface
-        iface_leases = [le for le in leases if le.get("interface") == iface.get("name")]
+        # DHCP leases on this interface (Kea reports device names, not logical)
+        iface_device = iface.get("device", "") or iface.get("name", "")
+        iface_leases = [le for le in leases if le.get("interface") == iface_device]
         if iface_leases:
             lease_rows = [
                 [
@@ -541,7 +543,7 @@ async def opnsense_diagnose(target: str) -> str:
         # VLANs on same parent
         try:
             vlans = await opnsense__interfaces__list_vlan_interfaces()
-            related = [v for v in vlans if v.get("parent_if") == iface.get("name")]
+            related = [v for v in vlans if v.get("parent_if") == iface_device]
             if related:
                 vlan_rows = [
                     [str(v.get("tag", "")), v.get("device", ""), v.get("description", "")]
@@ -979,9 +981,11 @@ async def opnsense_vlan(
     if audit:
         findings: list[Finding] = []
 
-        # Check VLANs without IPs
+        # Check VLANs without IPs (VLAN device values are physical device names)
         vlan_if_names = {v.get("device", "") for v in vlans}
-        iface_with_ip = {i.get("name", "") for i in interfaces if i.get("ip")}
+        iface_with_ip = {
+            i.get("device", "") or i.get("name", "") for i in interfaces if i.get("ip")
+        }
         orphans = vlan_if_names - iface_with_ip
 
         for orphan in orphans:
