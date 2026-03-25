@@ -1,0 +1,23 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+[extend]
+# Use the default gitleaks ruleset
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+
+paths = [
+    # Test fixtures contain mock API responses with fake tokens/keys
+    '''(^|/)tests/fixtures/''',
+
+    # .env.example files contain placeholder values, not real secrets
+    '''\.env\.example$''',
+
+    # Knowledge directories contain operational documentation
+    '''(^|/)knowledge/''',
+
+    # Documentation site
+    '''^docs/''',
+]
