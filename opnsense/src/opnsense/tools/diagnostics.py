@@ -2,14 +2,18 @@
 """Diagnostics skill tools for OPNsense network troubleshooting.
 
 Provides tools for ping, traceroute, DNS lookup, LLDP neighbor discovery,
-and ARP-based host discovery. The host discovery tool uses an async polling
-pattern since the OPNsense API runs discovery as a background job.
+and ARP-based host discovery.  Ping, traceroute, and host discovery use the
+OPNsense 26.x async POST-then-poll pattern:
+
+1. ``POST`` to start the operation (returns immediately).
+2. ``GET`` a status endpoint repeatedly until the operation completes.
+3. Return aggregated output once done, or partial output on timeout.
 
 Tools
 -----
-- ``opnsense__diagnostics__run_ping`` -- ICMP ping a host
-- ``opnsense__diagnostics__run_traceroute`` -- Trace route to a host
-- ``opnsense__diagnostics__dns_lookup`` -- DNS lookup via diagnostics API
+- ``opnsense__diagnostics__run_ping`` -- ICMP ping a host (async polling)
+- ``opnsense__diagnostics__run_traceroute`` -- Trace route to a host (async polling)
+- ``opnsense__diagnostics__dns_lookup`` -- DNS lookup via Unbound diagnostics API
 - ``opnsense__diagnostics__get_lldp_neighbors`` -- LLDP neighbor table
 - ``opnsense__diagnostics__run_host_discovery`` -- ARP host discovery (async polling)
 """
@@ -25,7 +29,7 @@ from opnsense.api.opnsense_client import OPNsenseClient
 
 logger = logging.getLogger(__name__)
 
-# Host discovery polling configuration
+# Polling configuration -- shared by ping, traceroute, and host discovery.
 _POLL_INTERVAL_SECONDS = 2.0
 _POLL_TIMEOUT_SECONDS = 120.0
 
@@ -49,6 +53,107 @@ def _get_client() -> OPNsenseClient:
     )
 
 
+# ---------------------------------------------------------------------------
+# Shared polling helper
+# ---------------------------------------------------------------------------
+
+
+async def _poll_for_result(
+    client: OPNsenseClient,
+    module: str,
+    controller: str,
+    status_command: str,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    """Poll an OPNsense status endpoint until the operation completes.
+
+    OPNsense 26.x diagnostics (ping, traceroute, host discovery) follow a
+    pattern where the status endpoint returns ``{"status": "running", ...}``
+    while the operation is in progress and ``{"status": "done", ...}`` (or
+    ``"completed"``) when finished.  Some endpoints (ping, traceroute) do
+    not include a ``status`` field but instead return progressively longer
+    output text -- completion is detected by observing that the output has
+    stopped growing between two consecutive polls.
+
+    Parameters
+    ----------
+    client:
+        Authenticated OPNsense API client.
+    module:
+        API module (e.g. ``"diagnostics"``).
+    controller:
+        API controller (e.g. ``"interface"``).
+    status_command:
+        The status/poll command (e.g. ``"pingStatus"``).
+    label:
+        Human-readable label for log messages (e.g. ``"ping 8.8.8.8"``).
+
+    Returns
+    -------
+    dict
+        ``{"result": <raw poll response>, "completed": bool,
+        "elapsed_seconds": float}``
+    """
+    elapsed = 0.0
+    last_result: dict[str, Any] = {}
+    completed = False
+    prev_output_len = -1
+
+    while elapsed < _POLL_TIMEOUT_SECONDS:
+        await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+        elapsed += _POLL_INTERVAL_SECONDS
+
+        try:
+            poll_result = await client.get(module, controller, status_command)
+        except Exception:
+            logger.warning(
+                "Poll error during %s at %.1fs, continuing...",
+                label,
+                elapsed,
+            )
+            continue
+
+        last_result = poll_result
+
+        # Method 1: Explicit status field (used by host discovery, some
+        # traceroute implementations).
+        status = poll_result.get("status", "")
+        if isinstance(status, str) and status.lower() in ("done", "completed"):
+            completed = True
+            break
+
+        # Method 2: For ping/traceroute the response is typically
+        # ``{"result": "<output text>", "status": "running"}``.
+        # When status goes to "done" or the output stabilises, we're done.
+        # Detect stabilisation: if output length unchanged between two polls
+        # AND we have at least some output, treat as completed.
+        output = poll_result.get("result", poll_result.get("output", ""))
+        if isinstance(output, str):
+            cur_len = len(output)
+            if cur_len > 0 and cur_len == prev_output_len:
+                # Output has stabilised -- operation is finished.
+                completed = True
+                break
+            prev_output_len = cur_len
+
+    if completed:
+        logger.info("%s completed in %.1fs", label, elapsed)
+    else:
+        logger.warning("%s timed out after %.1fs", label, elapsed)
+
+    return {
+        "result": last_result,
+        "completed": completed,
+        "elapsed_seconds": round(elapsed, 1),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Ping (26.x POST-then-poll)
+# ---------------------------------------------------------------------------
+
+
 async def opnsense__diagnostics__run_ping(
     client: OPNsenseClient,
     host: str,
@@ -58,8 +163,10 @@ async def opnsense__diagnostics__run_ping(
 ) -> dict[str, Any]:
     """Ping a host from the OPNsense firewall.
 
-    Sends an ICMP ping via ``POST /api/diagnostics/interface/getPing``
-    and returns the results including round-trip times and packet loss.
+    Uses the OPNsense 26.x async polling pattern:
+
+    1. ``POST /api/diagnostics/interface/ping`` -- start the ping job.
+    2. ``GET  /api/diagnostics/interface/pingStatus`` -- poll for results.
 
     Parameters
     ----------
@@ -75,7 +182,11 @@ async def opnsense__diagnostics__run_ping(
     Returns
     -------
     dict
-        Ping result including RTT statistics and packet loss.
+        Ping result dict with keys:
+        - ``host``: the target that was pinged
+        - ``output``: raw ping output text
+        - ``completed``: whether the operation finished before timeout
+        - ``elapsed_seconds``: wall-clock time taken
     """
     data: dict[str, Any] = {"address": host}
     if count is not None:
@@ -83,9 +194,31 @@ async def opnsense__diagnostics__run_ping(
     if source_ip is not None:
         data["source_address"] = source_ip
 
-    result = await client.post("diagnostics", "interface", "getPing", data=data)
-    logger.info("Ping %s completed", host)
-    return result
+    # Step 1: Start the ping
+    await client.post("diagnostics", "interface", "ping", data=data)
+    logger.info("Started ping to %s", host)
+
+    # Step 2: Poll for results
+    poll = await _poll_for_result(
+        client,
+        "diagnostics",
+        "interface",
+        "pingStatus",
+        label=f"ping {host}",
+    )
+
+    raw = poll["result"]
+    return {
+        "host": host,
+        "output": raw.get("result", raw.get("output", raw)),
+        "completed": poll["completed"],
+        "elapsed_seconds": poll["elapsed_seconds"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Traceroute (26.x POST-then-poll)
+# ---------------------------------------------------------------------------
 
 
 async def opnsense__diagnostics__run_traceroute(
@@ -96,8 +229,10 @@ async def opnsense__diagnostics__run_traceroute(
 ) -> dict[str, Any]:
     """Trace the route to a host from the OPNsense firewall.
 
-    Runs a traceroute via ``POST /api/diagnostics/interface/getTrace``
-    and returns the hop-by-hop path including RTT for each hop.
+    Uses the OPNsense 26.x async polling pattern:
+
+    1. ``POST /api/diagnostics/interface/trace`` -- start the traceroute.
+    2. ``GET  /api/diagnostics/interface/traceStatus`` -- poll for results.
 
     Parameters
     ----------
@@ -111,15 +246,41 @@ async def opnsense__diagnostics__run_traceroute(
     Returns
     -------
     dict
-        Traceroute result with per-hop data.
+        Traceroute result dict with keys:
+        - ``host``: the target traced
+        - ``output``: raw traceroute output text
+        - ``completed``: whether the operation finished before timeout
+        - ``elapsed_seconds``: wall-clock time taken
     """
     data: dict[str, Any] = {"address": host}
     if max_hops is not None:
         data["maxttl"] = str(max_hops)
 
-    result = await client.post("diagnostics", "interface", "getTrace", data=data)
-    logger.info("Traceroute to %s completed", host)
-    return result
+    # Step 1: Start the traceroute
+    await client.post("diagnostics", "interface", "trace", data=data)
+    logger.info("Started traceroute to %s", host)
+
+    # Step 2: Poll for results
+    poll = await _poll_for_result(
+        client,
+        "diagnostics",
+        "interface",
+        "traceStatus",
+        label=f"traceroute {host}",
+    )
+
+    raw = poll["result"]
+    return {
+        "host": host,
+        "output": raw.get("result", raw.get("output", raw)),
+        "completed": poll["completed"],
+        "elapsed_seconds": poll["elapsed_seconds"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# DNS Lookup (26.x Unbound diagnostics)
+# ---------------------------------------------------------------------------
 
 
 async def opnsense__diagnostics__dns_lookup(
@@ -128,10 +289,11 @@ async def opnsense__diagnostics__dns_lookup(
     *,
     record_type: str | None = None,
 ) -> dict[str, Any]:
-    """Perform a DNS lookup via the OPNsense diagnostics API.
+    """Perform a DNS lookup via the OPNsense Unbound diagnostics API.
 
-    Uses ``GET /api/diagnostics/dns/reverseResolve`` for reverse
-    lookups and general DNS resolution diagnostics.
+    Uses ``GET /api/unbound/diagnostics/lookup`` which is the correct
+    endpoint on OPNsense 26.x.  The previous ``/api/diagnostics/dns/
+    reverseResolve`` endpoint returns 404 on 26.x.
 
     Parameters
     ----------
@@ -147,14 +309,14 @@ async def opnsense__diagnostics__dns_lookup(
     dict
         DNS lookup result.
     """
-    params: dict[str, Any] = {"address": hostname}
+    params: dict[str, Any] = {"hostname": hostname}
     if record_type is not None:
         params["type"] = record_type
 
     result = await client.get(
+        "unbound",
         "diagnostics",
-        "dns",
-        "reverseResolve",
+        "lookup",
         params=params,
     )
     logger.info("DNS lookup for %s completed", hostname)
@@ -261,7 +423,7 @@ async def opnsense__diagnostics__run_host_discovery(
     3. Return results when scan completes or timeout (120s) is reached
 
     If the scan times out, partial results are returned with a
-    ``timed_out: true`` flag.
+    ``completed: false`` flag.
 
     Parameters
     ----------
