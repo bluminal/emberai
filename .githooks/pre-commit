@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook: scan staged changes for secrets using gitleaks.
+#
+# Setup: git config core.hooksPath .githooks
+# Bypass: git commit --no-verify  (use sparingly)
+
+set -euo pipefail
+
+# Check if gitleaks is installed
+if ! command -v gitleaks &> /dev/null; then
+    echo "WARNING: gitleaks is not installed. Skipping secret scan."
+    echo "Install it: https://github.com/gitleaks/gitleaks#installing"
+    exit 0
+fi
+
+echo "Running gitleaks on staged changes..."
+
+if ! gitleaks protect --staged --config .gitleaks.toml --verbose; then
+    echo ""
+    echo "============================================================"
+    echo "  COMMIT BLOCKED: Potential secrets detected in staged files"
+    echo "============================================================"
+    echo ""
+    echo "  gitleaks found what appears to be a secret (API key,"
+    echo "  token, password, etc.) in your staged changes."
+    echo ""
+    echo "  How to fix:"
+    echo "    1. Remove the secret from the file"
+    echo "    2. Use environment variables instead (see .env.example)"
+    echo "    3. If this is a false positive, add an inline comment:"
+    echo "       # gitleaks:allow"
+    echo "       or update .gitleaks.toml with an allowlist entry"
+    echo ""
+    echo "  Emergency bypass (use with extreme caution):"
+    echo "    git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo "No secrets detected."
