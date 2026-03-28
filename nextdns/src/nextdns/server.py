@@ -226,6 +226,7 @@ mcp_server = FastMCP(
 # These imports must happen after mcp_server is created.
 import nextdns.tools.analytics  # noqa: E402
 import nextdns.tools.logs  # noqa: E402
+import nextdns.tools.profile_writes  # noqa: E402
 import nextdns.tools.profiles  # noqa: E402
 import nextdns.tools.security_posture  # noqa: F401, E402
 
