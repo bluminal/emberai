@@ -1,0 +1,10 @@
+{
+  "data": [
+    {"name": "google.com", "queries": 5420, "root": "google.com"},
+    {"name": "youtube.com", "queries": 3201, "root": "youtube.com"},
+    {"name": "ads.doubleclick.net", "queries": 2890, "root": "doubleclick.net"},
+    {"name": "api.example.com", "queries": 1456, "root": "example.com"},
+    {"name": "tracker.analytics.co", "queries": 987, "root": "analytics.co"}
+  ],
+  "meta": {"pagination": {"cursor": null}}
+}

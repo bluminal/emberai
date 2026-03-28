@@ -1,0 +1,9 @@
+{
+  "data": [
+    {"id": "iPhone-13", "name": "Dad's iPhone", "model": "Apple iPhone 13", "localIp": "10.0.50.101", "queries": 12340},
+    {"id": "MacBook-Pro", "name": "Work Laptop", "model": "Apple MacBook Pro", "localIp": "10.0.50.102", "queries": 8920},
+    {"id": "Nintendo-Switch", "name": "Game Console", "model": "Nintendo Switch", "localIp": "10.0.70.50", "queries": 3456},
+    {"id": "__UNIDENTIFIED__", "name": null, "model": null, "localIp": "10.0.50.200", "queries": 890}
+  ],
+  "meta": {"pagination": {"cursor": null}}
+}

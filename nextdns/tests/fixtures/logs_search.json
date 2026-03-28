@@ -1,0 +1,82 @@
+{
+  "data": [
+    {
+      "timestamp": "2026-03-28T10:15:30.123Z",
+      "domain": "ads.doubleclick.net",
+      "root": "doubleclick.net",
+      "tracker": "Google",
+      "encrypted": true,
+      "protocol": "DNS-over-HTTPS",
+      "clientIp": "10.0.50.101",
+      "client": "iPhone-13",
+      "device": {
+        "id": "iPhone-13",
+        "name": "Dad's iPhone",
+        "model": "Apple iPhone 13"
+      },
+      "status": "blocked",
+      "reasons": [
+        {"id": "nextdns-recommended", "name": "NextDNS Recommended"}
+      ]
+    },
+    {
+      "timestamp": "2026-03-28T10:15:29.456Z",
+      "domain": "google.com",
+      "root": "google.com",
+      "tracker": null,
+      "encrypted": true,
+      "protocol": "DNS-over-HTTPS",
+      "clientIp": "10.0.50.101",
+      "client": "iPhone-13",
+      "device": {
+        "id": "iPhone-13",
+        "name": "Dad's iPhone",
+        "model": "Apple iPhone 13"
+      },
+      "status": "default",
+      "reasons": []
+    },
+    {
+      "timestamp": "2026-03-28T10:15:28.789Z",
+      "domain": "tiktok.com",
+      "root": "tiktok.com",
+      "tracker": null,
+      "encrypted": false,
+      "protocol": "UDP",
+      "clientIp": "10.0.60.50",
+      "client": "Kids-iPad",
+      "device": {
+        "id": "Kids-iPad",
+        "name": "Kids iPad",
+        "model": "Apple iPad"
+      },
+      "status": "blocked",
+      "reasons": [
+        {"id": "parental-control-service", "name": "TikTok"}
+      ]
+    },
+    {
+      "timestamp": "2026-03-28T10:15:27.000Z",
+      "domain": "safe.example.com",
+      "root": "example.com",
+      "tracker": null,
+      "encrypted": true,
+      "protocol": "DNS-over-TLS",
+      "clientIp": "10.0.50.102",
+      "client": "MacBook-Pro",
+      "device": {
+        "id": "MacBook-Pro",
+        "name": "Work Laptop",
+        "model": "Apple MacBook Pro"
+      },
+      "status": "allowed",
+      "reasons": [
+        {"id": "allowlist", "name": "Allowlist"}
+      ]
+    }
+  ],
+  "meta": {
+    "pagination": {"cursor": "eyJ0IjoxNjE="},
+    "stream": {"id": "stream-abc123"}
+  }
+}

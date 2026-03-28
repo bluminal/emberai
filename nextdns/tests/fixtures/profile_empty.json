@@ -1,0 +1,50 @@
+{
+  "data": {
+    "id": "empty01",
+    "name": "Empty Test",
+    "security": {
+      "threatIntelligenceFeeds": false,
+      "aiThreatDetection": false,
+      "googleSafeBrowsing": false,
+      "cryptojacking": false,
+      "dnsRebinding": false,
+      "idnHomographs": false,
+      "typosquatting": false,
+      "dga": false,
+      "nrd": false,
+      "ddns": false,
+      "parking": false,
+      "csam": false,
+      "tlds": []
+    },
+    "privacy": {
+      "blocklists": [],
+      "natives": [],
+      "disguisedTrackers": false,
+      "allowAffiliate": false
+    },
+    "parentalControl": {
+      "services": [],
+      "categories": [],
+      "safeSearch": false,
+      "youtubeRestrictedMode": false,
+      "blockBypass": false
+    },
+    "denylist": [],
+    "allowlist": [],
+    "settings": {
+      "logs": {
+        "enabled": false
+      },
+      "blockPage": {
+        "enabled": false
+      },
+      "performance": {
+        "ecs": false,
+        "cacheBoost": false,
+        "cnameFlattening": false
+      },
+      "web3": false
+    }
+  }
+}

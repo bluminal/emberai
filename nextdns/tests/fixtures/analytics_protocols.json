@@ -1,0 +1,8 @@
+{
+  "data": [
+    {"name": "DNS-over-HTTPS", "queries": 38900},
+    {"name": "DNS-over-TLS", "queries": 12340},
+    {"name": "UDP", "queries": 2569},
+    {"name": "TCP", "queries": 0}
+  ]
+}

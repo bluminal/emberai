@@ -1,0 +1,7 @@
+{
+  "data": [
+    {"status": "default", "queries": 0},
+    {"status": "blocked", "queries": 0},
+    {"status": "allowed", "queries": 0}
+  ]
+}
