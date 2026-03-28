@@ -224,9 +224,9 @@ mcp_server = FastMCP(
 
 # Import tool modules to register @mcp_server.tool() decorators.
 # These imports must happen after mcp_server is created.
-import nextdns.tools.profiles  # noqa: F401, E402
+import nextdns.tools.analytics  # noqa: E402
+import nextdns.tools.profiles  # noqa: E402
 import nextdns.tools.security_posture  # noqa: F401, E402
-
 
 # ---------------------------------------------------------------------------
 # Plugin Registry entry point
@@ -313,7 +313,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # --- Register MCP tools before starting the server ---
     # Tool modules will be imported here once they are implemented.
-    # Example: import nextdns.tools  # noqa: F401
+    # Example: import nextdns.tools
 
     # --- normal startup ---
     try:
