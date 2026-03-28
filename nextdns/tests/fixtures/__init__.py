@@ -5,7 +5,9 @@ Usage::
     from tests.fixtures import load_fixture
 
     def test_profile_parsing():
-        data = load_fixture("profiles.json")
+        data = load_fixture("profiles_list.json")
+        assert "data" in data
+        profiles = data["data"]
         ...
 """
 
@@ -22,7 +24,7 @@ def load_fixture(name: str) -> dict[str, Any]:
     """Load a JSON fixture file by name.
 
     Args:
-        name: Filename relative to the fixtures directory (e.g. ``"profiles.json"``).
+        name: Filename relative to the fixtures directory (e.g. ``"profiles_list.json"``).
 
     Returns:
         Parsed JSON as a dictionary.

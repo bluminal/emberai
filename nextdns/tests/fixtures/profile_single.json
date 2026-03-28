@@ -1,0 +1,76 @@
+{
+  "data": {
+    "id": "def456",
+    "name": "Kids",
+    "security": {
+      "threatIntelligenceFeeds": true,
+      "aiThreatDetection": true,
+      "googleSafeBrowsing": true,
+      "cryptojacking": true,
+      "dnsRebinding": true,
+      "idnHomographs": true,
+      "typosquatting": true,
+      "dga": true,
+      "nrd": true,
+      "ddns": true,
+      "parking": true,
+      "csam": true,
+      "tlds": [
+        {"id": "ru"},
+        {"id": "cn"}
+      ]
+    },
+    "privacy": {
+      "blocklists": [
+        {"id": "nextdns-recommended"},
+        {"id": "oisd"},
+        {"id": "1hosts-pro"}
+      ],
+      "natives": [
+        {"id": "samsung"},
+        {"id": "huawei"}
+      ],
+      "disguisedTrackers": true,
+      "allowAffiliate": false
+    },
+    "parentalControl": {
+      "services": [
+        {"id": "tiktok", "active": true},
+        {"id": "facebook", "active": true},
+        {"id": "instagram", "active": true},
+        {"id": "snapchat", "active": true}
+      ],
+      "categories": [
+        {"id": "porn", "active": true},
+        {"id": "gambling", "active": true},
+        {"id": "dating", "active": true}
+      ],
+      "safeSearch": true,
+      "youtubeRestrictedMode": true,
+      "blockBypass": true
+    },
+    "denylist": [
+      {"id": "ads.example.com", "active": true},
+      {"id": "tracker.example.net", "active": true}
+    ],
+    "allowlist": [
+      {"id": "safe.example.com", "active": true}
+    ],
+    "settings": {
+      "logs": {
+        "enabled": true,
+        "retention": 2592000,
+        "location": "us"
+      },
+      "blockPage": {
+        "enabled": true
+      },
+      "performance": {
+        "ecs": true,
+        "cacheBoost": true,
+        "cnameFlattening": false
+      },
+      "web3": false
+    }
+  }
+}
