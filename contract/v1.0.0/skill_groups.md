@@ -14,7 +14,7 @@ Roles describe the network layer a plugin operates on:
 | `edge` | Manages switching, ports, VLANs on switch fabric | unifi |
 | `wireless` | Manages wireless APs, SSIDs, client associations | unifi |
 | `overlay` | Manages overlay networks (Tailscale, ZeroTier) | (future) |
-| `dns` | Manages DNS services | (future) |
+| `dns` | DNS filtering and analytics -- profile management, security posture, query analytics, log analysis | nextdns |
 | `monitoring` | Provides monitoring and observability | (future) |
 
 ## Skill Groups
@@ -38,6 +38,10 @@ Skills describe specific capabilities within a plugin:
 | `services` | DNS, DHCP, NTP services | `get_dns_overrides`, `get_leases` |
 | `diagnostics` | Live diagnostics (ping, traceroute) | `run_ping`, `run_traceroute` |
 | `firmware` | Firmware/package management | `get_status`, `list_packages` |
+| `profiles` | DNS profile management | `list_profiles`, `get_profile`, `get_security`, `get_privacy`, `get_parental_control`, `get_denylist`, `get_allowlist`, `get_settings` |
+| `analytics` | DNS analytics and usage dashboards | `get_status`, `get_top_domains`, `get_block_reasons`, `get_devices`, `get_protocols`, `get_encryption`, `get_destinations`, `get_ips`, `get_query_types`, `get_ip_versions`, `get_dnssec` |
+| `logs` | DNS query log access and analysis | `search`, `stream`, `download`, `clear` |
+| `security-posture` | DNS security posture auditing | `audit`, `compare` |
 
 ## Mapping Skills to Roles
 
@@ -46,5 +50,6 @@ Plugins typically map skills to roles as follows:
 - **Gateway role**: interfaces, firewall, routing, vpn, services, diagnostics, firmware, security
 - **Edge role**: topology, health, wifi, clients, traffic, security, config, multisite
 - **Wireless role**: wifi, clients
+- **DNS role**: profiles, analytics, logs, security-posture
 
 A single plugin may declare multiple roles and skills.

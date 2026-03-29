@@ -52,6 +52,37 @@ returns a `dict[str, Any]` with the metadata fields described below.
 | `tools` | `dict[str, list[str]]` | Maps skill groups to MCP tool names |
 | `is_orchestrator` | `bool` | `True` if this is an orchestrator, not a vendor plugin |
 
+## Network Roles
+
+Plugins declare their network layer via the `roles` metadata field.
+Roles are defined in `skill_groups.md` and determine how the netex
+orchestrator sequences cross-vendor operations.
+
+| Role | Description |
+|---|---|
+| `gateway` | Routing, firewall, VPN, DNS forwarding, DHCP |
+| `edge` | Switching, ports, VLANs on switch fabric |
+| `wireless` | Wireless APs, SSIDs, client associations |
+| `overlay` | Overlay networks (Tailscale, ZeroTier) |
+| `dns` | DNS filtering and analytics -- profile management, security posture, query analytics, log analysis |
+| `monitoring` | Monitoring and observability |
+
+## Cross-Vendor Role Sequencing
+
+In cross-vendor workflows, roles execute in a defined order to ensure
+correct dependency resolution:
+
+| Order | Role | Reason |
+|---|---|---|
+| 1 | `gateway` | Configures core routing, DNS forwarders, DHCP, and firewall |
+| 2 | `dns` | Verifies DNS resolution and filtering after forwarders are set |
+| 3 | `edge` | Applies switch/VLAN/port configs that depend on gateway state |
+| 4 | `wireless` | Configures SSIDs that bind to VLANs from the edge layer |
+
+The `dns` role executes AFTER the `gateway` role. The gateway configures
+DNS forwarders (e.g., OPNsense Unbound forwarder pointing to NextDNS),
+and the dns plugin verifies that resolution is working as expected.
+
 ## Write Safety Gate
 
 All vendor plugins must implement the three-step write safety gate:

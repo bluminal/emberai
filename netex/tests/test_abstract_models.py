@@ -3,9 +3,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from netex.models.abstract import (
     VLAN,
     DHCPLease,
+    DNSAnalyticsSummary,
+    DNSForwarderMapping,
+    DNSProfile,
     DNSRecord,
     FirewallAction,
     FirewallPolicy,
@@ -423,3 +428,178 @@ class TestNetworkTopology:
         restored = NetworkTopology.model_validate(data)
         assert len(restored.nodes) == 1
         assert restored.nodes[0].node_id == "n1"
+
+
+# ---------------------------------------------------------------------------
+# DNSProfile
+# ---------------------------------------------------------------------------
+
+
+class TestDNSProfile:
+    def test_basic_construction(self) -> None:
+        profile = DNSProfile(id="abc123", name="Home")
+        assert profile.id == "abc123"
+        assert profile.name == "Home"
+        assert profile.vendor == ""
+        assert profile.security_enabled_count == 0
+        assert profile.security_total == 12
+        assert profile.logging_enabled is False
+
+    def test_full_construction(self) -> None:
+        profile = DNSProfile(
+            id="abc123",
+            name="Main",
+            vendor="nextdns",
+            security_enabled_count=10,
+            security_total=12,
+            blocklist_count=5,
+            denylist_count=2,
+            allowlist_count=1,
+            logging_enabled=True,
+            parental_control_active=True,
+        )
+        assert profile.vendor == "nextdns"
+        assert profile.security_enabled_count == 10
+        assert profile.blocklist_count == 5
+        assert profile.parental_control_active is True
+
+    def test_from_vendor_nextdns(self) -> None:
+        data = {
+            "id": "xyz789",
+            "name": "IoT Profile",
+            "security_enabled_count": 8,
+            "security_total": 12,
+            "blocklist_count": 3,
+            "denylist_count": 1,
+            "allowlist_count": 0,
+            "logging_enabled": True,
+            "parental_control_active": False,
+        }
+        profile = DNSProfile.from_vendor("nextdns", data)
+        assert profile.id == "xyz789"
+        assert profile.name == "IoT Profile"
+        assert profile.vendor == "nextdns"
+        assert profile.security_enabled_count == 8
+        assert profile.logging_enabled is True
+
+    def test_from_vendor_unknown_raises(self) -> None:
+        with pytest.raises(ValueError, match="Unknown DNS vendor"):
+            DNSProfile.from_vendor("cloudflare", {"id": "test", "name": "test"})
+
+    def test_serialization_roundtrip(self) -> None:
+        profile = DNSProfile(
+            id="abc", name="Test", vendor="nextdns", security_enabled_count=12
+        )
+        data = profile.model_dump()
+        restored = DNSProfile.model_validate(data)
+        assert restored.id == "abc"
+        assert restored.vendor == "nextdns"
+        assert restored.security_enabled_count == 12
+
+
+# ---------------------------------------------------------------------------
+# DNSForwarderMapping
+# ---------------------------------------------------------------------------
+
+
+class TestDNSForwarderMapping:
+    def test_basic_construction(self) -> None:
+        mapping = DNSForwarderMapping(
+            vlan_name="IoT",
+            vlan_id=50,
+            subnet="10.0.50.0/24",
+            forwarder_target="dns.nextdns.io/abc123",
+        )
+        assert mapping.vlan_name == "IoT"
+        assert mapping.vlan_id == 50
+        assert mapping.subnet == "10.0.50.0/24"
+        assert mapping.forwarder_target == "dns.nextdns.io/abc123"
+        assert mapping.dns_profile_id is None
+        assert mapping.dns_profile_name is None
+
+    def test_is_nextdns_true(self) -> None:
+        mapping = DNSForwarderMapping(
+            vlan_name="IoT",
+            vlan_id=50,
+            subnet="10.0.50.0/24",
+            forwarder_target="dns.nextdns.io/abc123",
+        )
+        assert mapping.is_nextdns is True
+
+    def test_is_nextdns_false(self) -> None:
+        mapping = DNSForwarderMapping(
+            vlan_name="Guest",
+            vlan_id=60,
+            subnet="10.0.60.0/24",
+            forwarder_target="1.1.1.1",
+        )
+        assert mapping.is_nextdns is False
+
+    def test_with_profile_ids(self) -> None:
+        mapping = DNSForwarderMapping(
+            vlan_name="Main",
+            vlan_id=10,
+            subnet="10.0.10.0/24",
+            forwarder_target="dns.nextdns.io/abc123",
+            dns_profile_id="abc123",
+            dns_profile_name="Home",
+        )
+        assert mapping.dns_profile_id == "abc123"
+        assert mapping.dns_profile_name == "Home"
+
+    def test_serialization_roundtrip(self) -> None:
+        mapping = DNSForwarderMapping(
+            vlan_name="Test",
+            vlan_id=99,
+            subnet="10.0.99.0/24",
+            forwarder_target="dns.nextdns.io/xyz",
+        )
+        data = mapping.model_dump()
+        restored = DNSForwarderMapping.model_validate(data)
+        assert restored.vlan_id == 99
+        assert restored.is_nextdns is True
+
+
+# ---------------------------------------------------------------------------
+# DNSAnalyticsSummary
+# ---------------------------------------------------------------------------
+
+
+class TestDNSAnalyticsSummary:
+    def test_basic_construction(self) -> None:
+        summary = DNSAnalyticsSummary(profile_id="abc123")
+        assert summary.profile_id == "abc123"
+        assert summary.profile_name == ""
+        assert summary.total_queries == 0
+        assert summary.blocked_queries == 0
+        assert summary.block_percentage == 0.0
+        assert summary.top_blocked_domains == []
+
+    def test_full_construction(self) -> None:
+        summary = DNSAnalyticsSummary(
+            profile_id="abc123",
+            profile_name="Home",
+            total_queries=10000,
+            blocked_queries=1500,
+            allowed_queries=8500,
+            block_percentage=15.0,
+            top_blocked_domains=["ads.example.com", "tracker.example.com"],
+        )
+        assert summary.total_queries == 10000
+        assert summary.block_percentage == 15.0
+        assert len(summary.top_blocked_domains) == 2
+
+    def test_serialization_roundtrip(self) -> None:
+        summary = DNSAnalyticsSummary(
+            profile_id="test",
+            profile_name="Test",
+            total_queries=100,
+            blocked_queries=20,
+            allowed_queries=80,
+            block_percentage=20.0,
+            top_blocked_domains=["bad.example.com"],
+        )
+        data = summary.model_dump()
+        restored = DNSAnalyticsSummary.model_validate(data)
+        assert restored.total_queries == 100
+        assert restored.top_blocked_domains == ["bad.example.com"]

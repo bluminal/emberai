@@ -12,6 +12,9 @@ Model hierarchy (from PRD Appendix C.6):
     DNSRecord(hostname, domain, ip, ttl)
     DHCPLease(mac, ip, hostname, expiry, interface)
     NetworkTopology(nodes[], links[], vlans[])
+    DNSProfile(id, name, vendor, security/privacy/logging state)
+    DNSForwarderMapping(vlan_name, vlan_id, subnet, forwarder_target)
+    DNSAnalyticsSummary(profile_id, query counts, top blocked)
 
 Each model has a ``from_vendor(vendor_name, raw_data)`` class method for
 mapping vendor-specific API data to the abstract representation.
@@ -543,3 +546,150 @@ class NetworkTopology(BaseModel):
             vlans=self.vlans + new_vlans,
             source_plugins=merged_plugins,
         )
+
+
+# ---------------------------------------------------------------------------
+# DNS Profile (cross-vendor DNS filtering)
+# ---------------------------------------------------------------------------
+
+
+class DNSProfile(BaseModel):
+    """Vendor-neutral DNS filtering profile.
+
+    Maps to:
+        dns plugin: NextDNS profile with security/privacy/parental config
+    """
+
+    model_config = ConfigDict(strict=True, populate_by_name=True)
+
+    id: str = Field(description="Profile identifier")
+    name: str = Field(description="Human-readable profile name")
+    vendor: str = Field(default="", description="DNS vendor (e.g. 'nextdns')")
+    security_enabled_count: int = Field(
+        default=0,
+        description="Number of security toggles currently enabled",
+    )
+    security_total: int = Field(
+        default=12,
+        description="Total number of security toggles available",
+    )
+    blocklist_count: int = Field(
+        default=0,
+        description="Number of active privacy blocklists",
+    )
+    denylist_count: int = Field(
+        default=0,
+        description="Number of custom deny-list entries",
+    )
+    allowlist_count: int = Field(
+        default=0,
+        description="Number of custom allow-list entries",
+    )
+    logging_enabled: bool = Field(
+        default=False,
+        description="Whether query logging is active",
+    )
+    parental_control_active: bool = Field(
+        default=False,
+        description="Whether parental controls are active",
+    )
+
+    @classmethod
+    def from_vendor(cls, vendor: str, data: dict[str, Any]) -> DNSProfile:
+        """Create a DNSProfile from vendor-specific API data.
+
+        Parameters
+        ----------
+        vendor:
+            Vendor identifier (e.g. ``"nextdns"``).
+        data:
+            Raw profile summary data from the vendor API.
+
+        Returns
+        -------
+        DNSProfile
+            Vendor-neutral DNS profile representation.
+
+        Raises
+        ------
+        ValueError
+            If the vendor is not recognised.
+        """
+        if vendor == "nextdns":
+            return cls(
+                id=data.get("id", ""),
+                name=data.get("name", ""),
+                vendor=vendor,
+                security_enabled_count=data.get("security_enabled_count", 0),
+                security_total=data.get("security_total", 12),
+                blocklist_count=data.get("blocklist_count", 0),
+                denylist_count=data.get("denylist_count", 0),
+                allowlist_count=data.get("allowlist_count", 0),
+                logging_enabled=data.get("logging_enabled", False),
+                parental_control_active=data.get("parental_control_active", False),
+            )
+        raise ValueError(f"Unknown DNS vendor: {vendor}")
+
+
+# ---------------------------------------------------------------------------
+# DNS Forwarder Mapping
+# ---------------------------------------------------------------------------
+
+
+class DNSForwarderMapping(BaseModel):
+    """Maps a network subnet/VLAN to an upstream DNS endpoint.
+
+    Used to correlate gateway-layer DNS forwarder configuration (e.g.
+    OPNsense Unbound forwarders) with dns-layer profiles (e.g. NextDNS).
+    """
+
+    model_config = ConfigDict(strict=True, populate_by_name=True)
+
+    vlan_name: str = Field(description="Human-readable VLAN name")
+    vlan_id: int = Field(description="802.1Q VLAN ID")
+    subnet: str = Field(description="CIDR notation (e.g. '10.0.50.0/24')")
+    forwarder_target: str = Field(
+        description="Upstream DNS endpoint (e.g. 'dns.nextdns.io/abc123')",
+    )
+    dns_profile_id: str | None = Field(
+        default=None,
+        description="DNS profile ID extracted from forwarder target, if applicable",
+    )
+    dns_profile_name: str | None = Field(
+        default=None,
+        description="DNS profile name, if resolved",
+    )
+
+    @property
+    def is_nextdns(self) -> bool:
+        """Return True if the forwarder target is a NextDNS endpoint."""
+        return "nextdns.io" in self.forwarder_target
+
+
+# ---------------------------------------------------------------------------
+# DNS Analytics Summary
+# ---------------------------------------------------------------------------
+
+
+class DNSAnalyticsSummary(BaseModel):
+    """Summary of DNS analytics across a single profile.
+
+    Aggregated view of query volume, block rate, and top blocked domains
+    for use in cross-vendor security dashboards and audit reports.
+    """
+
+    model_config = ConfigDict(strict=True, populate_by_name=True)
+
+    profile_id: str = Field(description="DNS profile identifier")
+    profile_name: str = Field(default="", description="Human-readable profile name")
+    total_queries: int = Field(default=0, description="Total DNS queries observed")
+    blocked_queries: int = Field(default=0, description="Number of blocked queries")
+    allowed_queries: int = Field(default=0, description="Number of allowed queries")
+    block_percentage: float = Field(
+        default=0.0,
+        description="Percentage of queries that were blocked",
+    )
+    top_blocked_domains: list[str] = Field(
+        default_factory=list,
+        description="Most frequently blocked domain names",
+    )

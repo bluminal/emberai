@@ -62,7 +62,7 @@ _DOMAIN_SKILLS: dict[AuditDomain, list[str]] = {
     AuditDomain.CROSS_LAYER: ["firewall", "security", "config"],
     AuditDomain.VLAN_ISOLATION: ["interfaces", "topology", "firewall"],
     AuditDomain.VPN_POSTURE: ["vpn", "security"],
-    AuditDomain.DNS_SECURITY: ["services", "security"],
+    AuditDomain.DNS_SECURITY: ["services", "security", "profiles"],
     AuditDomain.IDS_IPS: ["security"],
     AuditDomain.WIRELESS: ["wifi", "security"],
     AuditDomain.CERTS: ["security"],
@@ -361,9 +361,10 @@ class NetworkSecurityAgent:
         logic lives.  Each domain handler examines the tool responses
         and produces findings.
 
-        In the current implementation, this returns an empty list --
-        actual findings will be populated once MCP tool call results
-        are available.  The structure is in place for each domain.
+        In the current implementation, this returns an empty list for
+        most domains -- actual findings will be populated once MCP tool
+        call results are available.  The structure is in place for each
+        domain.
 
         Parameters
         ----------
@@ -844,6 +845,243 @@ class NetworkSecurityAgent:
                         ),
                         source_plugin=source_plugin,
                         affected_resource=str(target),
+                    )
+                )
+
+        return findings
+
+    # ------------------------------------------------------------------
+    # DNS filtering security checks (dns-role integration)
+    # ------------------------------------------------------------------
+
+    def check_dns_filtering_security(
+        self,
+        registry: PluginRegistry,
+        profiles: list[dict[str, Any]] | None = None,
+        vlans: list[dict[str, Any]] | None = None,
+    ) -> list[SecurityFinding]:
+        """Check DNS filtering security posture across installed dns plugins.
+
+        This method is called during on-demand audits when a dns-role
+        plugin (e.g. NextDNS) is installed.  It examines profile
+        configurations for security gaps and produces findings.
+
+        Parameters
+        ----------
+        registry:
+            The plugin registry for checking installed plugins.
+        profiles:
+            DNS profile summaries (as returned by
+            ``nextdns__profiles__list_profiles``).  If ``None`` and a
+            dns plugin is installed, an empty list is assumed (the
+            orchestrator will provide real data once MCP tool
+            invocation is wired).
+        vlans:
+            VLAN data with forwarder info (for DNS bypass checks).
+            Each entry should have ``name``, ``vlan_id``, and
+            optionally ``dns_forwarder``.
+
+        Returns
+        -------
+        list[SecurityFinding]
+            DNS filtering findings, sorted by severity.
+        """
+        # Step 1: Check if a dns plugin is installed
+        dns_plugins = registry.plugins_with_role("dns")
+        if not dns_plugins:
+            # No dns plugin -- silently skip DNS filtering checks
+            return []
+
+        dns_plugin_name = dns_plugins[0].get("name", "dns")
+
+        findings: list[SecurityFinding] = []
+
+        if profiles is None:
+            profiles = []
+
+        # (a) DNS security gaps: profile with fewer than 8/12 toggles
+        findings.extend(
+            self._check_dns_security_gaps(profiles, dns_plugin_name)
+        )
+
+        # (b) DNS filtering bypass: VLANs without NextDNS forwarder
+        has_gateway = len(registry.plugins_with_role("gateway")) > 0
+        if has_gateway and vlans is not None:
+            findings.extend(
+                self._check_dns_filtering_bypass(vlans, dns_plugin_name)
+            )
+
+        # (c) DNS logging gaps: profiles with logging disabled
+        findings.extend(
+            self._check_dns_logging_gaps(profiles, dns_plugin_name)
+        )
+
+        return sort_findings(findings)
+
+    def _check_dns_security_gaps(
+        self,
+        profiles: list[dict[str, Any]],
+        source_plugin: str,
+    ) -> list[SecurityFinding]:
+        """Check for DNS profiles with weak threat protection.
+
+        A profile with fewer than 8 of 12 security toggles enabled is
+        considered to have weak protection.
+
+        Parameters
+        ----------
+        profiles:
+            DNS profile summaries from ``list_profiles``.
+        source_plugin:
+            Name of the dns plugin for finding attribution.
+
+        Returns
+        -------
+        list[SecurityFinding]
+            HIGH findings for profiles with insufficient toggles.
+        """
+        findings: list[SecurityFinding] = []
+        threshold = 8
+
+        for profile in profiles:
+            enabled = profile.get("security_enabled_count", 0)
+            total = profile.get("security_total", 12)
+            name = profile.get("name", profile.get("id", "unknown"))
+            profile_id = profile.get("id", "")
+
+            if enabled < threshold:
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.DNS_SECURITY,
+                        description=(
+                            f"DNS profile '{name}' has weak threat protection "
+                            f"({enabled}/{total} enabled)."
+                        ),
+                        why_it_matters=(
+                            f"With only {enabled} of {total} security toggles "
+                            "enabled, this profile may not block known threats "
+                            "such as cryptojacking, typosquatting, or DGA domains."
+                        ),
+                        recommendation=(
+                            f"Review the security settings for profile '{name}' "
+                            "and enable additional threat protection toggles. "
+                            "Aim for at least 8/12 enabled."
+                        ),
+                        source_plugin=source_plugin,
+                        source_tool=f"{source_plugin}__profiles__list_profiles",
+                        affected_resource=profile_id,
+                    )
+                )
+
+        return findings
+
+    def _check_dns_filtering_bypass(
+        self,
+        vlans: list[dict[str, Any]],
+        source_plugin: str,
+    ) -> list[SecurityFinding]:
+        """Check for VLANs that lack DNS forwarder mappings to NextDNS.
+
+        A VLAN without a NextDNS forwarder means devices on that segment
+        can bypass DNS filtering entirely.
+
+        Parameters
+        ----------
+        vlans:
+            VLAN entries, each with ``name``, ``vlan_id``, and
+            optionally ``dns_forwarder`` (the upstream DNS target).
+        source_plugin:
+            Name of the dns plugin for finding attribution.
+
+        Returns
+        -------
+        list[SecurityFinding]
+            HIGH findings for VLANs without DNS filtering.
+        """
+        findings: list[SecurityFinding] = []
+
+        for vlan in vlans:
+            vlan_name = vlan.get("name", f"VLAN {vlan.get('vlan_id', '?')}")
+            forwarder = vlan.get("dns_forwarder", "")
+
+            if not forwarder or "nextdns" not in forwarder.lower():
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.HIGH,
+                        category=FindingCategory.DNS_SECURITY,
+                        description=(
+                            f"VLAN '{vlan_name}' has no DNS filtering -- "
+                            "devices can bypass NextDNS."
+                        ),
+                        why_it_matters=(
+                            f"Devices on VLAN '{vlan_name}' can resolve any "
+                            "domain without passing through DNS filtering, "
+                            "exposing them to malware, phishing, and tracking."
+                        ),
+                        recommendation=(
+                            f"Configure the gateway's DNS forwarder for VLAN "
+                            f"'{vlan_name}' to point to the appropriate NextDNS "
+                            "profile endpoint."
+                        ),
+                        source_plugin=source_plugin,
+                        affected_resource=str(vlan.get("vlan_id", "")),
+                    )
+                )
+
+        return findings
+
+    def _check_dns_logging_gaps(
+        self,
+        profiles: list[dict[str, Any]],
+        source_plugin: str,
+    ) -> list[SecurityFinding]:
+        """Check for DNS profiles with logging disabled.
+
+        Without logging, there is no forensic trail for DNS queries,
+        making incident investigation and threat hunting impossible.
+
+        Parameters
+        ----------
+        profiles:
+            DNS profile summaries from ``list_profiles``.
+        source_plugin:
+            Name of the dns plugin for finding attribution.
+
+        Returns
+        -------
+        list[SecurityFinding]
+            WARNING findings for profiles with logging disabled.
+        """
+        findings: list[SecurityFinding] = []
+
+        for profile in profiles:
+            logging_enabled = profile.get("logging_enabled", False)
+            name = profile.get("name", profile.get("id", "unknown"))
+            profile_id = profile.get("id", "")
+
+            if not logging_enabled:
+                findings.append(
+                    SecurityFinding(
+                        severity=FindingSeverity.MEDIUM,
+                        category=FindingCategory.DNS_SECURITY,
+                        description=(
+                            f"DNS profile '{name}' has logging disabled -- "
+                            "no forensic trail for DNS queries."
+                        ),
+                        why_it_matters=(
+                            "Without DNS query logs, you cannot investigate "
+                            "security incidents, detect compromised devices, or "
+                            "verify that filtering is working as expected."
+                        ),
+                        recommendation=(
+                            f"Enable query logging for profile '{name}' in "
+                            "the NextDNS settings. Consider setting an "
+                            "appropriate retention period."
+                        ),
+                        source_plugin=source_plugin,
+                        source_tool=f"{source_plugin}__profiles__list_profiles",
+                        affected_resource=profile_id,
                     )
                 )
 
