@@ -12,9 +12,17 @@ from netex.tools.commands import (
     netex__vlan__provision_batch,
     netex__vpn__status,
 )
+from netex.tools.dns_tools import (
+    netex__dns__get_cross_profile_summary,
+    netex__dns__trace_enhanced,
+    netex__dns__verify_profiles,
+)
 
 __all__ = [
     "netex__dns__trace",
+    "netex__dns__trace_enhanced",
+    "netex__dns__verify_profiles",
+    "netex__dns__get_cross_profile_summary",
     "netex__network__provision_site",
     "netex__network__verify_policy",
     "netex__policy__sync",
