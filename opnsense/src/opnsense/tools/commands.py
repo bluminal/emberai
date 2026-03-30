@@ -735,15 +735,19 @@ def _parse_access_matrix(matrix_json: str) -> list[dict[str, str]]:
                 details={"field": "matrix", "index": i, "value": action},
             )
 
-        validated.append(
-            {
-                "src": src,
-                "dst": dst,
-                "action": action,
-                "protocol": entry.get("protocol", "any").strip(),
-                "description": entry.get("description", f"Matrix rule {i}").strip(),
-            }
-        )
+        rule_dict: dict[str, str] = {
+            "src": src,
+            "dst": dst,
+            "action": action,
+            "protocol": entry.get("protocol", "any").strip(),
+            "description": entry.get("description", f"Matrix rule {i}").strip(),
+        }
+        # Carry optional interface through for per-rule interface targeting
+        iface = entry.get("interface", "").strip()
+        if iface:
+            rule_dict["interface"] = iface
+
+        validated.append(rule_dict)
 
     if not validated:
         raise ValidationError(
@@ -752,6 +756,86 @@ def _parse_access_matrix(matrix_json: str) -> list[dict[str, str]]:
         )
 
     return validated
+
+
+def _is_cidr_or_ip(value: str) -> bool:
+    """Check whether a value looks like a CIDR, IP address, or 'any'."""
+    if value.lower() == "any":
+        return True
+    # Simple check: contains a dot (IPv4) or colon (IPv6) with optional /prefix
+    if "/" in value and ("." in value or ":" in value):
+        return True
+    # Bare IP address
+    import re as _re
+
+    if _re.match(r"^\d{1,3}(\.\d{1,3}){3}$", value):
+        return True
+    return ":" in value  # IPv6
+
+
+async def _resolve_alias_names(
+    matrix_rules: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Resolve src/dst alias names against live OPNsense aliases.
+
+    For each matrix rule's ``src`` and ``dst``:
+    - If it's a CIDR, IP address, or ``"any"`` -- use as-is.
+    - If it matches a known alias name -- use the alias name (OPNsense
+      accepts alias names in ``source_net``/``destination_net``).
+    - If it cannot be resolved -- raise a clear error listing available
+      aliases.
+
+    Returns a copy of the rules with ``src`` and ``dst`` validated.
+    """
+    from opnsense.tools.firewall import opnsense__firewall__list_aliases
+
+    aliases = await opnsense__firewall__list_aliases()
+    alias_names: set[str] = set()
+    for alias in aliases:
+        name = alias.get("name", "")
+        if name:
+            alias_names.add(name)
+
+    resolved: list[dict[str, str]] = []
+    for i, rule in enumerate(matrix_rules):
+        new_rule = dict(rule)
+
+        for field in ("src", "dst"):
+            value = rule[field]
+
+            # CIDRs, IPs, and "any" pass through
+            if _is_cidr_or_ip(value):
+                continue
+
+            # Check if value matches a known alias name (case-sensitive)
+            if value in alias_names:
+                continue
+
+            # Check common interface-network alias patterns
+            # OPNsense auto-creates aliases like "opt8", "lan", "wan",
+            # "__opt8_network", etc.
+            if value.lower() in alias_names or value in alias_names:
+                continue
+
+            # Try case-insensitive match as fallback
+            lower_map = {n.lower(): n for n in alias_names}
+            if value.lower() in lower_map:
+                # Use the canonical alias name
+                new_rule[field] = lower_map[value.lower()]
+                continue
+
+            # Cannot resolve -- raise with available aliases
+            sorted_aliases = sorted(alias_names)
+            raise ValidationError(
+                f"Unknown alias '{value}' in matrix entry {i} field '{field}'. "
+                f"Available aliases: {', '.join(sorted_aliases[:20])}"
+                + (" ..." if len(sorted_aliases) > 20 else ""),
+                details={"field": field, "index": i, "value": value},
+            )
+
+        resolved.append(new_rule)
+
+    return resolved
 
 
 def _detect_shadows(
@@ -877,18 +961,25 @@ async def opnsense_firewall_policy_from_matrix(
                 + f"\n\n---\n*Write operations are disabled.* {describe_write_status()}"
             )
 
-        from opnsense.tools.firewall import opnsense__firewall__add_rule
+        # Resolve alias names before creating rules
+        try:
+            resolved_rules = await _resolve_alias_names(rules)
+        except ValidationError as exc:
+            sections.append(f"### Alias Resolution Error\n\n{exc.message}\n")
+            return "\n".join(sections)
+
+        from opnsense.tools.firewall import opnsense__firewall__create_rule
 
         results: list[dict[str, Any]] = []
         errors: list[str] = []
 
-        for rule in rules:
+        for rule in resolved_rules:
             try:
-                result = await opnsense__firewall__add_rule(
-                    interface="lan",  # Default; matrix rules map to LAN
+                result = await opnsense__firewall__create_rule(
+                    interface=rule.get("interface", "lan"),
                     action=rule["action"],
-                    src=rule["src"],
-                    dst=rule["dst"],
+                    source_net=rule["src"],
+                    destination_net=rule["dst"],
                     protocol=rule.get("protocol", "any"),
                     description=rule.get("description", ""),
                     apply=True,

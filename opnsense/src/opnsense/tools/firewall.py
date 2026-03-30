@@ -567,3 +567,417 @@ async def opnsense__firewall__add_alias(
         "description": description,
         "uuid": write_result.get("uuid", ""),
     }
+
+
+@mcp_server.tool()
+@write_gate("OPNSENSE")
+async def opnsense__firewall__create_rule(
+    interface: str,
+    action: str,
+    source_net: str,
+    destination_net: str,
+    protocol: str = "any",
+    direction: str = "in",
+    ipprotocol: str = "inet",
+    enabled: bool = True,
+    quick: bool = True,
+    sequence: int | None = None,
+    description: str = "",
+    log: bool = False,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Create a new firewall filter rule.
+
+    Creates the rule and applies it to the live pf ruleset via the
+    OPNsense savepoint/apply/cancelRollback workflow.
+
+    Write-gated: requires OPNSENSE_WRITE_ENABLED=true and apply=True.
+
+    Args:
+        interface: Interface to apply the rule on (e.g. 'lan', 'wan', 'opt1').
+        action: Rule action: 'pass', 'block', or 'reject'.
+        source_net: Source address, CIDR, alias name, or 'any'.
+        destination_net: Destination address, CIDR, alias name, or 'any'.
+        protocol: IP protocol (e.g. 'TCP', 'UDP', 'ICMP', 'any').
+        direction: Traffic direction: 'in' or 'out'.
+        ipprotocol: IP version: 'inet' (IPv4), 'inet6' (IPv6), 'inet46' (both).
+        enabled: Whether the rule is enabled (default True).
+        quick: First-match mode (default True). False for last-match-wins.
+        sequence: Optional rule position in the filter chain.
+        description: Human-readable rule description.
+        log: Whether to log matching packets.
+        apply: Must be True to execute (write gate).
+
+    Returns:
+        Dict with the new rule UUID and creation details.
+
+    API endpoint: POST /api/firewall/filter/addRule
+    """
+    valid_actions = {"pass", "block", "reject"}
+    if action.lower() not in valid_actions:
+        raise ValidationError(
+            f"Action must be one of {valid_actions}, got '{action}'",
+            details={"field": "action", "value": action},
+        )
+
+    valid_directions = {"in", "out"}
+    if direction.lower() not in valid_directions:
+        raise ValidationError(
+            f"Direction must be one of {valid_directions}, got '{direction}'",
+            details={"field": "direction", "value": direction},
+        )
+
+    valid_ipprotocols = {"inet", "inet6", "inet46"}
+    if ipprotocol.lower() not in valid_ipprotocols:
+        raise ValidationError(
+            f"IP protocol must be one of {valid_ipprotocols}, got '{ipprotocol}'",
+            details={"field": "ipprotocol", "value": ipprotocol},
+        )
+
+    if not interface or not interface.strip():
+        raise ValidationError(
+            "Interface must not be empty.",
+            details={"field": "interface"},
+        )
+
+    rule_payload: dict[str, str] = {
+        "enabled": "1" if enabled else "0",
+        "action": action.lower(),
+        "quick": "1" if quick else "0",
+        "interface": interface.strip(),
+        "direction": direction.lower(),
+        "ipprotocol": ipprotocol.lower(),
+        "protocol": protocol,
+        "source_net": source_net,
+        "destination_net": destination_net,
+        "description": description,
+        "log": "1" if log else "0",
+    }
+    if sequence is not None:
+        rule_payload["sequence"] = str(sequence)
+
+    client = _get_client()
+    try:
+        write_result = await client.write(
+            "firewall",
+            "filter",
+            "addRule",
+            data={"rule": rule_payload},
+        )
+
+        if not is_action_success(write_result):
+            validations = write_result.get("validations", {})
+            detail = (
+                f"validations={validations}" if validations else f"response={write_result}"
+            )
+            raise APIError(
+                f"Failed to create firewall rule: "
+                f"{write_result.get('result', 'unknown error')} -- {detail}",
+                status_code=400,
+                endpoint="/api/firewall/filter/addRule",
+                response_body=truncate_response_body(str(write_result)),
+            )
+
+        uuid = write_result.get("uuid", "")
+
+        # OPNsense 26.x uses savepoint/apply/cancelRollback for firewall
+        savepoint_result = await client.post(
+            "firewall",
+            "filter",
+            "savepoint",
+        )
+        revision = savepoint_result.get("revision", "")
+        if revision:
+            await client.post(
+                "firewall",
+                "filter",
+                f"apply/{revision}",
+            )
+            await client.post(
+                "firewall",
+                "filter",
+                f"cancelRollback/{revision}",
+            )
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Created firewall rule: %s %s -> %s on %s (protocol=%s)",
+        action,
+        source_net,
+        destination_net,
+        interface,
+        protocol,
+        extra={"component": "firewall"},
+    )
+
+    return {
+        "uuid": uuid,
+        "status": "created",
+        "action": action.lower(),
+        "interface": interface.strip(),
+        "source": source_net,
+        "destination": destination_net,
+        "protocol": protocol,
+        "description": description,
+        "applied": True,
+    }
+
+
+@mcp_server.tool()
+@write_gate("OPNSENSE")
+async def opnsense__firewall__update_rule(
+    uuid: str,
+    action: str | None = None,
+    interface: str | None = None,
+    source_net: str | None = None,
+    destination_net: str | None = None,
+    protocol: str | None = None,
+    direction: str | None = None,
+    ipprotocol: str | None = None,
+    enabled: bool | None = None,
+    quick: bool | None = None,
+    description: str | None = None,
+    sequence: int | None = None,
+    log: bool | None = None,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Update an existing firewall rule by UUID. Only specified fields are changed.
+
+    Applies the update to the live pf ruleset via the OPNsense
+    savepoint/apply/cancelRollback workflow.
+
+    Write-gated: requires OPNSENSE_WRITE_ENABLED=true and apply=True.
+
+    Args:
+        uuid: The UUID of the firewall rule to update.
+        action: Rule action: 'pass', 'block', or 'reject'.
+        interface: Interface (e.g. 'lan', 'wan', 'opt1').
+        source_net: Source address, CIDR, alias name, or 'any'.
+        destination_net: Destination address, CIDR, alias name, or 'any'.
+        protocol: IP protocol (e.g. 'TCP', 'UDP', 'ICMP', 'any').
+        direction: Traffic direction: 'in' or 'out'.
+        ipprotocol: IP version: 'inet', 'inet6', or 'inet46'.
+        enabled: Whether the rule is enabled.
+        quick: First-match mode.
+        description: Human-readable rule description.
+        sequence: Rule position in the filter chain.
+        log: Whether to log matching packets.
+        apply: Must be True to execute (write gate).
+
+    Returns:
+        Dict with the updated rule UUID and list of changed fields.
+
+    API endpoint: POST /api/firewall/filter/setRule/{uuid}
+    """
+    uuid = validate_path_param(uuid, "uuid")
+
+    # Validate provided fields
+    if action is not None:
+        valid_actions = {"pass", "block", "reject"}
+        if action.lower() not in valid_actions:
+            raise ValidationError(
+                f"Action must be one of {valid_actions}, got '{action}'",
+                details={"field": "action", "value": action},
+            )
+
+    if direction is not None:
+        valid_directions = {"in", "out"}
+        if direction.lower() not in valid_directions:
+            raise ValidationError(
+                f"Direction must be one of {valid_directions}, got '{direction}'",
+                details={"field": "direction", "value": direction},
+            )
+
+    if ipprotocol is not None:
+        valid_ipprotocols = {"inet", "inet6", "inet46"}
+        if ipprotocol.lower() not in valid_ipprotocols:
+            raise ValidationError(
+                f"IP protocol must be one of {valid_ipprotocols}, got '{ipprotocol}'",
+                details={"field": "ipprotocol", "value": ipprotocol},
+            )
+
+    # Build partial update payload -- only include specified fields
+    rule_payload: dict[str, str] = {}
+    if action is not None:
+        rule_payload["action"] = action.lower()
+    if interface is not None:
+        rule_payload["interface"] = interface.strip()
+    if source_net is not None:
+        rule_payload["source_net"] = source_net
+    if destination_net is not None:
+        rule_payload["destination_net"] = destination_net
+    if protocol is not None:
+        rule_payload["protocol"] = protocol
+    if direction is not None:
+        rule_payload["direction"] = direction.lower()
+    if ipprotocol is not None:
+        rule_payload["ipprotocol"] = ipprotocol.lower()
+    if enabled is not None:
+        rule_payload["enabled"] = "1" if enabled else "0"
+    if quick is not None:
+        rule_payload["quick"] = "1" if quick else "0"
+    if description is not None:
+        rule_payload["description"] = description
+    if sequence is not None:
+        rule_payload["sequence"] = str(sequence)
+    if log is not None:
+        rule_payload["log"] = "1" if log else "0"
+
+    if not rule_payload:
+        raise ValidationError(
+            "No fields specified to update.",
+            details={"field": "rule_payload"},
+        )
+
+    client = _get_client()
+    try:
+        write_result = await client.write(
+            "firewall",
+            "filter",
+            f"setRule/{uuid}",
+            data={"rule": rule_payload},
+        )
+
+        if not is_action_success(write_result):
+            validations = write_result.get("validations", {})
+            detail = (
+                f"validations={validations}" if validations else f"response={write_result}"
+            )
+            raise APIError(
+                f"Failed to update firewall rule {uuid}: "
+                f"{write_result.get('result', 'unknown error')} -- {detail}",
+                status_code=400,
+                endpoint=f"/api/firewall/filter/setRule/{uuid}",
+                response_body=truncate_response_body(str(write_result)),
+            )
+
+        # OPNsense 26.x uses savepoint/apply/cancelRollback for firewall
+        savepoint_result = await client.post(
+            "firewall",
+            "filter",
+            "savepoint",
+        )
+        revision = savepoint_result.get("revision", "")
+        if revision:
+            await client.post(
+                "firewall",
+                "filter",
+                f"apply/{revision}",
+            )
+            await client.post(
+                "firewall",
+                "filter",
+                f"cancelRollback/{revision}",
+            )
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Updated firewall rule %s: fields=%s",
+        uuid,
+        list(rule_payload.keys()),
+        extra={"component": "firewall"},
+    )
+
+    return {
+        "uuid": uuid,
+        "status": "updated",
+        "updated_fields": list(rule_payload.keys()),
+        "applied": True,
+    }
+
+
+@mcp_server.tool()
+@write_gate("OPNSENSE")
+async def opnsense__firewall__delete_rule(
+    uuid: str,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Delete a firewall rule by UUID.
+
+    Removes the rule and applies the change to the live pf ruleset
+    via the OPNsense savepoint/apply/cancelRollback workflow.
+
+    Write-gated: requires OPNSENSE_WRITE_ENABLED=true and apply=True.
+
+    Args:
+        uuid: The UUID of the firewall rule to delete.
+        apply: Must be True to execute (write gate).
+
+    Returns:
+        Dict with the deleted rule UUID and description.
+
+    API endpoint: POST /api/firewall/filter/delRule/{uuid}
+    """
+    uuid = validate_path_param(uuid, "uuid")
+
+    client = _get_client()
+    try:
+        # Fetch rule info before deletion for confirmation
+        description = "Unknown"
+        try:
+            rule_info = await client.get("firewall", "filter", f"getRule/{uuid}")
+            description = rule_info.get("rule", {}).get("description", "Unknown")
+        except (APIError, KeyError, TypeError):
+            logger.warning(
+                "Could not fetch rule info before deletion: %s",
+                uuid,
+                exc_info=True,
+            )
+
+        write_result = await client.write(
+            "firewall",
+            "filter",
+            f"delRule/{uuid}",
+        )
+
+        if not is_action_success(write_result):
+            raise APIError(
+                f"Failed to delete firewall rule {uuid}: "
+                f"{write_result.get('result', 'unknown error')}",
+                status_code=400,
+                endpoint=f"/api/firewall/filter/delRule/{uuid}",
+                response_body=truncate_response_body(str(write_result)),
+            )
+
+        # OPNsense 26.x uses savepoint/apply/cancelRollback for firewall
+        savepoint_result = await client.post(
+            "firewall",
+            "filter",
+            "savepoint",
+        )
+        revision = savepoint_result.get("revision", "")
+        if revision:
+            await client.post(
+                "firewall",
+                "filter",
+                f"apply/{revision}",
+            )
+            await client.post(
+                "firewall",
+                "filter",
+                f"cancelRollback/{revision}",
+            )
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Deleted firewall rule: uuid=%s, description='%s'",
+        uuid,
+        description,
+        extra={"component": "firewall"},
+    )
+
+    return {
+        "uuid": uuid,
+        "description": description,
+        "status": "deleted",
+        "applied": True,
+    }
