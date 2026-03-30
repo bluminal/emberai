@@ -62,6 +62,10 @@ class VLANDefinition(BaseModel):
     parent_interface: str | None = Field(
         default=None, description="Parent interface for VLAN tagging"
     )
+    dns_profile: str | None = Field(
+        default=None,
+        description="NextDNS profile ID for per-VLAN DNS filtering (e.g. 'def456')",
+    )
 
 
 class AccessPolicyRule(BaseModel):
