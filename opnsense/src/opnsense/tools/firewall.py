@@ -633,7 +633,6 @@ async def opnsense__firewall__add_alias(
 
 @mcp_server.tool()
 @write_gate("OPNSENSE")
-<<<<<<< HEAD
 async def opnsense__firewall__create_rule(
     interface: str,
     action: str,
