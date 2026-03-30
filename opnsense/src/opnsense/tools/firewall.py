@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""Firewall skill MCP tools -- rules, aliases, and NAT operations.
+"""Firewall skill MCP tools -- rules, aliases, NAT, and DNAT operations.
 
 Provides MCP tools for listing and inspecting firewall rules, aliases,
-and NAT rules on an OPNsense firewall, as well as write-gated tools
-for adding rules, toggling rules, and creating aliases.
+NAT rules, and DNAT port forward rules on an OPNsense firewall, as well
+as write-gated tools for adding rules, toggling rules, creating aliases,
+and managing DNAT port forwards.
 
 Write tools follow the OPNsense two-step pattern: write (save config)
-then reconfigure (apply to live system). All write tools are protected
-by the ``@write_gate("OPNSENSE")`` decorator.
+then reconfigure/apply (push to live system). All write tools are
+protected by the ``@write_gate("OPNSENSE")`` decorator.
 """
 
 from __future__ import annotations
@@ -261,6 +262,67 @@ async def opnsense__firewall__list_nat_rules() -> list[dict[str, Any]]:
     )
 
     return nat_rules
+
+
+@mcp_server.tool()
+async def opnsense__firewall__list_port_forwards() -> list[dict[str, Any]]:
+    """List all DNAT port forward rules on the OPNsense firewall.
+
+    Returns rule inventory with UUID, interface, protocol,
+    source/destination with ports, target IP, target port,
+    description, and enabled status.
+
+    API endpoint: POST /api/firewall/d_nat/searchRule
+    """
+    client = _get_client()
+    try:
+        raw = await client.get_cached(
+            "firewall",
+            "d_nat",
+            "searchRule",
+            cache_key="firewall:dnat_rules",
+            ttl=CacheTTL.DNAT_RULES,
+            params={"rowCount": -1, "current": 1},
+        )
+    finally:
+        await client.close()
+
+    normalized = normalize_response(raw)
+
+    rules: list[dict[str, Any]] = []
+    for row in normalized.data:
+        try:
+            coerced = _coerce_rule_booleans(row)
+            rules.append({
+                "uuid": coerced.get("uuid", ""),
+                "interface": coerced.get("interface", ""),
+                "protocol": coerced.get("protocol", ""),
+                "source_net": coerced.get("src_network", coerced.get("source_net", "")),
+                "source_port": coerced.get("src_port", ""),
+                "destination_net": coerced.get(
+                    "dst_network", coerced.get("destination_net", ""),
+                ),
+                "destination_port": coerced.get("dst_port", ""),
+                "target": coerced.get("target", ""),
+                "local_port": coerced.get("local_port", ""),
+                "description": coerced.get("descr", coerced.get("description", "")),
+                "enabled": coerced.get("enabled", False),
+                "log": coerced.get("log", False),
+            })
+        except (KeyError, TypeError, ValueError):
+            logger.warning(
+                "Skipping unparseable DNAT rule: %s",
+                row.get("uuid", row.get("descr", "unknown")),
+                exc_info=True,
+            )
+
+    logger.info(
+        "Listed %d DNAT port forward rules",
+        len(rules),
+        extra={"component": "firewall"},
+    )
+
+    return rules
 
 
 # ---------------------------------------------------------------------------
@@ -571,6 +633,7 @@ async def opnsense__firewall__add_alias(
 
 @mcp_server.tool()
 @write_gate("OPNSENSE")
+<<<<<<< HEAD
 async def opnsense__firewall__create_rule(
     interface: str,
     action: str,
@@ -979,5 +1042,220 @@ async def opnsense__firewall__delete_rule(
         "uuid": uuid,
         "description": description,
         "status": "deleted",
+        "applied": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# DNAT Port Forward write tools
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+@write_gate("OPNSENSE")
+async def opnsense__firewall__add_port_forward(
+    interface: str,
+    protocol: str,
+    destination_port: str,
+    target: str,
+    local_port: str,
+    destination_net: str = "wanip",
+    source_net: str = "any",
+    ipprotocol: str = "inet",
+    description: str = "",
+    log: bool = False,
+    enabled: bool = True,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Create a DNAT port forward rule.
+
+    Forwards external traffic matching the destination port on the
+    specified interface to an internal host and port.
+
+    Write-gated: requires OPNSENSE_WRITE_ENABLED=true and apply=True.
+
+    Args:
+        interface: Incoming interface (typically 'wan').
+        protocol: IP protocol: 'TCP', 'UDP', or 'TCP/UDP'.
+        destination_port: External port to forward.
+        target: Internal IP address to forward traffic to.
+        local_port: Internal port on the target host.
+        destination_net: External destination address to match
+            (default 'wanip' = the WAN interface IP).
+        source_net: Restrict source address (default 'any').
+        ipprotocol: IP version: 'inet', 'inet6', or 'inet46'.
+        description: Human-readable rule description.
+        log: Whether to log matching packets.
+        enabled: Whether the rule is enabled (default True).
+        apply: Must be True to execute (write gate).
+
+    API endpoint: POST /api/firewall/d_nat/addRule
+    """
+    valid_protocols = {"TCP", "UDP", "TCP/UDP"}
+    if protocol.upper() not in valid_protocols:
+        raise ValidationError(
+            f"Protocol must be one of {valid_protocols}, got '{protocol}'",
+            details={"field": "protocol", "value": protocol},
+        )
+
+    valid_ipprotocols = {"inet", "inet6", "inet46"}
+    if ipprotocol.lower() not in valid_ipprotocols:
+        raise ValidationError(
+            f"IP protocol must be one of {valid_ipprotocols}, got '{ipprotocol}'",
+            details={"field": "ipprotocol", "value": ipprotocol},
+        )
+
+    if not interface or not interface.strip():
+        raise ValidationError(
+            "Interface must not be empty.",
+            details={"field": "interface"},
+        )
+
+    if not target or not target.strip():
+        raise ValidationError(
+            "Target (internal IP) must not be empty.",
+            details={"field": "target"},
+        )
+
+    if not destination_port or not destination_port.strip():
+        raise ValidationError(
+            "Destination port must not be empty.",
+            details={"field": "destination_port"},
+        )
+
+    if not local_port or not local_port.strip():
+        raise ValidationError(
+            "Local port must not be empty.",
+            details={"field": "local_port"},
+        )
+
+    rule_payload: dict[str, Any] = {
+        "interface": interface.strip(),
+        "ipprotocol": ipprotocol.lower(),
+        "protocol": protocol.upper(),
+        "src_network": source_net,
+        "dst_network": destination_net,
+        "dst_port": destination_port.strip(),
+        "target": target.strip(),
+        "local_port": local_port.strip(),
+        "descr": description,
+        "log": "1" if log else "0",
+        "enabled": "1" if enabled else "0",
+    }
+
+    client = _get_client()
+    try:
+        write_result = await client.write(
+            "firewall",
+            "d_nat",
+            "addRule",
+            data={"rule": rule_payload},
+        )
+
+        if not is_action_success(write_result):
+            validations = write_result.get("validations", {})
+            detail = (
+                f"validations={validations}"
+                if validations
+                else f"response={write_result}"
+            )
+            raise APIError(
+                f"Failed to add DNAT port forward rule: "
+                f"{write_result.get('result', 'unknown error')} -- {detail}",
+                status_code=400,
+                endpoint="/api/firewall/d_nat/addRule",
+                response_body=truncate_response_body(str(write_result)),
+            )
+
+        uuid = write_result.get("uuid", "")
+
+        # Apply the DNAT configuration to make it live.
+        await client.post("firewall", "d_nat", "apply")
+
+        # Flush cache so subsequent reads pick up the new rule.
+        await client.cache.flush_by_prefix("firewall:")
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Added DNAT port forward: %s:%s -> %s:%s on %s (protocol=%s)",
+        destination_net,
+        destination_port,
+        target,
+        local_port,
+        interface,
+        protocol,
+        extra={"component": "firewall"},
+    )
+
+    return {
+        "status": "created",
+        "uuid": uuid,
+        "interface": interface.strip(),
+        "protocol": protocol.upper(),
+        "external_port": destination_port.strip(),
+        "target": target.strip(),
+        "internal_port": local_port.strip(),
+        "description": description,
+        "applied": True,
+    }
+
+
+@mcp_server.tool()
+@write_gate("OPNSENSE")
+async def opnsense__firewall__delete_port_forward(
+    uuid: str,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Delete a DNAT port forward rule by UUID.
+
+    Write-gated: requires OPNSENSE_WRITE_ENABLED=true and apply=True.
+
+    Args:
+        uuid: The UUID of the port forward rule to delete.
+        apply: Must be True to execute (write gate).
+
+    API endpoint: POST /api/firewall/d_nat/delRule/{uuid}
+    """
+    uuid = validate_path_param(uuid, "uuid")
+
+    client = _get_client()
+    try:
+        write_result = await client.write(
+            "firewall",
+            "d_nat",
+            f"delRule/{uuid}",
+        )
+
+        if not is_action_success(write_result):
+            raise APIError(
+                f"Failed to delete DNAT port forward rule {uuid}: "
+                f"{write_result.get('result', 'unknown error')}",
+                status_code=400,
+                endpoint=f"/api/firewall/d_nat/delRule/{uuid}",
+                response_body=truncate_response_body(str(write_result)),
+            )
+
+        # Apply the DNAT configuration to make the deletion live.
+        await client.post("firewall", "d_nat", "apply")
+
+        # Flush cache so subsequent reads reflect the deleted rule.
+        await client.cache.flush_by_prefix("firewall:")
+
+    finally:
+        await client.close()
+
+    logger.info(
+        "Deleted DNAT port forward rule: %s",
+        uuid,
+        extra={"component": "firewall"},
+    )
+
+    return {
+        "status": "deleted",
+        "uuid": uuid,
         "applied": True,
     }
