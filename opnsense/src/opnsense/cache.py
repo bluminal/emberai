@@ -56,6 +56,7 @@ class CacheTTL:
     FIREWALL_RULES: float = 120.0  # 2 minutes -- may change during sessions
     FIREWALL_ALIASES: float = 120.0  # 2 minutes -- alias definitions
     NAT_RULES: float = 120.0  # 2 minutes -- NAT configuration
+    DNAT_RULES: float = 120.0  # 2 minutes -- DNAT port forward rules
     DHCP_LEASES: float = 60.0  # 1 minute -- dynamic lease data
     DNS_OVERRIDES: float = 120.0  # 2 minutes -- DNS host overrides
     ROUTES: float = 120.0  # 2 minutes -- routing table
