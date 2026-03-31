@@ -355,10 +355,12 @@ class TestAddGatewayGroup:
         ):
             from opnsense.tools.routing import opnsense__routing__add_gateway_group
 
-            members = json.dumps([
-                {"gateway": "WAN_DHCP", "tier": 1, "weight": 1},
-                {"gateway": "WAN2_DHCP", "tier": 2, "weight": 1},
-            ])
+            members = json.dumps(
+                [
+                    {"gateway": "WAN_DHCP", "tier": 1, "weight": 1},
+                    {"gateway": "WAN2_DHCP", "tier": 2, "weight": 1},
+                ]
+            )
             result = await opnsense__routing__add_gateway_group(
                 name="WAN1_Failover",
                 members=members,
@@ -383,10 +385,12 @@ class TestAddGatewayGroup:
         ):
             from opnsense.tools.routing import opnsense__routing__add_gateway_group
 
-            members = json.dumps([
-                {"gateway": "WAN_DHCP", "tier": 1, "weight": 1},
-                {"gateway": "WAN2_DHCP", "tier": 2, "weight": 1},
-            ])
+            members = json.dumps(
+                [
+                    {"gateway": "WAN_DHCP", "tier": 1, "weight": 1},
+                    {"gateway": "WAN2_DHCP", "tier": 2, "weight": 1},
+                ]
+            )
             await opnsense__routing__add_gateway_group(
                 name="WAN1_Failover",
                 members=members,

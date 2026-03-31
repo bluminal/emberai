@@ -282,8 +282,13 @@ class TestFullFixtureParsing:
             devices.append(vlan.device)
 
         assert devices == [
-            "vlan0.10", "vlan0.20", "vlan0.30", "vlan0.40",
-            "vlan0.50", "vlan0.60", "vlan0.99",
+            "vlan0.10",
+            "vlan0.20",
+            "vlan0.30",
+            "vlan0.40",
+            "vlan0.50",
+            "vlan0.60",
+            "vlan0.99",
         ]
 
     def test_pcp_values(self, vlan_26x_response: dict[str, Any]) -> None:
@@ -417,12 +422,14 @@ class TestListVlanInterfacesTool:
     async def test_returns_empty_for_no_vlans(self) -> None:
         """The tool should return an empty list for 0 VLANs."""
         mock_client = AsyncMock()
-        mock_client.get_cached = AsyncMock(return_value={
-            "rows": [],
-            "rowCount": 0,
-            "total": 0,
-            "current": 1,
-        })
+        mock_client.get_cached = AsyncMock(
+            return_value={
+                "rows": [],
+                "rowCount": 0,
+                "total": 0,
+                "current": 1,
+            }
+        )
         mock_client.close = AsyncMock()
 
         with patch(

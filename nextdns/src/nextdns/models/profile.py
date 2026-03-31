@@ -32,9 +32,7 @@ class SecuritySettings(BaseModel):
 
     model_config = ConfigDict(strict=True, populate_by_name=True)
 
-    threat_intelligence_feeds: bool = Field(
-        alias="threatIntelligenceFeeds", default=False
-    )
+    threat_intelligence_feeds: bool = Field(alias="threatIntelligenceFeeds", default=False)
     ai_threat_detection: bool = Field(alias="aiThreatDetection", default=False)
     google_safe_browsing: bool = Field(alias="googleSafeBrowsing", default=False)
     cryptojacking: bool = False
@@ -120,9 +118,7 @@ class ParentalControlSettings(BaseModel):
     services: list[ParentalService] = Field(default_factory=list)
     categories: list[ParentalCategory] = Field(default_factory=list)
     safe_search: bool = Field(alias="safeSearch", default=False)
-    youtube_restricted_mode: bool = Field(
-        alias="youtubeRestrictedMode", default=False
-    )
+    youtube_restricted_mode: bool = Field(alias="youtubeRestrictedMode", default=False)
     block_bypass: bool = Field(alias="blockBypass", default=False)
 
 
@@ -202,12 +198,8 @@ class ProfileSettings(BaseModel):
     model_config = ConfigDict(strict=True, populate_by_name=True)
 
     logs: LogSettings = Field(default_factory=LogSettings)
-    block_page: BlockPageSettings = Field(
-        alias="blockPage", default_factory=BlockPageSettings
-    )
-    performance: PerformanceSettings = Field(
-        default_factory=PerformanceSettings
-    )
+    block_page: BlockPageSettings = Field(alias="blockPage", default_factory=BlockPageSettings)
+    performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
     web3: bool = False
 
 

@@ -505,10 +505,7 @@ def format_log_entries(entries: list[LogEntry]) -> str:
         return "### DNS Query Log\n\nNo log entries.\n"
 
     headers = ["Timestamp", "Domain", "Status", "Device", "Protocol"]
-    rows = [
-        [e.timestamp, e.domain, e.status, e.device, e.protocol]
-        for e in entries
-    ]
+    rows = [[e.timestamp, e.domain, e.status, e.device, e.protocol] for e in entries]
     return _format_table(headers, rows, title="DNS Query Log")
 
 

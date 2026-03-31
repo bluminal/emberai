@@ -266,8 +266,7 @@ def delete_profile_gate[**P, T](func: Callable[P, T]) -> Callable[P, T]:
         # Step 1: Check environment variable
         if not check_write_enabled("NEXTDNS"):
             raise WriteGateError(
-                "Write operations are disabled for NEXTDNS. "
-                f"Set {env_var}=true to enable.",
+                f"Write operations are disabled for NEXTDNS. Set {env_var}=true to enable.",
                 reason=WriteGateReason.ENV_VAR_DISABLED,
                 plugin_name="NEXTDNS",
                 env_var=env_var,
@@ -353,8 +352,7 @@ def clear_logs_gate[**P, T](func: Callable[P, T]) -> Callable[P, T]:
         # Step 1: Check environment variable
         if not check_write_enabled("NEXTDNS"):
             raise WriteGateError(
-                "Write operations are disabled for NEXTDNS. "
-                f"Set {env_var}=true to enable.",
+                f"Write operations are disabled for NEXTDNS. Set {env_var}=true to enable.",
                 reason=WriteGateReason.ENV_VAR_DISABLED,
                 plugin_name="NEXTDNS",
                 env_var=env_var,

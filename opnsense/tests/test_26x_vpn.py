@@ -212,9 +212,7 @@ class TestIPSec404Degradation:
 
         client = AsyncMock()
 
-        async def _get(
-            module: str, controller: str, command: str, **kwargs: Any
-        ) -> dict[str, Any]:
+        async def _get(module: str, controller: str, command: str, **kwargs: Any) -> dict[str, Any]:
             raise _make_500_error(f"/api/{module}/{controller}/{command}")
 
         client.get = AsyncMock(side_effect=_get)
@@ -277,9 +275,7 @@ class TestOpenVPN404Degradation:
 
         client = AsyncMock()
 
-        async def _get(
-            module: str, controller: str, command: str, **kwargs: Any
-        ) -> dict[str, Any]:
+        async def _get(module: str, controller: str, command: str, **kwargs: Any) -> dict[str, Any]:
             raise _make_500_error(f"/api/{module}/{controller}/{command}")
 
         client.get = AsyncMock(side_effect=_get)
@@ -349,9 +345,7 @@ class TestWireGuard404Degradation:
 
         client = AsyncMock()
 
-        async def _get(
-            module: str, controller: str, command: str, **kwargs: Any
-        ) -> dict[str, Any]:
+        async def _get(module: str, controller: str, command: str, **kwargs: Any) -> dict[str, Any]:
             raise _make_500_error(f"/api/{module}/{controller}/{command}")
 
         client.get = AsyncMock(side_effect=_get)
@@ -483,9 +477,7 @@ class TestVPNStatusMixedAvailability:
 
         client = AsyncMock()
 
-        async def _get(
-            module: str, controller: str, command: str, **kwargs: Any
-        ) -> dict[str, Any]:
+        async def _get(module: str, controller: str, command: str, **kwargs: Any) -> dict[str, Any]:
             if module == "ipsec":
                 raise _make_500_error(f"/api/{module}/{controller}/{command}")
             return {"rows": []}

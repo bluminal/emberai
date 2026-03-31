@@ -124,9 +124,7 @@ class NextDNSClient:
         """
         return await self._request("GET", endpoint, params=params)
 
-    async def post(
-        self, endpoint: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def post(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make a POST request to the NextDNS API.
 
         Parameters
@@ -154,9 +152,7 @@ class NextDNSClient:
         """
         return await self._request("POST", endpoint, json_data=data)
 
-    async def put(
-        self, endpoint: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def put(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make a PUT request to the NextDNS API.
 
         Parameters
@@ -184,9 +180,7 @@ class NextDNSClient:
         """
         return await self._request("PUT", endpoint, json_data=data)
 
-    async def patch(
-        self, endpoint: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def patch(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make a PATCH request to the NextDNS API.
 
         Parameters
@@ -405,9 +399,7 @@ class NextDNSClient:
         """
         return await self.patch(array_child_url(profile_id, path, item_id), data=data)
 
-    async def delete_array_child(
-        self, profile_id: str, path: str, item_id: str
-    ) -> dict[str, Any]:
+    async def delete_array_child(self, profile_id: str, path: str, item_id: str) -> dict[str, Any]:
         """DELETE a specific array item.
 
         Args:
@@ -459,8 +451,7 @@ class NextDNSClient:
         Implements automatic retry with exponential backoff on 429 responses.
         """
         redacted_headers = {
-            k: ("***" if k.lower() == "x-api-key" else v)
-            for k, v in self._client.headers.items()
+            k: ("***" if k.lower() == "x-api-key" else v) for k, v in self._client.headers.items()
         }
         logger.debug(
             "Request: %s %s%s | headers=%s",
@@ -779,25 +770,19 @@ class CachedNextDNSClient(NextDNSClient):
         await self._cache.set(key, result, ttl=ttl)
         return result
 
-    async def post(
-        self, endpoint: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def post(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """POST with post-write cache flush."""
         result = await super().post(endpoint, data=data)
         await self._flush_affected_profile(endpoint)
         return result
 
-    async def put(
-        self, endpoint: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def put(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """PUT with post-write cache flush."""
         result = await super().put(endpoint, data=data)
         await self._flush_affected_profile(endpoint)
         return result
 
-    async def patch(
-        self, endpoint: str, data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def patch(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """PATCH with post-write cache flush."""
         result = await super().patch(endpoint, data=data)
         await self._flush_affected_profile(endpoint)

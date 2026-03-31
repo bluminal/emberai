@@ -487,9 +487,7 @@ class TestDNSProfile:
             DNSProfile.from_vendor("cloudflare", {"id": "test", "name": "test"})
 
     def test_serialization_roundtrip(self) -> None:
-        profile = DNSProfile(
-            id="abc", name="Test", vendor="nextdns", security_enabled_count=12
-        )
+        profile = DNSProfile(id="abc", name="Test", vendor="nextdns", security_enabled_count=12)
         data = profile.model_dump()
         restored = DNSProfile.model_validate(data)
         assert restored.id == "abc"

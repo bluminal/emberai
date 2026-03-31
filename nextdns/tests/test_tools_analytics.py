@@ -124,18 +124,14 @@ class TestGetStatus:
         assert result[2]["queries"] == 123
 
         # Verify correct endpoint was called.
-        mock_client.get.assert_awaited_once_with(
-            "/profiles/abc123/analytics/status", params=None
-        )
+        mock_client.get.assert_awaited_once_with("/profiles/abc123/analytics/status", params=None)
 
     async def test_get_status_with_time_range(self, mock_client, analytics_status_fixture):
         """Verifies from/to params are passed to the client."""
         mock_client.get = AsyncMock(return_value=analytics_status_fixture)
 
         with patch("nextdns.tools.analytics.get_client", return_value=mock_client):
-            await nextdns__analytics__get_status(
-                "abc123", from_time="-7d", to_time="-1d"
-            )
+            await nextdns__analytics__get_status("abc123", from_time="-7d", to_time="-1d")
 
         mock_client.get.assert_awaited_once_with(
             "/profiles/abc123/analytics/status",
@@ -165,9 +161,7 @@ class TestGetTopDomains:
 
     async def test_get_top_domains(self, mock_client, analytics_domains_fixture):
         """Returns domain list with correct fields via paginated client."""
-        mock_client.get_paginated = AsyncMock(
-            return_value=analytics_domains_fixture["data"]
-        )
+        mock_client.get_paginated = AsyncMock(return_value=analytics_domains_fixture["data"])
 
         with patch("nextdns.tools.analytics.get_client", return_value=mock_client):
             result = await nextdns__analytics__get_top_domains("abc123")
@@ -182,18 +176,12 @@ class TestGetTopDomains:
             "/profiles/abc123/analytics/domains", params=None, limit=None
         )
 
-    async def test_get_top_domains_with_status_filter(
-        self, mock_client, analytics_domains_fixture
-    ):
+    async def test_get_top_domains_with_status_filter(self, mock_client, analytics_domains_fixture):
         """Verifies status filter param is passed to the client."""
-        mock_client.get_paginated = AsyncMock(
-            return_value=analytics_domains_fixture["data"][:2]
-        )
+        mock_client.get_paginated = AsyncMock(return_value=analytics_domains_fixture["data"][:2])
 
         with patch("nextdns.tools.analytics.get_client", return_value=mock_client):
-            result = await nextdns__analytics__get_top_domains(
-                "abc123", status="blocked", limit=10
-            )
+            result = await nextdns__analytics__get_top_domains("abc123", status="blocked", limit=10)
 
         assert len(result) == 2
         mock_client.get_paginated.assert_awaited_once_with(
@@ -281,9 +269,7 @@ class TestGetDevices:
 class TestGetProtocols:
     """Tests for nextdns__analytics__get_protocols()."""
 
-    async def test_get_protocols_with_unencrypted(
-        self, mock_client, analytics_protocols_fixture
-    ):
+    async def test_get_protocols_with_unencrypted(self, mock_client, analytics_protocols_fixture):
         """Sets unencrypted_warning when UDP has queries > 0."""
         mock_client.get = AsyncMock(return_value=analytics_protocols_fixture)
 
@@ -357,9 +343,7 @@ class TestGetEncryption:
 
     async def test_get_encryption_high_unencrypted(self, mock_client):
         """Triggers warning when unencrypted exceeds 10%."""
-        high_unencrypted = {
-            "data": [{"encrypted": 800, "unencrypted": 200}]
-        }
+        high_unencrypted = {"data": [{"encrypted": 800, "unencrypted": 200}]}
         mock_client.get = AsyncMock(return_value=high_unencrypted)
 
         with patch("nextdns.tools.analytics.get_client", return_value=mock_client):
@@ -432,9 +416,7 @@ class TestGetDestinations:
         mock_client.get = AsyncMock(return_value=gafam_data)
 
         with patch("nextdns.tools.analytics.get_client", return_value=mock_client):
-            result = await nextdns__analytics__get_destinations(
-                "abc123", destination_type="gafam"
-            )
+            result = await nextdns__analytics__get_destinations("abc123", destination_type="gafam")
 
         assert len(result) == 5
         assert result[4]["name"] == "Microsoft"
@@ -588,9 +570,7 @@ class TestGetDNSSEC:
         assert result[1]["name"] == "Validated"
         assert result[1]["queries"] == 15809
 
-        mock_client.get.assert_awaited_once_with(
-            "/profiles/abc123/analytics/dnssec", params=None
-        )
+        mock_client.get.assert_awaited_once_with("/profiles/abc123/analytics/dnssec", params=None)
 
 
 # ---------------------------------------------------------------------------
@@ -614,10 +594,10 @@ class TestAnalyticsDashboard:
         # Mock get_client for all analytics tool calls.
         mock_client.get = AsyncMock(
             side_effect=[
-                analytics_status_fixture,       # get_status
-                analytics_devices_fixture,      # get_devices
-                analytics_protocols_fixture,    # get_protocols
-                analytics_encryption_fixture,   # get_encryption
+                analytics_status_fixture,  # get_status
+                analytics_devices_fixture,  # get_devices
+                analytics_protocols_fixture,  # get_protocols
+                analytics_encryption_fixture,  # get_encryption
             ]
         )
         mock_client.get_paginated = AsyncMock(

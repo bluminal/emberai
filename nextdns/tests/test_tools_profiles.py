@@ -325,9 +325,7 @@ class TestGetSettings:
 class TestSecurityPostureAudit:
     """Tests for nextdns__security_posture__audit()."""
 
-    async def test_all_secure_profile_minimal_findings(
-        self, mock_client, profile_single_fixture
-    ):
+    async def test_all_secure_profile_minimal_findings(self, mock_client, profile_single_fixture):
         """A fully-secured profile (Kids) produces minimal findings."""
         mock_client.get_profile = AsyncMock(return_value=profile_single_fixture)
 

@@ -88,17 +88,19 @@ def _get_client() -> OPNsenseClient:
 
 # Pseudo-interface names returned by OPNsense that are not real
 # assigned interfaces and should be filtered out.
-_PSEUDO_INTERFACE_NAMES: frozenset[str] = frozenset({
-    "config",
-    "nd6",
-    "pflog0",
-    "pfsync0",
-    "enc0",
-    "lo0",
-    "gif0",
-    "gre0",
-    "bridge0",
-})
+_PSEUDO_INTERFACE_NAMES: frozenset[str] = frozenset(
+    {
+        "config",
+        "nd6",
+        "pflog0",
+        "pfsync0",
+        "enc0",
+        "lo0",
+        "gif0",
+        "gre0",
+        "bridge0",
+    }
+)
 
 
 @mcp_server.tool()
@@ -200,8 +202,7 @@ async def opnsense__interfaces__list_vlan_interfaces() -> list[dict[str, Any]]:
             vlans.append(vlan.model_dump(by_alias=False))
         except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
-                "Skipping unparseable VLAN entry: uuid=%s, tag=%s, "
-                "available_fields=%s",
+                "Skipping unparseable VLAN entry: uuid=%s, tag=%s, available_fields=%s",
                 row.get("uuid", "?"),
                 row.get("tag", "?"),
                 list(row.keys()),

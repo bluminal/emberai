@@ -262,8 +262,16 @@ class TestGatewaysFixtureData:
     def test_all_gateways_have_valid_status(self) -> None:
         data = load_fixture("gateways.json")
         # dpinger raw statuses: none (online), down, delay, loss, delay+loss, force_down
-        valid_statuses = {"none", "down", "delay", "loss", "delay+loss", "force_down",
-                          "online", "offline"}
+        valid_statuses = {
+            "none",
+            "down",
+            "delay",
+            "loss",
+            "delay+loss",
+            "force_down",
+            "online",
+            "offline",
+        }
         for gw in data["items"]:
             assert gw["status"] in valid_statuses
 

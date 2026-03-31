@@ -473,16 +473,18 @@ class TestGatewayModel:
     """Gateway Pydantic model with coerced 26.x data."""
 
     def test_26x_online_gateway(self) -> None:
-        coerced = _coerce_gateway_fields({
-            "name": "WAN_DHCP",
-            "address": "100.94.200.2",
-            "status": "none",
-            "status_translated": "Online",
-            "loss": "0.0 %",
-            "delay": "4.231 ms",
-            "stddev": "0.803 ms",
-            "monitor": "1.1.1.1",
-        })
+        coerced = _coerce_gateway_fields(
+            {
+                "name": "WAN_DHCP",
+                "address": "100.94.200.2",
+                "status": "none",
+                "status_translated": "Online",
+                "loss": "0.0 %",
+                "delay": "4.231 ms",
+                "stddev": "0.803 ms",
+                "monitor": "1.1.1.1",
+            }
+        )
         gw = Gateway.model_validate(coerced)
         assert gw.name == "WAN_DHCP"
         assert gw.gateway == "100.94.200.2"
@@ -496,16 +498,18 @@ class TestGatewayModel:
         assert gw.priority == 255
 
     def test_26x_down_gateway(self) -> None:
-        coerced = _coerce_gateway_fields({
-            "name": "WAN2_DHCP",
-            "address": "~",
-            "status": "down",
-            "status_translated": "Offline",
-            "loss": "~",
-            "delay": "~",
-            "stddev": "~",
-            "monitor": "8.8.8.8",
-        })
+        coerced = _coerce_gateway_fields(
+            {
+                "name": "WAN2_DHCP",
+                "address": "~",
+                "status": "down",
+                "status_translated": "Offline",
+                "loss": "~",
+                "delay": "~",
+                "stddev": "~",
+                "monitor": "8.8.8.8",
+            }
+        )
         gw = Gateway.model_validate(coerced)
         assert gw.name == "WAN2_DHCP"
         assert gw.gateway == ""
@@ -516,15 +520,17 @@ class TestGatewayModel:
 
     def test_model_dump_by_alias_false(self) -> None:
         """Verify model_dump(by_alias=False) uses Python field names."""
-        coerced = _coerce_gateway_fields({
-            "name": "WAN_DHCP",
-            "address": "100.94.200.2",
-            "status": "none",
-            "loss": "0.0 %",
-            "delay": "4.2 ms",
-            "stddev": "0.8 ms",
-            "monitor": "1.1.1.1",
-        })
+        coerced = _coerce_gateway_fields(
+            {
+                "name": "WAN_DHCP",
+                "address": "100.94.200.2",
+                "status": "none",
+                "loss": "0.0 %",
+                "delay": "4.2 ms",
+                "stddev": "0.8 ms",
+                "monitor": "1.1.1.1",
+            }
+        )
         gw = Gateway.model_validate(coerced)
         dumped = gw.model_dump(by_alias=False)
         assert "gateway" in dumped  # not "address"
@@ -534,15 +540,17 @@ class TestGatewayModel:
 
     def test_legacy_format_still_works(self) -> None:
         """Backward compat: older response with interface/priority/numeric delay."""
-        coerced = _coerce_gateway_fields({
-            "name": "WAN_GW",
-            "address": "203.0.113.1",
-            "interface": "igb0",
-            "monitor": "8.8.8.8",
-            "status": "online",
-            "priority": 255,
-            "delay": 4.2,
-        })
+        coerced = _coerce_gateway_fields(
+            {
+                "name": "WAN_GW",
+                "address": "203.0.113.1",
+                "interface": "igb0",
+                "monitor": "8.8.8.8",
+                "status": "online",
+                "priority": 255,
+                "delay": 4.2,
+            }
+        )
         gw = Gateway.model_validate(coerced)
         assert gw.name == "WAN_GW"
         assert gw.gateway == "203.0.113.1"

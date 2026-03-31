@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # VPN result type
 # ---------------------------------------------------------------------------
 
+
 class VPNResult:
     """Container for VPN query results with availability metadata.
 

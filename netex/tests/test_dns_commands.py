@@ -150,10 +150,7 @@ class TestExtractNextDNSProfileId:
 
     def test_path_format_with_https(self) -> None:
         """https://dns.nextdns.io/{id} format."""
-        assert (
-            extract_nextdns_profile_id("https://dns.nextdns.io/abc123")
-            == "abc123"
-        )
+        assert extract_nextdns_profile_id("https://dns.nextdns.io/abc123") == "abc123"
 
     def test_subdomain_format(self) -> None:
         """{id}.dns.nextdns.io (DoH subdomain) format."""
@@ -396,16 +393,12 @@ class TestVerifyProfilesAllMatched:
             "ghi789": [{"ip": "10.0.50.8", "queries": 300}],
         }
 
-        result = await verify_profiles_with_data(
-            vlans, forwarders, profiles, analytics_ips
-        )
+        result = await verify_profiles_with_data(vlans, forwarders, profiles, analytics_ips)
 
         assert result["vlans_checked"] == 3
         assert result["verified"] == 3
         assert result["mismatches"] == []
-        assert all(
-            r["status"] == "verified" for r in result["results"]
-        )
+        assert all(r["status"] == "verified" for r in result["results"])
 
 
 # ---------------------------------------------------------------------------
@@ -434,9 +427,7 @@ class TestVerifyProfilesMissingForwarder:
             "abc123": [{"ip": "10.0.10.15", "queries": 500}],
         }
 
-        result = await verify_profiles_with_data(
-            vlans, forwarders, profiles, analytics_ips
-        )
+        result = await verify_profiles_with_data(vlans, forwarders, profiles, analytics_ips)
 
         assert result["vlans_checked"] == 2
         # Trusted matches by description, Guest has no match
@@ -446,9 +437,7 @@ class TestVerifyProfilesMissingForwarder:
         assert "no DNS forwarder" in result["mismatches"][0]
 
         # Check individual results
-        guest_result = next(
-            r for r in result["results"] if r["vlan_name"] == "Guest"
-        )
+        guest_result = next(r for r in result["results"] if r["vlan_name"] == "Guest")
         assert guest_result["status"] == "no_forwarder"
 
 
@@ -476,9 +465,7 @@ class TestVerifyProfilesNoTraffic:
             "def456": [{"ip": "192.168.1.50", "queries": 100}],
         }
 
-        result = await verify_profiles_with_data(
-            vlans, forwarders, profiles, analytics_ips
-        )
+        result = await verify_profiles_with_data(vlans, forwarders, profiles, analytics_ips)
 
         assert result["vlans_checked"] == 1
         assert result["verified"] == 0
@@ -536,17 +523,13 @@ class TestVerifyProfilesMixed:
             "def456": [{"ip": "192.168.1.50", "queries": 100}],
         }
 
-        result = await verify_profiles_with_data(
-            vlans, forwarders, profiles, analytics_ips
-        )
+        result = await verify_profiles_with_data(vlans, forwarders, profiles, analytics_ips)
 
         assert result["vlans_checked"] == 4
         assert result["verified"] == 1  # Only Trusted
 
         # Check statuses
-        status_map = {
-            r["vlan_name"]: r["status"] for r in result["results"]
-        }
+        status_map = {r["vlan_name"]: r["status"] for r in result["results"]}
         assert status_map["Trusted"] == "verified"
         assert status_map["Kids"] == "no_traffic"
         assert status_map["IoT"] == "non_nextdns"
@@ -594,9 +577,7 @@ class TestCrossProfileSummary:
             },
         }
 
-        result = compute_cross_profile_summary(
-            profiles, status_data, encryption_data
-        )
+        result = compute_cross_profile_summary(profiles, status_data, encryption_data)
 
         # Total queries: 10000 + 5000 = 15000
         assert result["total_queries"] == 15000
@@ -718,9 +699,7 @@ class TestCrossProfileSummaryMCPTool:
             "netex.tools.dns_tools._build_registry",
             return_value=_make_full_registry(),
         ):
-            result = await netex__dns__get_cross_profile_summary(
-                from_time="-24h", to_time="now"
-            )
+            result = await netex__dns__get_cross_profile_summary(from_time="-24h", to_time="now")
 
         assert result["plugins"]["dns"] == "nextdns"
         assert "nextdns__analytics__get_status" in result["tools_required"]

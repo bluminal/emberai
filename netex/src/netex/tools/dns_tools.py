@@ -94,9 +94,7 @@ def ip_in_subnet(ip_str: str, subnet_str: str) -> bool:
         Returns ``False`` for any parsing errors.
     """
     try:
-        return ipaddress.ip_address(ip_str) in ipaddress.ip_network(
-            subnet_str, strict=False
-        )
+        return ipaddress.ip_address(ip_str) in ipaddress.ip_network(subnet_str, strict=False)
     except (ValueError, TypeError):
         return False
 
@@ -236,9 +234,7 @@ async def netex__dns__trace_enhanced(
             "status": "available",
         }
         if source_vlan:
-            forwarder_step["note"] = (
-                f"Will check forwarder rules matching VLAN '{source_vlan}'"
-            )
+            forwarder_step["note"] = f"Will check forwarder rules matching VLAN '{source_vlan}'"
         trace_steps.append(forwarder_step)
     else:
         trace_steps.append(
@@ -488,8 +484,7 @@ async def verify_profiles_with_data(
         if forwarder is None:
             result["status"] = "no_forwarder"
             mismatches.append(
-                f"VLAN {vlan_name} (ID {vlan_id}): "
-                "no DNS forwarder configured for subnet"
+                f"VLAN {vlan_name} (ID {vlan_id}): no DNS forwarder configured for subnet"
             )
         else:
             result["forwarder_configured"] = True
@@ -499,16 +494,13 @@ async def verify_profiles_with_data(
             profile_id = extract_nextdns_profile_id(target)
             if profile_id:
                 result["nextdns_profile"] = profile_id
-                result["nextdns_profile_name"] = profile_names.get(
-                    profile_id, ""
-                )
+                result["nextdns_profile_name"] = profile_names.get(profile_id, "")
 
                 # Check analytics for traffic from this subnet
                 ip_entries = analytics_ips.get(profile_id, [])
                 if subnet:
                     subnet_traffic = any(
-                        ip_in_subnet(entry.get("ip", ""), subnet)
-                        for entry in ip_entries
+                        ip_in_subnet(entry.get("ip", ""), subnet) for entry in ip_entries
                     )
                 else:
                     subnet_traffic = False
@@ -525,9 +517,7 @@ async def verify_profiles_with_data(
                     )
             else:
                 result["status"] = "non_nextdns"
-                result["note"] = (
-                    f"Forwarder target '{target}' is not a NextDNS endpoint"
-                )
+                result["note"] = f"Forwarder target '{target}' is not a NextDNS endpoint"
 
         results.append(result)
 
@@ -657,11 +647,7 @@ def compute_cross_profile_summary(
         # Compute queries from status data
         statuses = status_data.get(pid, [])
         queries = sum(s.get("queries", 0) for s in statuses)
-        blocked = sum(
-            s.get("queries", 0)
-            for s in statuses
-            if s.get("status") == "blocked"
-        )
+        blocked = sum(s.get("queries", 0) for s in statuses if s.get("status") == "blocked")
 
         # Get encryption data
         enc = encryption_data.get(pid, {})
@@ -683,9 +669,7 @@ def compute_cross_profile_summary(
         total_queries += queries
         total_blocked += blocked
 
-    overall_block_rate = round(
-        total_blocked / max(total_queries, 1) * 100, 1
-    )
+    overall_block_rate = round(total_blocked / max(total_queries, 1) * 100, 1)
 
     return {
         "total_queries": total_queries,

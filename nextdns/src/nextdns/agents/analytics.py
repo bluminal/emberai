@@ -54,7 +54,11 @@ async def analytics_dashboard(
     ) = await asyncio.gather(
         nextdns__analytics__get_status(profile_id, from_time=from_time, to_time=to_time),
         nextdns__analytics__get_top_domains(
-            profile_id, status="blocked", from_time=from_time, to_time=to_time, limit=10,
+            profile_id,
+            status="blocked",
+            from_time=from_time,
+            to_time=to_time,
+            limit=10,
         ),
         nextdns__analytics__get_devices(profile_id, from_time=from_time, to_time=to_time),
         nextdns__analytics__get_protocols(profile_id, from_time=from_time, to_time=to_time),
@@ -73,15 +77,10 @@ async def analytics_dashboard(
     blocked_pct = (blocked_queries / total_queries * 100.0) if total_queries > 0 else 0.0
 
     # --- Build top blocked list ---
-    top_blocked = [
-        (d["name"], d["queries"]) for d in top_blocked_data
-    ]
+    top_blocked = [(d["name"], d["queries"]) for d in top_blocked_data]
 
     # --- Build device activity list ---
-    devices = [
-        (d.get("name") or d.get("id", "Unknown"), d.get("queries", 0))
-        for d in devices_data
-    ]
+    devices = [(d.get("name") or d.get("id", "Unknown"), d.get("queries", 0)) for d in devices_data]
 
     # --- Format the core analytics summary ---
     summary = AnalyticsSummary(

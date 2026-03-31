@@ -126,8 +126,9 @@ class TestLogsSearch:
     async def test_search_no_pagination_when_null_cursor(self, mock_client):
         """No next_cursor when pagination cursor is null."""
         data = {
-            "data": [{"timestamp": "2026-03-28T10:00:00Z", "domain": "test.com",
-                       "status": "default"}],
+            "data": [
+                {"timestamp": "2026-03-28T10:00:00Z", "domain": "test.com", "status": "default"}
+            ],
             "meta": {"pagination": {"cursor": None}, "stream": {}},
         }
         mock_client.get = AsyncMock(return_value=data)
@@ -173,18 +174,18 @@ class TestLogsStream:
         # Simulate two polls returning overlapping data.
         poll_1 = {
             "data": [
-                {"timestamp": "2026-03-28T10:00:01Z", "domain": "a.com",
-                 "status": "default"},
-                {"timestamp": "2026-03-28T10:00:02Z", "domain": "b.com",
-                 "status": "default"},
+                {"timestamp": "2026-03-28T10:00:01Z", "domain": "a.com", "status": "default"},
+                {"timestamp": "2026-03-28T10:00:02Z", "domain": "b.com", "status": "default"},
             ]
         }
         poll_2 = {
             "data": [
-                {"timestamp": "2026-03-28T10:00:02Z", "domain": "b.com",
-                 "status": "default"},  # duplicate
-                {"timestamp": "2026-03-28T10:00:03Z", "domain": "c.com",
-                 "status": "blocked"},
+                {
+                    "timestamp": "2026-03-28T10:00:02Z",
+                    "domain": "b.com",
+                    "status": "default",
+                },  # duplicate
+                {"timestamp": "2026-03-28T10:00:03Z", "domain": "c.com", "status": "blocked"},
             ]
         }
         mock_client.get = AsyncMock(side_effect=[poll_1, poll_2])
@@ -199,15 +200,18 @@ class TestLogsStream:
         with (
             patch("nextdns.tools.logs.get_client", return_value=mock_client),
             patch("asyncio.sleep", new_callable=AsyncMock),
-            patch("time.monotonic", side_effect=[
-                0,    # 1: start
-                0,    # 2: first while check (0 < 30 -> enter loop)
-                1,    # 3: remaining = 30 - 1 = 29 > 5, so sleep
-                6,    # 2: second while check (6 < 30 -> enter loop)
-                8,    # 3: remaining = 30 - 8 = 22 > 5, so sleep
-                35,   # 2: third while check (35 < 30 -> false, exit loop)
-                35,   # 5: elapsed calculation
-            ]),
+            patch(
+                "time.monotonic",
+                side_effect=[
+                    0,  # 1: start
+                    0,  # 2: first while check (0 < 30 -> enter loop)
+                    1,  # 3: remaining = 30 - 1 = 29 > 5, so sleep
+                    6,  # 2: second while check (6 < 30 -> enter loop)
+                    8,  # 3: remaining = 30 - 8 = 22 > 5, so sleep
+                    35,  # 2: third while check (35 < 30 -> false, exit loop)
+                    35,  # 5: elapsed calculation
+                ],
+            ),
         ):
             result = await nextdns__logs__stream("abc123", duration_seconds=30)
 
@@ -228,16 +232,20 @@ class TestLogsStream:
         with (
             patch("nextdns.tools.logs.get_client", return_value=mock_client),
             patch("asyncio.sleep", new_callable=AsyncMock),
-            patch("time.monotonic", side_effect=[
-                0,    # start
-                0,    # first while check (0 < 120 -> enter)
-                1,    # remaining = 120 - 1 = 119 > 5, sleep
-                125,  # second while check (125 < 120 -> false, exit)
-                125,  # elapsed
-            ]),
+            patch(
+                "time.monotonic",
+                side_effect=[
+                    0,  # start
+                    0,  # first while check (0 < 120 -> enter)
+                    1,  # remaining = 120 - 1 = 119 > 5, sleep
+                    125,  # second while check (125 < 120 -> false, exit)
+                    125,  # elapsed
+                ],
+            ),
         ):
             result = await nextdns__logs__stream(
-                "abc123", duration_seconds=300  # requested 300s, capped to 120
+                "abc123",
+                duration_seconds=300,  # requested 300s, capped to 120
             )
 
         assert result["count"] == 0
@@ -253,12 +261,15 @@ class TestLogsStream:
         with (
             patch("nextdns.tools.logs.get_client", return_value=mock_client),
             patch("asyncio.sleep", new_callable=AsyncMock),
-            patch("time.monotonic", side_effect=[
-                0,    # start
-                0,    # first while check (0 < 5 -> enter)
-                1,    # remaining = 5 - 1 = 4, NOT > 5, break
-                1,    # elapsed
-            ]),
+            patch(
+                "time.monotonic",
+                side_effect=[
+                    0,  # start
+                    0,  # first while check (0 < 5 -> enter)
+                    1,  # remaining = 5 - 1 = 4, NOT > 5, break
+                    1,  # elapsed
+                ],
+            ),
         ):
             result = await nextdns__logs__stream("abc123", duration_seconds=5)
 
@@ -313,9 +324,7 @@ class TestLogsDownload:
 
     async def test_download_url_field_fallback(self, mock_client):
         """Falls back to 'url' field if 'data' field is absent."""
-        mock_client.get = AsyncMock(
-            return_value={"url": "https://example.com/fallback.csv"}
-        )
+        mock_client.get = AsyncMock(return_value={"url": "https://example.com/fallback.csv"})
 
         with patch("nextdns.tools.logs.get_client", return_value=mock_client):
             result = await nextdns__logs__download("abc123")
@@ -366,9 +375,7 @@ class TestLogsClear:
             patch("nextdns.tools.logs.get_client", return_value=mock_client),
             patch.dict("os.environ", {"NEXTDNS_WRITE_ENABLED": "true"}, clear=False),
         ):
-            result = await nextdns__logs__clear(
-                "abc123", apply=True, clear_logs=True
-            )
+            result = await nextdns__logs__clear("abc123", apply=True, clear_logs=True)
 
         assert result["profile_id"] == "abc123"
         assert result["status"] == "cleared"
@@ -399,9 +406,7 @@ class TestInvestigateDevice:
 
     async def test_investigate_device_no_entries(self, mock_client):
         """Returns no-data message when device has no queries."""
-        mock_client.get = AsyncMock(
-            return_value={"data": [], "meta": {}}
-        )
+        mock_client.get = AsyncMock(return_value={"data": [], "meta": {}})
 
         with patch("nextdns.tools.logs.get_client", return_value=mock_client):
             output = await investigate_device("abc123", "ghost-device")
@@ -440,9 +445,7 @@ class TestRecentBlocks:
 
     async def test_recent_blocks_empty(self, mock_client):
         """Returns no-data message when no blocked queries exist."""
-        mock_client.get = AsyncMock(
-            return_value={"data": [], "meta": {}}
-        )
+        mock_client.get = AsyncMock(return_value={"data": [], "meta": {}})
 
         with patch("nextdns.tools.logs.get_client", return_value=mock_client):
             output = await recent_blocks("abc123")

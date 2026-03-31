@@ -298,7 +298,10 @@ async def nextdns__cmd__logs(
             extra={"component": "commands"},
         )
         result = await nextdns__logs__stream(
-            profile_id, device=device, status=status, domain=domain,
+            profile_id,
+            device=device,
+            status=status,
+            domain=domain,
         )
         return format_stream_result(result)
 
@@ -364,13 +367,15 @@ async def nextdns__cmd__manage(
         apply: Must be True to execute write operations (safety gate).
     """
     # Determine if any action is requested
-    has_action = any([
-        add_deny,
-        remove_deny,
-        add_allow,
-        remove_allow,
-        enable_all_security,
-    ])
+    has_action = any(
+        [
+            add_deny,
+            remove_deny,
+            add_allow,
+            remove_allow,
+            enable_all_security,
+        ]
+    )
 
     # No action: show profile summary
     if not has_action:
@@ -434,25 +439,33 @@ async def nextdns__cmd__manage(
 
     if add_deny:
         await nextdns__profiles__add_denylist_entry(
-            profile_id, add_deny, apply=True,
+            profile_id,
+            add_deny,
+            apply=True,
         )
         results.append(f"Added `{add_deny}` to deny list")
 
     if remove_deny:
         await nextdns__profiles__remove_denylist_entry(
-            profile_id, remove_deny, apply=True,
+            profile_id,
+            remove_deny,
+            apply=True,
         )
         results.append(f"Removed `{remove_deny}` from deny list")
 
     if add_allow:
         await nextdns__profiles__add_allowlist_entry(
-            profile_id, add_allow, apply=True,
+            profile_id,
+            add_allow,
+            apply=True,
         )
         results.append(f"Added `{add_allow}` to allow list")
 
     if remove_allow:
         await nextdns__profiles__remove_allowlist_entry(
-            profile_id, remove_allow, apply=True,
+            profile_id,
+            remove_allow,
+            apply=True,
         )
         results.append(f"Removed `{remove_allow}` from allow list")
 
@@ -472,7 +485,9 @@ async def nextdns__cmd__manage(
             "csam": True,
         }
         await nextdns__profiles__update_security(
-            profile_id, **all_security, apply=True,
+            profile_id,
+            **all_security,
+            apply=True,
         )
         results.append("Enabled all 12 security toggles")
 

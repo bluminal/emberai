@@ -99,9 +99,7 @@ class TestAuthentication:
         assert client._client.headers["Accept"] == "application/json"
         await client.close()
 
-    async def test_api_key_masked_in_logs(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_api_key_masked_in_logs(self, client: NextDNSClient, mock_response: Any) -> None:
         """Ensure API key is masked when logging request headers."""
         response = mock_response(200, {"data": []})
 
@@ -150,9 +148,7 @@ class TestErrorHandling:
             assert "NEXTDNS_API_KEY" in str(exc_info.value)
             assert exc_info.value.env_var == "NEXTDNS_API_KEY"
 
-    async def test_404_raises_api_error(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_404_raises_api_error(self, client: NextDNSClient, mock_response: Any) -> None:
         """404 responses raise APIError with status_code=404."""
         response = mock_response(404, {"errors": [{"detail": "Not found"}]})
 
@@ -165,9 +161,7 @@ class TestErrorHandling:
             assert exc_info.value.status_code == 404
             assert "Not found (404)" in exc_info.value.message
 
-    async def test_500_raises_api_error(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_500_raises_api_error(self, client: NextDNSClient, mock_response: Any) -> None:
         """5xx responses raise APIError with the actual status code."""
         response = mock_response(500, {"errors": [{"detail": "Internal error"}]})
 
@@ -180,9 +174,7 @@ class TestErrorHandling:
             assert exc_info.value.status_code == 500
             assert "Server error" in exc_info.value.message
 
-    async def test_502_raises_api_error(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_502_raises_api_error(self, client: NextDNSClient, mock_response: Any) -> None:
         """502 responses raise APIError."""
         response = mock_response(502, {})
 
@@ -194,9 +186,7 @@ class TestErrorHandling:
 
             assert exc_info.value.status_code == 502
 
-    async def test_400_raises_api_error(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_400_raises_api_error(self, client: NextDNSClient, mock_response: Any) -> None:
         """Other 4xx responses raise APIError."""
         response = mock_response(400, {"errors": [{"detail": "Bad request"}]})
 
@@ -238,9 +228,7 @@ class TestErrorHandling:
 
             assert "SSL" in exc_info.value.message
 
-    async def test_generic_http_error_raises_network_error(
-        self, client: NextDNSClient
-    ) -> None:
+    async def test_generic_http_error_raises_network_error(self, client: NextDNSClient) -> None:
         """Other httpx.HTTPError subclasses are caught and translated."""
         with patch.object(client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.side_effect = httpx.HTTPError("DNS resolution failed")
@@ -332,8 +320,7 @@ class TestRateLimiting:
                 # Verify 429 was logged as a warning.
                 warning_calls = mock_logger.warning.call_args_list
                 rate_limit_logs = [
-                    c for c in warning_calls
-                    if "Rate limited" in str(c) or "429" in str(c)
+                    c for c in warning_calls if "Rate limited" in str(c) or "429" in str(c)
                 ]
                 assert len(rate_limit_logs) >= 1
 
@@ -371,9 +358,7 @@ class TestRateLimiting:
 class TestPagination:
     """Verify cursor-based pagination logic."""
 
-    async def test_multi_page_pagination(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_multi_page_pagination(self, client: NextDNSClient, mock_response: Any) -> None:
         """get_paginated follows cursors through 3 pages."""
         page1 = mock_response(
             200,
@@ -405,9 +390,7 @@ class TestPagination:
         assert [r["id"] for r in result] == ["a", "b", "c", "d", "e"]
         assert mock_req.call_count == 3
 
-    async def test_single_page_cursor_null(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_single_page_cursor_null(self, client: NextDNSClient, mock_response: Any) -> None:
         """Single-page response with null cursor stops immediately."""
         response = mock_response(
             200,
@@ -440,9 +423,7 @@ class TestPagination:
         assert len(result) == 0
         assert mock_req.call_count == 1
 
-    async def test_bounded_limit(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_bounded_limit(self, client: NextDNSClient, mock_response: Any) -> None:
         """Pagination stops when the limit is reached."""
         page1 = mock_response(
             200,
@@ -545,10 +526,7 @@ class TestURLBuilder:
         assert sub_resource_url("abc", "security") == "/profiles/abc/security"
 
     def test_sub_resource_url_nested(self) -> None:
-        assert (
-            sub_resource_url("abc", "privacy.blocklists")
-            == "/profiles/abc/privacy/blocklists"
-        )
+        assert sub_resource_url("abc", "privacy.blocklists") == "/profiles/abc/privacy/blocklists"
 
     def test_sub_resource_url_camel_case(self) -> None:
         assert (
@@ -563,10 +541,7 @@ class TestURLBuilder:
         )
 
     def test_array_child_url_simple(self) -> None:
-        assert (
-            array_child_url("abc", "denylist", "bad.com")
-            == "/profiles/abc/denylist/bad.com"
-        )
+        assert array_child_url("abc", "denylist", "bad.com") == "/profiles/abc/denylist/bad.com"
 
     def test_array_child_url_nested_path(self) -> None:
         assert (
@@ -596,9 +571,7 @@ class TestCacheIntegration:
         """Second GET to the same endpoint returns cached data without API call."""
         response = mock_response(200, {"data": [{"id": "abc"}]})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
 
             # First call: cache miss, hits API.
@@ -615,9 +588,7 @@ class TestCacheIntegration:
         """Cache miss results in an API call and caches the response."""
         response = mock_response(200, {"data": [{"id": "abc"}]})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
 
             result = await cached_client.get("/profiles/abc")
@@ -629,9 +600,7 @@ class TestCacheIntegration:
         cached = await cached_client._cache.get("/profiles/abc")
         assert cached == {"data": [{"id": "abc"}]}
 
-    async def test_cache_ttl_expiry(
-        self, api_key: str, mock_response: Any
-    ) -> None:
+    async def test_cache_ttl_expiry(self, api_key: str, mock_response: Any) -> None:
         """Expired cache entries result in a fresh API call."""
         cache = TTLCache(max_size=100, default_ttl=0.05)  # Very short TTL.
         client = CachedNextDNSClient(api_key=api_key, cache=cache)
@@ -666,9 +635,7 @@ class TestCacheIntegration:
         get_response = mock_response(200, {"data": {"id": "abc"}})
         post_response = mock_response(200, {"data": {"id": "new-item"}})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = get_response
 
             # Populate cache.
@@ -693,9 +660,7 @@ class TestCacheIntegration:
         get_resp = mock_response(200, {"data": {"nrd": True}})
         patch_resp = mock_response(200, {"data": {"nrd": False}})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = get_resp
             await cached_client.get("/profiles/abc/security")
 
@@ -712,9 +677,7 @@ class TestCacheIntegration:
         get_resp = mock_response(200, {"data": [{"id": "bad.com"}]})
         del_resp = mock_response(200, {})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = get_resp
             await cached_client.get("/profiles/abc/denylist")
 
@@ -724,30 +687,22 @@ class TestCacheIntegration:
             cached = await cached_client._cache.get("/profiles/abc/denylist")
             assert cached is None
 
-    async def test_pattern_based_ttl_profiles(
-        self, cached_client: CachedNextDNSClient
-    ) -> None:
+    async def test_pattern_based_ttl_profiles(self, cached_client: CachedNextDNSClient) -> None:
         """Profile list endpoint gets 5 min TTL."""
         ttl = cached_client._cache_ttl_for("/profiles")
         assert ttl == 300.0
 
-    async def test_pattern_based_ttl_analytics(
-        self, cached_client: CachedNextDNSClient
-    ) -> None:
+    async def test_pattern_based_ttl_analytics(self, cached_client: CachedNextDNSClient) -> None:
         """Analytics endpoints get 30 sec TTL."""
         ttl = cached_client._cache_ttl_for("/profiles/abc/analytics/status")
         assert ttl == 30.0
 
-    async def test_pattern_based_ttl_logs(
-        self, cached_client: CachedNextDNSClient
-    ) -> None:
+    async def test_pattern_based_ttl_logs(self, cached_client: CachedNextDNSClient) -> None:
         """Log endpoints get 0 TTL (never cached)."""
         ttl = cached_client._cache_ttl_for("/profiles/abc/logs")
         assert ttl == 0.0
 
-    async def test_pattern_based_ttl_default(
-        self, cached_client: CachedNextDNSClient
-    ) -> None:
+    async def test_pattern_based_ttl_default(self, cached_client: CachedNextDNSClient) -> None:
         """Sub-resource endpoints get default 2 min TTL."""
         ttl = cached_client._cache_ttl_for("/profiles/abc/security")
         assert ttl == 120.0
@@ -758,9 +713,7 @@ class TestCacheIntegration:
         """Log endpoints bypass cache entirely."""
         response = mock_response(200, {"data": [{"domain": "example.com"}]})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
 
             await cached_client.get("/profiles/abc/logs")
@@ -775,9 +728,7 @@ class TestCacheIntegration:
         """flush_profile invalidates all cached data for a specific profile."""
         response = mock_response(200, {"data": {"id": "abc"}})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
 
             # Populate cache with multiple endpoints for the profile.
@@ -798,9 +749,7 @@ class TestCacheIntegration:
         resp1 = mock_response(200, {"data": [{"status": "blocked"}]})
         resp2 = mock_response(200, {"data": [{"status": "allowed"}]})
 
-        with patch.object(
-            cached_client._client, "request", new_callable=AsyncMock
-        ) as mock_req:
+        with patch.object(cached_client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.side_effect = [resp1, resp2]
 
             r1 = await cached_client.get(
@@ -823,9 +772,7 @@ class TestCacheIntegration:
 class TestConvenienceMethods:
     """Verify sub-resource convenience methods."""
 
-    async def test_get_profile(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_get_profile(self, client: NextDNSClient, mock_response: Any) -> None:
         """get_profile calls GET /profiles/{id}."""
         response = mock_response(200, {"data": {"id": "abc", "name": "Home"}})
 
@@ -837,9 +784,7 @@ class TestConvenienceMethods:
         call_args = mock_req.call_args
         assert call_args[0] == ("GET", "/profiles/abc")
 
-    async def test_get_sub_resource(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_get_sub_resource(self, client: NextDNSClient, mock_response: Any) -> None:
         """get_sub_resource calls GET /profiles/{id}/{path}."""
         response = mock_response(200, {"data": {"nrd": True}})
 
@@ -851,30 +796,22 @@ class TestConvenienceMethods:
         call_args = mock_req.call_args
         assert call_args[0] == ("GET", "/profiles/abc/security")
 
-    async def test_patch_sub_resource(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_patch_sub_resource(self, client: NextDNSClient, mock_response: Any) -> None:
         """patch_sub_resource calls PATCH /profiles/{id}/{path}."""
         response = mock_response(200, {"data": {"nrd": False}})
 
         with patch.object(client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
-            result = await client.patch_sub_resource(
-                "abc", "security", {"nrd": False}
-            )
+            result = await client.patch_sub_resource("abc", "security", {"nrd": False})
 
         assert result == {"data": {"nrd": False}}
         call_args = mock_req.call_args
         assert call_args[0] == ("PATCH", "/profiles/abc/security")
         assert call_args[1].get("json") == {"nrd": False}
 
-    async def test_get_array(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_get_array(self, client: NextDNSClient, mock_response: Any) -> None:
         """get_array returns the 'data' array from the response."""
-        response = mock_response(
-            200, {"data": [{"id": "bad.com"}, {"id": "evil.org"}]}
-        )
+        response = mock_response(200, {"data": [{"id": "bad.com"}, {"id": "evil.org"}]})
 
         with patch.object(client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
@@ -884,25 +821,19 @@ class TestConvenienceMethods:
         call_args = mock_req.call_args
         assert call_args[0] == ("GET", "/profiles/abc/denylist")
 
-    async def test_add_to_array(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_add_to_array(self, client: NextDNSClient, mock_response: Any) -> None:
         """add_to_array calls POST /profiles/{id}/{path}."""
         response = mock_response(200, {"data": {"id": "bad.com", "active": True}})
 
         with patch.object(client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = response
-            result = await client.add_to_array(
-                "abc", "denylist", {"id": "bad.com", "active": True}
-            )
+            result = await client.add_to_array("abc", "denylist", {"id": "bad.com", "active": True})
 
         assert result == {"data": {"id": "bad.com", "active": True}}
         call_args = mock_req.call_args
         assert call_args[0] == ("POST", "/profiles/abc/denylist")
 
-    async def test_update_array_child(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_update_array_child(self, client: NextDNSClient, mock_response: Any) -> None:
         """update_array_child calls PATCH /profiles/{id}/{path}/{item_id}."""
         response = mock_response(200, {"data": {"id": "bad.com", "active": False}})
 
@@ -916,9 +847,7 @@ class TestConvenienceMethods:
         call_args = mock_req.call_args
         assert call_args[0] == ("PATCH", "/profiles/abc/denylist/bad.com")
 
-    async def test_delete_array_child(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_delete_array_child(self, client: NextDNSClient, mock_response: Any) -> None:
         """delete_array_child calls DELETE /profiles/{id}/{path}/{item_id}."""
         response = mock_response(200, {})
 
@@ -960,9 +889,7 @@ class TestContextManager:
 class TestSlowRequestWarning:
     """Verify slow request detection and logging."""
 
-    async def test_slow_request_logged(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_slow_request_logged(self, client: NextDNSClient, mock_response: Any) -> None:
         """Requests exceeding the threshold generate a warning log."""
         response = mock_response(200, {"data": []})
 
@@ -989,9 +916,7 @@ class TestSlowRequestWarning:
                 await client.get("/profiles")
 
                 warning_calls = mock_logger.warning.call_args_list
-                slow_logs = [
-                    c for c in warning_calls if "Slow request" in str(c)
-                ]
+                slow_logs = [c for c in warning_calls if "Slow request" in str(c)]
                 assert len(slow_logs) >= 1
 
 
@@ -1003,9 +928,7 @@ class TestSlowRequestWarning:
 class TestHTTPMethods:
     """Verify all HTTP methods delegate to _request correctly."""
 
-    async def test_post_sends_json_body(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_post_sends_json_body(self, client: NextDNSClient, mock_response: Any) -> None:
         """POST method sends JSON body."""
         response = mock_response(200, {"data": {}})
 
@@ -1017,9 +940,7 @@ class TestHTTPMethods:
         assert call_args[0] == ("POST", "/profiles/abc/denylist")
         assert call_args[1].get("json") == {"id": "bad.com"}
 
-    async def test_put_sends_json_body(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_put_sends_json_body(self, client: NextDNSClient, mock_response: Any) -> None:
         """PUT method sends JSON body."""
         response = mock_response(200, {"data": {}})
 
@@ -1030,9 +951,7 @@ class TestHTTPMethods:
         call_args = mock_req.call_args
         assert call_args[0] == ("PUT", "/profiles/abc/denylist")
 
-    async def test_patch_sends_json_body(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_patch_sends_json_body(self, client: NextDNSClient, mock_response: Any) -> None:
         """PATCH method sends JSON body."""
         response = mock_response(200, {"data": {}})
 
@@ -1044,9 +963,7 @@ class TestHTTPMethods:
         assert call_args[0] == ("PATCH", "/profiles/abc/security")
         assert call_args[1].get("json") == {"nrd": False}
 
-    async def test_delete_no_body(
-        self, client: NextDNSClient, mock_response: Any
-    ) -> None:
+    async def test_delete_no_body(self, client: NextDNSClient, mock_response: Any) -> None:
         """DELETE method sends no JSON body."""
         response = mock_response(200, {})
 
@@ -1072,9 +989,7 @@ class TestProfileIdExtraction:
         assert result == "abc123"
 
     def test_profile_id_from_sub_resource(self) -> None:
-        result = CachedNextDNSClient._profile_id_from_endpoint(
-            "/profiles/abc123/security"
-        )
+        result = CachedNextDNSClient._profile_id_from_endpoint("/profiles/abc123/security")
         assert result == "abc123"
 
     def test_no_profile_id_from_list(self) -> None:

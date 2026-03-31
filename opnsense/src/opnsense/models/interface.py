@@ -39,10 +39,7 @@ class Interface(BaseModel):
 
     name: str = Field(
         default="",
-        description=(
-            "Logical interface name assigned by OPNsense "
-            "(e.g. 'wan', 'lan', 'opt1')"
-        ),
+        description=("Logical interface name assigned by OPNsense (e.g. 'wan', 'lan', 'opt1')"),
     )
     device: str = Field(
         default="",
@@ -55,8 +52,7 @@ class Interface(BaseModel):
     identifier: str = Field(
         default="",
         description=(
-            "OPNsense interface identifier -- often same as name "
-            "(e.g. 'wan', 'lan', 'opt1')"
+            "OPNsense interface identifier -- often same as name (e.g. 'wan', 'lan', 'opt1')"
         ),
     )
     ip: str = Field(

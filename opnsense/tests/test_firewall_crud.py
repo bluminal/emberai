@@ -39,13 +39,9 @@ def _make_mock_client(**kwargs: Any) -> MagicMock:
     client.get = AsyncMock(return_value=kwargs.get("get_response", {}))
     client.get_cached = AsyncMock(return_value=kwargs.get("get_cached_response", {}))
     client.write = AsyncMock(
-        return_value=kwargs.get(
-            "write_response", {"result": "saved", "uuid": "new-rule-uuid-1234"}
-        )
+        return_value=kwargs.get("write_response", {"result": "saved", "uuid": "new-rule-uuid-1234"})
     )
-    client.post = AsyncMock(
-        return_value=kwargs.get("post_response", {"revision": "rev-abc"})
-    )
+    client.post = AsyncMock(return_value=kwargs.get("post_response", {"revision": "rev-abc"}))
     client.reconfigure = AsyncMock(return_value={"status": "ok"})
     client.cache = MagicMock()
     client.cache.flush_by_prefix = AsyncMock()
@@ -224,9 +220,7 @@ class TestCreateRule:
         rule_payload = mock_client.write.call_args.kwargs["data"]["rule"]
         assert "sequence" not in rule_payload
 
-    async def test_create_rule_savepoint_apply_workflow(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_create_rule_savepoint_apply_workflow(self, mock_client: MagicMock) -> None:
         """Savepoint, apply, and cancelRollback are called in order."""
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__create_rule
@@ -246,9 +240,7 @@ class TestCreateRule:
         assert post_calls[1] == call("firewall", "filter", "apply/rev-abc")
         assert post_calls[2] == call("firewall", "filter", "cancelRollback/rev-abc")
 
-    async def test_create_rule_client_always_closed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_create_rule_client_always_closed(self, mock_client: MagicMock) -> None:
         """Client is closed even when write fails."""
         mock_client.write = AsyncMock(side_effect=Exception("API down"))
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -265,9 +257,7 @@ class TestCreateRule:
 
         mock_client.close.assert_awaited_once()
 
-    async def test_create_rule_api_error_on_failure(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_create_rule_api_error_on_failure(self, mock_client: MagicMock) -> None:
         """APIError raised when addRule response indicates failure."""
         mock_client.write = AsyncMock(
             return_value={"result": "failed", "validations": {"interface": "invalid"}}
@@ -284,9 +274,7 @@ class TestCreateRule:
                     apply=True,
                 )
 
-    async def test_create_rule_log_and_quick_flags(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_create_rule_log_and_quick_flags(self, mock_client: MagicMock) -> None:
         """Log=True and quick=False are encoded as '1' and '0'."""
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__create_rule
@@ -432,9 +420,7 @@ class TestUpdateRule:
                 apply=True,
             )
 
-    async def test_update_rule_boolean_fields_encoded(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_update_rule_boolean_fields_encoded(self, mock_client: MagicMock) -> None:
         """Boolean fields enabled/quick/log encoded as '1'/'0' strings."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -453,9 +439,7 @@ class TestUpdateRule:
         assert rule_payload["quick"] == "1"
         assert rule_payload["log"] == "1"
 
-    async def test_update_rule_savepoint_apply_workflow(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_update_rule_savepoint_apply_workflow(self, mock_client: MagicMock) -> None:
         """Savepoint/apply/cancelRollback workflow called after update."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -473,9 +457,7 @@ class TestUpdateRule:
         assert post_calls[1] == call("firewall", "filter", "apply/rev-abc")
         assert post_calls[2] == call("firewall", "filter", "cancelRollback/rev-abc")
 
-    async def test_update_rule_set_rule_endpoint(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_update_rule_set_rule_endpoint(self, mock_client: MagicMock) -> None:
         """Write goes to setRule/{uuid} endpoint."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -494,9 +476,7 @@ class TestUpdateRule:
             data={"rule": {"action": "pass"}},
         )
 
-    async def test_update_rule_sequence_as_string(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_update_rule_sequence_as_string(self, mock_client: MagicMock) -> None:
         """Sequence int is converted to string in payload."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -522,9 +502,7 @@ class TestDeleteRule:
 
     async def test_delete_rule_success(self, mock_client: MagicMock) -> None:
         """Successful deletion returns UUID, description, and applied status."""
-        mock_client.get = AsyncMock(
-            return_value={"rule": {"description": "Block bad traffic"}}
-        )
+        mock_client.get = AsyncMock(return_value={"rule": {"description": "Block bad traffic"}})
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__delete_rule
@@ -540,13 +518,9 @@ class TestDeleteRule:
         assert result["applied"] is True
 
         # Verify delRule endpoint
-        mock_client.write.assert_awaited_once_with(
-            "firewall", "filter", "delRule/del-uuid-1234"
-        )
+        mock_client.write.assert_awaited_once_with("firewall", "filter", "delRule/del-uuid-1234")
 
-    async def test_delete_rule_get_info_fails_gracefully(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_rule_get_info_fails_gracefully(self, mock_client: MagicMock) -> None:
         """If getRule fails, delete still proceeds with 'Unknown' description."""
         mock_client.get = AsyncMock(side_effect=APIError("Not found", status_code=404))
         mock_client.write = AsyncMock(return_value={"result": "saved"})
@@ -586,9 +560,7 @@ class TestDeleteRule:
             )
         assert exc_info.value.reason == WriteGateReason.APPLY_FLAG_MISSING
 
-    async def test_delete_rule_savepoint_apply_workflow(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_rule_savepoint_apply_workflow(self, mock_client: MagicMock) -> None:
         """Savepoint/apply/cancelRollback workflow called after delete."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -605,13 +577,9 @@ class TestDeleteRule:
         assert post_calls[1] == call("firewall", "filter", "apply/rev-abc")
         assert post_calls[2] == call("firewall", "filter", "cancelRollback/rev-abc")
 
-    async def test_delete_rule_api_error_on_failure(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_rule_api_error_on_failure(self, mock_client: MagicMock) -> None:
         """APIError raised when delRule response indicates failure."""
-        mock_client.write = AsyncMock(
-            return_value={"result": "failed"}
-        )
+        mock_client.write = AsyncMock(return_value={"result": "failed"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__delete_rule
 
@@ -621,9 +589,7 @@ class TestDeleteRule:
                     apply=True,
                 )
 
-    async def test_delete_rule_client_always_closed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_rule_client_always_closed(self, mock_client: MagicMock) -> None:
         """Client is closed even when delete fails."""
         mock_client.write = AsyncMock(side_effect=Exception("Network error"))
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):

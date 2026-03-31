@@ -293,22 +293,25 @@ async def opnsense__firewall__list_port_forwards() -> list[dict[str, Any]]:
     for row in normalized.data:
         try:
             coerced = _coerce_rule_booleans(row)
-            rules.append({
-                "uuid": coerced.get("uuid", ""),
-                "interface": coerced.get("interface", ""),
-                "protocol": coerced.get("protocol", ""),
-                "source_net": coerced.get("src_network", coerced.get("source_net", "")),
-                "source_port": coerced.get("src_port", ""),
-                "destination_net": coerced.get(
-                    "dst_network", coerced.get("destination_net", ""),
-                ),
-                "destination_port": coerced.get("dst_port", ""),
-                "target": coerced.get("target", ""),
-                "local_port": coerced.get("local_port", ""),
-                "description": coerced.get("descr", coerced.get("description", "")),
-                "enabled": coerced.get("enabled", False),
-                "log": coerced.get("log", False),
-            })
+            rules.append(
+                {
+                    "uuid": coerced.get("uuid", ""),
+                    "interface": coerced.get("interface", ""),
+                    "protocol": coerced.get("protocol", ""),
+                    "source_net": coerced.get("src_network", coerced.get("source_net", "")),
+                    "source_port": coerced.get("src_port", ""),
+                    "destination_net": coerced.get(
+                        "dst_network",
+                        coerced.get("destination_net", ""),
+                    ),
+                    "destination_port": coerced.get("dst_port", ""),
+                    "target": coerced.get("target", ""),
+                    "local_port": coerced.get("local_port", ""),
+                    "description": coerced.get("descr", coerced.get("description", "")),
+                    "enabled": coerced.get("enabled", False),
+                    "log": coerced.get("log", False),
+                }
+            )
         except (KeyError, TypeError, ValueError):
             logger.warning(
                 "Skipping unparseable DNAT rule: %s",
@@ -730,9 +733,7 @@ async def opnsense__firewall__create_rule(
 
         if not is_action_success(write_result):
             validations = write_result.get("validations", {})
-            detail = (
-                f"validations={validations}" if validations else f"response={write_result}"
-            )
+            detail = f"validations={validations}" if validations else f"response={write_result}"
             raise APIError(
                 f"Failed to create firewall rule: "
                 f"{write_result.get('result', 'unknown error')} -- {detail}",
@@ -906,9 +907,7 @@ async def opnsense__firewall__update_rule(
 
         if not is_action_success(write_result):
             validations = write_result.get("validations", {})
-            detail = (
-                f"validations={validations}" if validations else f"response={write_result}"
-            )
+            detail = f"validations={validations}" if validations else f"response={write_result}"
             raise APIError(
                 f"Failed to update firewall rule {uuid}: "
                 f"{write_result.get('result', 'unknown error')} -- {detail}",
@@ -1154,11 +1153,7 @@ async def opnsense__firewall__add_port_forward(
 
         if not is_action_success(write_result):
             validations = write_result.get("validations", {})
-            detail = (
-                f"validations={validations}"
-                if validations
-                else f"response={write_result}"
-            )
+            detail = f"validations={validations}" if validations else f"response={write_result}"
             raise APIError(
                 f"Failed to add DNAT port forward rule: "
                 f"{write_result.get('result', 'unknown error')} -- {detail}",

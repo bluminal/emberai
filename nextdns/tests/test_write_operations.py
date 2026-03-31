@@ -58,48 +58,50 @@ def mock_client() -> AsyncMock:
     client.patch_sub_resource = AsyncMock(return_value={})
     client.add_to_array = AsyncMock(return_value={})
     client.delete_array_child = AsyncMock(return_value={})
-    client.get_profile = AsyncMock(return_value={
-        "data": {
-            "id": "abc123",
-            "name": "Test Profile",
-            "security": {
-                "threatIntelligenceFeeds": True,
-                "aiThreatDetection": True,
-                "googleSafeBrowsing": True,
-                "cryptojacking": True,
-                "dnsRebinding": True,
-                "idnHomographs": True,
-                "typosquatting": True,
-                "dga": True,
-                "nrd": True,
-                "ddns": False,
-                "parking": True,
-                "csam": True,
-                "tlds": [],
-            },
-            "privacy": {
-                "blocklists": [{"id": "nextdns-recommended"}],
-                "natives": [],
-                "disguisedTrackers": True,
-                "allowAffiliate": False,
-            },
-            "parentalControl": {
-                "services": [],
-                "categories": [],
-                "safeSearch": False,
-                "youtubeRestrictedMode": False,
-                "blockBypass": False,
-            },
-            "denylist": [],
-            "allowlist": [],
-            "settings": {
-                "logs": {"enabled": True, "retention": 2592000},
-                "blockPage": {"enabled": True},
-                "performance": {"ecs": True, "cacheBoost": True, "cnameFlattening": False},
-                "web3": False,
-            },
+    client.get_profile = AsyncMock(
+        return_value={
+            "data": {
+                "id": "abc123",
+                "name": "Test Profile",
+                "security": {
+                    "threatIntelligenceFeeds": True,
+                    "aiThreatDetection": True,
+                    "googleSafeBrowsing": True,
+                    "cryptojacking": True,
+                    "dnsRebinding": True,
+                    "idnHomographs": True,
+                    "typosquatting": True,
+                    "dga": True,
+                    "nrd": True,
+                    "ddns": False,
+                    "parking": True,
+                    "csam": True,
+                    "tlds": [],
+                },
+                "privacy": {
+                    "blocklists": [{"id": "nextdns-recommended"}],
+                    "natives": [],
+                    "disguisedTrackers": True,
+                    "allowAffiliate": False,
+                },
+                "parentalControl": {
+                    "services": [],
+                    "categories": [],
+                    "safeSearch": False,
+                    "youtubeRestrictedMode": False,
+                    "blockBypass": False,
+                },
+                "denylist": [],
+                "allowlist": [],
+                "settings": {
+                    "logs": {"enabled": True, "retention": 2592000},
+                    "blockPage": {"enabled": True},
+                    "performance": {"ecs": True, "cacheBoost": True, "cnameFlattening": False},
+                    "web3": False,
+                },
+            }
         }
-    })
+    )
     return client
 
 
@@ -185,9 +187,7 @@ class TestDeleteProfileGateEnforcement:
             patch.dict("os.environ", {"NEXTDNS_WRITE_ENABLED": ""}, clear=False),
             pytest.raises(WriteGateError, match="disabled"),
         ):
-            await nextdns__profiles__delete_profile(
-                "abc123", apply=True, delete_profile=True
-            )
+            await nextdns__profiles__delete_profile("abc123", apply=True, delete_profile=True)
 
     async def test_apply_flag_missing_raises(self, mock_client: AsyncMock):
         """WriteGateError raised when apply=False."""
@@ -196,9 +196,7 @@ class TestDeleteProfileGateEnforcement:
             patch.dict("os.environ", {"NEXTDNS_WRITE_ENABLED": "true"}, clear=False),
             pytest.raises(WriteGateError, match="--apply"),
         ):
-            await nextdns__profiles__delete_profile(
-                "abc123", apply=False, delete_profile=True
-            )
+            await nextdns__profiles__delete_profile("abc123", apply=False, delete_profile=True)
 
     async def test_delete_profile_flag_missing_raises(self, mock_client: AsyncMock):
         """WriteGateError raised when delete_profile=False."""
@@ -207,9 +205,7 @@ class TestDeleteProfileGateEnforcement:
             patch.dict("os.environ", {"NEXTDNS_WRITE_ENABLED": "true"}, clear=False),
             pytest.raises(WriteGateError, match="--delete-profile"),
         ):
-            await nextdns__profiles__delete_profile(
-                "abc123", apply=True, delete_profile=False
-            )
+            await nextdns__profiles__delete_profile("abc123", apply=True, delete_profile=False)
 
 
 # ===========================================================================
@@ -264,17 +260,13 @@ class TestUpdateProfile:
             patch("nextdns.tools.profile_writes.get_client", return_value=mock_client),
             patch.dict("os.environ", {"NEXTDNS_WRITE_ENABLED": "true"}, clear=False),
         ):
-            result = await nextdns__profiles__update_profile(
-                "abc123", name="Renamed", apply=True
-            )
+            result = await nextdns__profiles__update_profile("abc123", name="Renamed", apply=True)
 
         assert result["profile_id"] == "abc123"
         assert result["updated_fields"] == ["name"]
         assert result["message"] == "Profile updated."
 
-        mock_client.patch.assert_awaited_once_with(
-            "/profiles/abc123", data={"name": "Renamed"}
-        )
+        mock_client.patch.assert_awaited_once_with("/profiles/abc123", data={"name": "Renamed"})
 
     async def test_update_with_no_fields(self, mock_client: AsyncMock):
         """Sending no changes still makes a PATCH with empty data."""
@@ -895,14 +887,16 @@ class TestApplyTemplate:
         # Two profiles: abc123 and def456.
         profile_a = {
             "data": {
-                "id": "abc123", "name": "Profile A",
+                "id": "abc123",
+                "name": "Profile A",
                 "security": {"ddns": False},
                 "privacy": {"blocklists": [], "disguisedTrackers": False},
             }
         }
         profile_b = {
             "data": {
-                "id": "def456", "name": "Profile B",
+                "id": "def456",
+                "name": "Profile B",
                 "security": {"ddns": True},
                 "privacy": {"blocklists": [], "disguisedTrackers": True},
             }
@@ -933,7 +927,8 @@ class TestApplyTemplate:
                 Exception("API timeout"),
                 {
                     "data": {
-                        "id": "def456", "name": "Good Profile",
+                        "id": "def456",
+                        "name": "Good Profile",
                         "security": {"ddns": False},
                         "privacy": {"blocklists": [], "disguisedTrackers": False},
                     }

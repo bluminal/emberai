@@ -354,7 +354,8 @@ class TestBuildDNSProvisionSteps:
         manifest = parse_manifest(MANIFEST_WITH_DNS_YAML)
         registry = _make_registry_with_nextdns()
         steps, rollback, notes = _build_dns_provision_steps(
-            manifest.vlans, registry,
+            manifest.vlans,
+            registry,
         )
         assert len(steps) == 2
         assert len(rollback) == 2
@@ -368,7 +369,8 @@ class TestBuildDNSProvisionSteps:
         manifest = parse_manifest(MANIFEST_WITH_DNS_YAML)
         registry = _make_full_registry()  # no nextdns
         steps, rollback, notes = _build_dns_provision_steps(
-            manifest.vlans, registry,
+            manifest.vlans,
+            registry,
         )
         assert steps == []
         assert rollback == []
@@ -380,7 +382,8 @@ class TestBuildDNSProvisionSteps:
         manifest = parse_manifest(MANIFEST_WITHOUT_DNS_YAML)
         registry = _make_registry_with_nextdns()
         steps, rollback, notes = _build_dns_provision_steps(
-            manifest.vlans, registry,
+            manifest.vlans,
+            registry,
         )
         assert steps == []
         assert rollback == []
@@ -391,7 +394,8 @@ class TestBuildDNSProvisionSteps:
         manifest = parse_manifest(MANIFEST_SINGLE_DNS_YAML)
         registry = _make_registry_with_nextdns()
         _steps, rollback, _notes = _build_dns_provision_steps(
-            manifest.vlans, registry,
+            manifest.vlans,
+            registry,
         )
         assert len(rollback) == 1
         assert "def456" in rollback[0]
@@ -414,16 +418,9 @@ class TestBuildProvisionPlanStepsWithDNS:
 
         descs = [s["description"] for s in steps]
         # Find indices
-        dhcp_indices = [
-            i for i, d in enumerate(descs) if d.startswith("Configure DHCP")
-        ]
-        dns_indices = [
-            i for i, d in enumerate(descs) if "DNS forwarder" in d
-        ]
-        alias_indices = [
-            i for i, d in enumerate(descs)
-            if "firewall alias" in d
-        ]
+        dhcp_indices = [i for i, d in enumerate(descs) if d.startswith("Configure DHCP")]
+        dns_indices = [i for i, d in enumerate(descs) if "DNS forwarder" in d]
+        alias_indices = [i for i, d in enumerate(descs) if "firewall alias" in d]
 
         if dhcp_indices and dns_indices:
             assert max(dhcp_indices) < min(dns_indices)

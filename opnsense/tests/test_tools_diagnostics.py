@@ -285,9 +285,7 @@ class TestRunPing:
 
         client = AsyncMock()
         client.post = AsyncMock(return_value={"status": "started"})
-        client.get = AsyncMock(
-            return_value={"status": "done", "output": "PING output here"}
-        )
+        client.get = AsyncMock(return_value={"status": "done", "output": "PING output here"})
 
         with patch("opnsense.tools.diagnostics.asyncio.sleep", new_callable=AsyncMock):
             response = await opnsense__diagnostics__run_ping(client, "1.1.1.1")
@@ -383,11 +381,7 @@ class TestDNSLookup:
     async def test_basic_lookup(self) -> None:
         from opnsense.tools.diagnostics import opnsense__diagnostics__dns_lookup
 
-        result = {
-            "rows": [
-                {"hostname": "example.com", "address": "93.184.216.34", "type": "A"}
-            ]
-        }
+        result = {"rows": [{"hostname": "example.com", "address": "93.184.216.34", "type": "A"}]}
         client = _make_client(get_returns=result)
 
         response = await opnsense__diagnostics__dns_lookup(client, "example.com")

@@ -900,21 +900,15 @@ class NetworkSecurityAgent:
             profiles = []
 
         # (a) DNS security gaps: profile with fewer than 8/12 toggles
-        findings.extend(
-            self._check_dns_security_gaps(profiles, dns_plugin_name)
-        )
+        findings.extend(self._check_dns_security_gaps(profiles, dns_plugin_name))
 
         # (b) DNS filtering bypass: VLANs without NextDNS forwarder
         has_gateway = len(registry.plugins_with_role("gateway")) > 0
         if has_gateway and vlans is not None:
-            findings.extend(
-                self._check_dns_filtering_bypass(vlans, dns_plugin_name)
-            )
+            findings.extend(self._check_dns_filtering_bypass(vlans, dns_plugin_name))
 
         # (c) DNS logging gaps: profiles with logging disabled
-        findings.extend(
-            self._check_dns_logging_gaps(profiles, dns_plugin_name)
-        )
+        findings.extend(self._check_dns_logging_gaps(profiles, dns_plugin_name))
 
         return sort_findings(findings)
 

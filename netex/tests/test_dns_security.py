@@ -189,9 +189,7 @@ class TestDnsSecurityGaps:
                 security_total=12,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
         security_gap_findings = [
             f
             for f in findings
@@ -216,12 +214,8 @@ class TestDnsSecurityGaps:
                 security_enabled_count=7,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
-        gap_findings = [
-            f for f in findings if "weak threat protection" in f.description
-        ]
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
+        gap_findings = [f for f in findings if "weak threat protection" in f.description]
         assert len(gap_findings) == 1
         assert "7/12" in gap_findings[0].description
 
@@ -247,12 +241,8 @@ class TestDnsSecurityAllSecure:
                 logging_enabled=True,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
-        gap_findings = [
-            f for f in findings if "weak threat protection" in f.description
-        ]
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
+        gap_findings = [f for f in findings if "weak threat protection" in f.description]
         assert len(gap_findings) == 0
 
     def test_threshold_exactly_8_no_finding(
@@ -269,12 +259,8 @@ class TestDnsSecurityAllSecure:
                 logging_enabled=True,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
-        gap_findings = [
-            f for f in findings if "weak threat protection" in f.description
-        ]
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
+        gap_findings = [f for f in findings if "weak threat protection" in f.description]
         assert len(gap_findings) == 0
 
 
@@ -298,14 +284,11 @@ class TestDnsLoggingDisabled:
                 logging_enabled=False,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
         log_findings = [
             f
             for f in findings
-            if f.category == FindingCategory.DNS_SECURITY
-            and "logging disabled" in f.description
+            if f.category == FindingCategory.DNS_SECURITY and "logging disabled" in f.description
         ]
         assert len(log_findings) == 1
         assert log_findings[0].severity == FindingSeverity.MEDIUM
@@ -332,12 +315,8 @@ class TestDnsLoggingEnabled:
                 logging_enabled=True,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
-        log_findings = [
-            f for f in findings if "logging disabled" in f.description
-        ]
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
+        log_findings = [f for f in findings if "logging disabled" in f.description]
         assert len(log_findings) == 0
 
 
@@ -361,9 +340,7 @@ class TestGracefulSkipNoDns:
         ]
         # Even though we pass profile data, the check should
         # silently skip because no dns plugin is registered
-        findings = agent.check_dns_filtering_security(
-            no_dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(no_dns_registry, profiles=profiles)
         assert findings == []
 
     def test_empty_registry_no_findings_no_errors(
@@ -408,12 +385,8 @@ class TestMultipleProfiles:
                 logging_enabled=True,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
-        gap_findings = [
-            f for f in findings if "weak threat protection" in f.description
-        ]
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
+        gap_findings = [f for f in findings if "weak threat protection" in f.description]
         assert len(gap_findings) == 2
 
         # Verify the right profiles are identified
@@ -448,19 +421,13 @@ class TestMultipleProfiles:
                 logging_enabled=False,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
 
         # Profile-A: weak security + no logging = 2 findings
         # Profile-B: strong + logging = 0 findings
         # Profile-C: strong + no logging = 1 finding
-        gap_findings = [
-            f for f in findings if "weak threat protection" in f.description
-        ]
-        log_findings = [
-            f for f in findings if "logging disabled" in f.description
-        ]
+        gap_findings = [f for f in findings if "weak threat protection" in f.description]
+        log_findings = [f for f in findings if "logging disabled" in f.description]
         assert len(gap_findings) == 1  # only Profile-A
         assert len(log_findings) == 2  # Profile-A and Profile-C
         assert "Profile-A" in gap_findings[0].description
@@ -479,9 +446,7 @@ class TestMultipleProfiles:
                 logging_enabled=False,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
         # Should have HIGH (security gap) before MEDIUM (logging)
         assert len(findings) == 2
         assert findings[0].severity == FindingSeverity.HIGH
@@ -501,9 +466,7 @@ class TestDnsFilteringBypass:
     ) -> None:
         """VLAN without a NextDNS forwarder produces a HIGH finding."""
         profiles = [
-            _make_nextdns_profile(
-                security_enabled_count=12, logging_enabled=True
-            ),
+            _make_nextdns_profile(security_enabled_count=12, logging_enabled=True),
         ]
         vlans = [
             {
@@ -515,9 +478,7 @@ class TestDnsFilteringBypass:
         findings = agent.check_dns_filtering_security(
             dns_gw_registry, profiles=profiles, vlans=vlans
         )
-        bypass_findings = [
-            f for f in findings if "bypass" in f.description.lower()
-        ]
+        bypass_findings = [f for f in findings if "bypass" in f.description.lower()]
         assert len(bypass_findings) == 1
         assert bypass_findings[0].severity == FindingSeverity.HIGH
         assert "IoT" in bypass_findings[0].description
@@ -529,9 +490,7 @@ class TestDnsFilteringBypass:
     ) -> None:
         """VLAN with a NextDNS forwarder produces no bypass finding."""
         profiles = [
-            _make_nextdns_profile(
-                security_enabled_count=12, logging_enabled=True
-            ),
+            _make_nextdns_profile(security_enabled_count=12, logging_enabled=True),
         ]
         vlans = [
             {
@@ -543,9 +502,7 @@ class TestDnsFilteringBypass:
         findings = agent.check_dns_filtering_security(
             dns_gw_registry, profiles=profiles, vlans=vlans
         )
-        bypass_findings = [
-            f for f in findings if "bypass" in f.description.lower()
-        ]
+        bypass_findings = [f for f in findings if "bypass" in f.description.lower()]
         assert len(bypass_findings) == 0
 
     def test_bypass_check_skipped_without_gateway(
@@ -555,9 +512,7 @@ class TestDnsFilteringBypass:
     ) -> None:
         """Without a gateway plugin, bypass check is silently skipped."""
         profiles = [
-            _make_nextdns_profile(
-                security_enabled_count=12, logging_enabled=True
-            ),
+            _make_nextdns_profile(security_enabled_count=12, logging_enabled=True),
         ]
         vlans = [
             {
@@ -567,12 +522,8 @@ class TestDnsFilteringBypass:
             },
         ]
         # dns_registry has no gateway plugin
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles, vlans=vlans
-        )
-        bypass_findings = [
-            f for f in findings if "bypass" in f.description.lower()
-        ]
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles, vlans=vlans)
+        bypass_findings = [f for f in findings if "bypass" in f.description.lower()]
         assert len(bypass_findings) == 0
 
     def test_bypass_check_skipped_without_vlan_data(
@@ -582,16 +533,12 @@ class TestDnsFilteringBypass:
     ) -> None:
         """Without VLAN data provided, bypass check is silently skipped."""
         profiles = [
-            _make_nextdns_profile(
-                security_enabled_count=12, logging_enabled=True
-            ),
+            _make_nextdns_profile(security_enabled_count=12, logging_enabled=True),
         ]
         findings = agent.check_dns_filtering_security(
             dns_gw_registry, profiles=profiles, vlans=None
         )
-        bypass_findings = [
-            f for f in findings if "bypass" in f.description.lower()
-        ]
+        bypass_findings = [f for f in findings if "bypass" in f.description.lower()]
         assert len(bypass_findings) == 0
 
 
@@ -608,9 +555,7 @@ class TestPluginRegistryDnsRole:
         assert plugins[0]["name"] == "nextdns"
         assert "dns" in plugins[0]["roles"]
 
-    def test_tools_for_skill_profiles(
-        self, dns_registry: PluginRegistry
-    ) -> None:
+    def test_tools_for_skill_profiles(self, dns_registry: PluginRegistry) -> None:
         """tools_for_skill('profiles') returns nextdns profile tools."""
         tools = dns_registry.tools_for_skill("profiles")
         assert len(tools) == 8
@@ -619,39 +564,29 @@ class TestPluginRegistryDnsRole:
         assert "nextdns__profiles__list_profiles" in tool_names
         assert "nextdns__profiles__get_security" in tool_names
 
-    def test_tools_for_skill_analytics(
-        self, dns_registry: PluginRegistry
-    ) -> None:
+    def test_tools_for_skill_analytics(self, dns_registry: PluginRegistry) -> None:
         """tools_for_skill('analytics') returns nextdns analytics tools."""
         tools = dns_registry.tools_for_skill("analytics")
         assert len(tools) == 2
         assert all(t["plugin"] == "nextdns" for t in tools)
 
-    def test_tools_for_skill_logs(
-        self, dns_registry: PluginRegistry
-    ) -> None:
+    def test_tools_for_skill_logs(self, dns_registry: PluginRegistry) -> None:
         """tools_for_skill('logs') returns nextdns log tools."""
         tools = dns_registry.tools_for_skill("logs")
         assert len(tools) == 2
         assert all(t["plugin"] == "nextdns" for t in tools)
 
-    def test_tools_for_skill_security_posture(
-        self, dns_registry: PluginRegistry
-    ) -> None:
+    def test_tools_for_skill_security_posture(self, dns_registry: PluginRegistry) -> None:
         """tools_for_skill('security-posture') returns nextdns audit tools."""
         tools = dns_registry.tools_for_skill("security-posture")
         assert len(tools) == 2
         assert all(t["plugin"] == "nextdns" for t in tools)
 
-    def test_all_roles_includes_dns(
-        self, dns_registry: PluginRegistry
-    ) -> None:
+    def test_all_roles_includes_dns(self, dns_registry: PluginRegistry) -> None:
         """all_roles property includes 'dns'."""
         assert "dns" in dns_registry.all_roles
 
-    def test_all_skills_includes_dns_skills(
-        self, dns_registry: PluginRegistry
-    ) -> None:
+    def test_all_skills_includes_dns_skills(self, dns_registry: PluginRegistry) -> None:
         """all_skills includes profiles, analytics, logs, security-posture."""
         skills = dns_registry.all_skills
         assert "profiles" in skills
@@ -672,9 +607,7 @@ class TestEdgeCases:
         dns_registry: PluginRegistry,
     ) -> None:
         """Empty profile list produces no findings."""
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=[]
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=[])
         assert findings == []
 
     def test_none_profiles_defaults_to_empty(
@@ -683,9 +616,7 @@ class TestEdgeCases:
         dns_registry: PluginRegistry,
     ) -> None:
         """None profiles defaults to empty list (no crash)."""
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=None
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=None)
         assert findings == []
 
     def test_finding_has_source_attribution(
@@ -695,13 +626,9 @@ class TestEdgeCases:
     ) -> None:
         """Findings have correct source_plugin and source_tool."""
         profiles = [
-            _make_nextdns_profile(
-                security_enabled_count=2, logging_enabled=False
-            ),
+            _make_nextdns_profile(security_enabled_count=2, logging_enabled=False),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
         for finding in findings:
             assert finding.source_plugin == "nextdns"
 
@@ -718,8 +645,6 @@ class TestEdgeCases:
                 logging_enabled=True,
             ),
         ]
-        findings = agent.check_dns_filtering_security(
-            dns_registry, profiles=profiles
-        )
+        findings = agent.check_dns_filtering_security(dns_registry, profiles=profiles)
         assert len(findings) >= 1
         assert findings[0].affected_resource == "abc123"

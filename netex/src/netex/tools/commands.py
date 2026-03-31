@@ -130,7 +130,8 @@ def _build_provision_plan_steps(
     # Phase 2.5: DNS forwarders (after DHCP, before firewall)
     if registry is not None:
         dns_steps, _dns_rollback, _dns_notes = _build_dns_provision_steps(
-            manifest.vlans, registry,
+            manifest.vlans,
+            registry,
         )
         steps.extend(dns_steps)
 
@@ -233,7 +234,8 @@ def _build_rollback_steps(
     # DNS forwarder rollback (after aliases, before DHCP in reverse order)
     if registry is not None:
         _dns_steps, dns_rollback, _dns_notes = _build_dns_provision_steps(
-            manifest.vlans, registry,
+            manifest.vlans,
+            registry,
         )
         for rb in reversed(dns_rollback):
             rollback.append(rb)
@@ -327,14 +329,11 @@ def _build_dns_verification_results(
             results.append(
                 {
                     "test": (
-                        f"DNS profile '{vlan.dns_profile}' for {vlan.name} "
-                        f"(VLAN {vlan.vlan_id})"
+                        f"DNS profile '{vlan.dns_profile}' for {vlan.name} (VLAN {vlan.vlan_id})"
                     ),
                     "category": "dns",
                     "status": "WARN",
-                    "detail": (
-                        "NextDNS plugin not installed, DNS profile verification skipped"
-                    ),
+                    "detail": ("NextDNS plugin not installed, DNS profile verification skipped"),
                 }
             )
         return results
@@ -349,15 +348,11 @@ def _build_dns_verification_results(
         results.append(
             {
                 "test": (
-                    f"NextDNS profile '{profile_id}' exists "
-                    f"for {vlan.name} (VLAN {vlan.vlan_id})"
+                    f"NextDNS profile '{profile_id}' exists for {vlan.name} (VLAN {vlan.vlan_id})"
                 ),
                 "category": "dns",
                 "status": "PASS",
-                "detail": (
-                    f"Profile {profile_id} verified via "
-                    f"nextdns__profiles__get_profile"
-                ),
+                "detail": (f"Profile {profile_id} verified via nextdns__profiles__get_profile"),
             }
         )
 
@@ -441,8 +436,7 @@ def _build_dns_provision_steps(
             {
                 "system": "gateway",
                 "description": (
-                    f"Configure DNS forwarder for {vlan.name} "
-                    f"(VLAN {vlan.vlan_id}) -> {target}"
+                    f"Configure DNS forwarder for {vlan.name} (VLAN {vlan.vlan_id}) -> {target}"
                 ),
                 "detail": (
                     f"Add Unbound domain override forwarding queries from "
@@ -452,8 +446,7 @@ def _build_dns_provision_steps(
         )
 
         rollback.append(
-            f"Remove DNS forwarder for '{vlan.name}' "
-            f"(NextDNS profile {profile_id}) from gateway"
+            f"Remove DNS forwarder for '{vlan.name}' (NextDNS profile {profile_id}) from gateway"
         )
 
     return plan_steps, rollback, notes
@@ -574,7 +567,8 @@ async def netex__network__provision_site(
 
     # Collect DNS notes for display
     _dns_steps, _dns_rb, dns_notes = _build_dns_provision_steps(
-        manifest.vlans, registry,
+        manifest.vlans,
+        registry,
     )
 
     risk_summary = _format_risk_assessment(risk_assessment)

@@ -215,10 +215,7 @@ async def nextdns__analytics__get_devices(
     raw = await client.get(endpoint, params=params or None)
     data = raw.get("data", [])
 
-    results = [
-        AnalyticsDevice.model_validate(item).model_dump(by_alias=True)
-        for item in data
-    ]
+    results = [AnalyticsDevice.model_validate(item).model_dump(by_alias=True) for item in data]
 
     logger.info(
         "Fetched %d devices for profile %s",
@@ -257,8 +254,7 @@ async def nextdns__analytics__get_protocols(
     # Unencrypted protocols are those NOT using DNS-over-HTTPS or DNS-over-TLS.
     encrypted_prefixes = ("DNS-over-HTTPS", "DNS-over-TLS", "DNS-over-QUIC", "DoH", "DoT", "DoQ")
     unencrypted_warning = any(
-        p["queries"] > 0 and not p["name"].startswith(encrypted_prefixes)
-        for p in protocols
+        p["queries"] > 0 and not p["name"].startswith(encrypted_prefixes) for p in protocols
     )
 
     logger.info(
@@ -392,10 +388,7 @@ async def nextdns__analytics__get_ips(
     raw = await client.get(endpoint, params=params or None)
     data = raw.get("data", [])
 
-    results = [
-        AnalyticsIP.model_validate(item).model_dump(by_alias=True)
-        for item in data
-    ]
+    results = [AnalyticsIP.model_validate(item).model_dump(by_alias=True) for item in data]
 
     logger.info(
         "Fetched %d IPs for profile %s",

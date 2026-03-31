@@ -147,8 +147,7 @@ def _audit_profile(profile: Profile) -> list[Finding]:
                     f"{', '.join(broad_entries)}."
                 ),
                 recommendation=(
-                    "Review and remove tracker domains or overly broad"
-                    " entries from the allowlist."
+                    "Review and remove tracker domains or overly broad entries from the allowlist."
                 ),
             )
         )

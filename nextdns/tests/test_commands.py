@@ -122,7 +122,9 @@ class TestCmdAnalytics:
             return_value="## Analytics Summary\n",
         ) as mock_dashboard:
             result = await nextdns__cmd__analytics(
-                "abc123", from_time="-7d", to_time="-1d",
+                "abc123",
+                from_time="-7d",
+                to_time="-1d",
             )
 
         mock_dashboard.assert_awaited_once_with("abc123", "-7d", "-1d")
@@ -182,7 +184,8 @@ class TestCmdAudit:
             return_value="## Profile Comparison: Profile A vs Profile B\n",
         ) as mock_compare:
             result = await nextdns__cmd__audit(
-                compare_a="profile1", compare_b="profile2",
+                compare_a="profile1",
+                compare_b="profile2",
             )
 
         mock_compare.assert_awaited_once_with("profile1", "profile2")
@@ -299,7 +302,10 @@ class TestCmdLogs:
             result = await nextdns__cmd__logs("abc123", stream=True)
 
         mock_stream.assert_awaited_once_with(
-            "abc123", device=None, status=None, domain=None,
+            "abc123",
+            device=None,
+            status=None,
+            domain=None,
         )
         assert isinstance(result, str)
         assert "Live Log Stream" in result
@@ -307,8 +313,10 @@ class TestCmdLogs:
     async def test_logs_stream_with_filters(self):
         """stream mode passes device, status, domain filters."""
         stream_result = {
-            "entries": [], "count": 0,
-            "duration_seconds": 5.0, "polls": 1,
+            "entries": [],
+            "count": 0,
+            "duration_seconds": 5.0,
+            "polls": 1,
         }
         with patch(
             "nextdns.tools.commands.nextdns__logs__stream",
@@ -324,7 +332,10 @@ class TestCmdLogs:
             )
 
         mock_stream.assert_awaited_once_with(
-            "abc123", device="iPhone-13", status="blocked", domain="ads",
+            "abc123",
+            device="iPhone-13",
+            status="blocked",
+            domain="ads",
         )
 
     async def test_logs_download_mode(self):
@@ -340,7 +351,10 @@ class TestCmdLogs:
             return_value=download_result,
         ) as mock_download:
             result = await nextdns__cmd__logs(
-                "abc123", download=True, from_time="-7d", to_time="now",
+                "abc123",
+                download=True,
+                from_time="-7d",
+                to_time="now",
             )
 
         mock_download.assert_awaited_once_with("abc123", "-7d", "now")
@@ -371,7 +385,9 @@ class TestCmdLogs:
             return_value=search_result,
         ) as mock_search:
             result = await nextdns__cmd__logs(
-                "abc123", device="iPhone-13", domain="ads",
+                "abc123",
+                device="iPhone-13",
+                domain="ads",
             )
 
         mock_search.assert_awaited_once()
@@ -410,11 +426,15 @@ class TestCmdManage:
             ) as mock_add,
         ):
             result = await nextdns__cmd__manage(
-                "abc123", add_deny="ads.example.com", apply=True,
+                "abc123",
+                add_deny="ads.example.com",
+                apply=True,
             )
 
         mock_add.assert_awaited_once_with(
-            "abc123", "ads.example.com", apply=True,
+            "abc123",
+            "ads.example.com",
+            apply=True,
         )
         assert isinstance(result, str)
         assert "ads.example.com" in result
@@ -431,11 +451,15 @@ class TestCmdManage:
             ) as mock_remove,
         ):
             result = await nextdns__cmd__manage(
-                "abc123", remove_deny="safe.example.com", apply=True,
+                "abc123",
+                remove_deny="safe.example.com",
+                apply=True,
             )
 
         mock_remove.assert_awaited_once_with(
-            "abc123", "safe.example.com", apply=True,
+            "abc123",
+            "safe.example.com",
+            apply=True,
         )
         assert "safe.example.com" in result
         assert "deny list" in result.lower()
@@ -451,11 +475,15 @@ class TestCmdManage:
             ) as mock_add,
         ):
             result = await nextdns__cmd__manage(
-                "abc123", add_allow="safe.example.com", apply=True,
+                "abc123",
+                add_allow="safe.example.com",
+                apply=True,
             )
 
         mock_add.assert_awaited_once_with(
-            "abc123", "safe.example.com", apply=True,
+            "abc123",
+            "safe.example.com",
+            apply=True,
         )
         assert "safe.example.com" in result
         assert "allow list" in result.lower()
@@ -471,11 +499,15 @@ class TestCmdManage:
             ) as mock_remove,
         ):
             result = await nextdns__cmd__manage(
-                "abc123", remove_allow="bad.example.com", apply=True,
+                "abc123",
+                remove_allow="bad.example.com",
+                apply=True,
             )
 
         mock_remove.assert_awaited_once_with(
-            "abc123", "bad.example.com", apply=True,
+            "abc123",
+            "bad.example.com",
+            apply=True,
         )
         assert "bad.example.com" in result
         assert "allow list" in result.lower()
@@ -491,7 +523,9 @@ class TestCmdManage:
             ) as mock_security,
         ):
             result = await nextdns__cmd__manage(
-                "abc123", enable_all_security=True, apply=True,
+                "abc123",
+                enable_all_security=True,
+                apply=True,
             )
 
         mock_security.assert_awaited_once()
@@ -508,7 +542,9 @@ class TestCmdManage:
     async def test_manage_write_gate_apply_false_plan_only(self):
         """apply=False returns a plan-only message with planned actions."""
         result = await nextdns__cmd__manage(
-            "abc123", add_deny="ads.example.com", apply=False,
+            "abc123",
+            add_deny="ads.example.com",
+            apply=False,
         )
 
         assert isinstance(result, str)
@@ -520,10 +556,14 @@ class TestCmdManage:
     async def test_manage_write_gate_env_disabled(self):
         """apply=True but env var disabled returns blocked message."""
         with patch.dict(
-            "os.environ", {"NEXTDNS_WRITE_ENABLED": "false"}, clear=False,
+            "os.environ",
+            {"NEXTDNS_WRITE_ENABLED": "false"},
+            clear=False,
         ):
             result = await nextdns__cmd__manage(
-                "abc123", add_deny="ads.example.com", apply=True,
+                "abc123",
+                add_deny="ads.example.com",
+                apply=True,
             )
 
         assert isinstance(result, str)
@@ -570,10 +610,12 @@ class TestFormatters:
 
     def test_format_download_result_with_url(self):
         """Formats download URL and time range."""
-        result = format_download_result({
-            "download_url": "https://example.com/logs.csv",
-            "time_range": {"from": "-7d", "to": "now"},
-        })
+        result = format_download_result(
+            {
+                "download_url": "https://example.com/logs.csv",
+                "time_range": {"from": "-7d", "to": "now"},
+            }
+        )
 
         assert "Log Download" in result
         assert "https://example.com/logs.csv" in result
@@ -581,10 +623,12 @@ class TestFormatters:
 
     def test_format_download_result_with_warning(self):
         """Includes warning when present."""
-        result = format_download_result({
-            "download_url": "https://example.com/logs.csv",
-            "warning": "This may download ALL logs.",
-        })
+        result = format_download_result(
+            {
+                "download_url": "https://example.com/logs.csv",
+                "warning": "This may download ALL logs.",
+            }
+        )
 
         assert "Warning" in result
         assert "ALL logs" in result
@@ -596,19 +640,21 @@ class TestFormatters:
 
     def test_format_stream_result(self):
         """Formats stream results with duration and polling info."""
-        result = format_stream_result({
-            "entries": [
-                {
-                    "timestamp": "2026-03-28T10:00:00Z",
-                    "domain": "example.com",
-                    "status": "default",
-                }
-            ],
-            "count": 1,
-            "duration_seconds": 30.0,
-            "polls": 6,
-            "polling_note": "Used polling.",
-        })
+        result = format_stream_result(
+            {
+                "entries": [
+                    {
+                        "timestamp": "2026-03-28T10:00:00Z",
+                        "domain": "example.com",
+                        "status": "default",
+                    }
+                ],
+                "count": 1,
+                "duration_seconds": 30.0,
+                "polls": 6,
+                "polling_note": "Used polling.",
+            }
+        )
 
         assert "Live Log Stream" in result
         assert "30.0s" in result
@@ -617,45 +663,51 @@ class TestFormatters:
 
     def test_format_stream_result_empty(self):
         """Handles empty stream results."""
-        result = format_stream_result({
-            "entries": [],
-            "count": 0,
-            "duration_seconds": 5.0,
-            "polls": 1,
-        })
+        result = format_stream_result(
+            {
+                "entries": [],
+                "count": 0,
+                "duration_seconds": 5.0,
+                "polls": 1,
+            }
+        )
 
         assert "Live Log Stream" in result
         assert "0" in result
 
     def test_format_log_search_result(self):
         """Formats search results with entry count."""
-        result = format_log_search_result({
-            "entries": [
-                {
-                    "timestamp": "2026-03-28T10:00:00Z",
-                    "domain": "example.com",
-                    "status": "default",
-                }
-            ],
-            "count": 1,
-        })
+        result = format_log_search_result(
+            {
+                "entries": [
+                    {
+                        "timestamp": "2026-03-28T10:00:00Z",
+                        "domain": "example.com",
+                        "status": "default",
+                    }
+                ],
+                "count": 1,
+            }
+        )
 
         assert "Log Search Results" in result
         assert "1" in result
 
     def test_format_log_search_result_with_cursor(self):
         """Shows pagination notice when cursor is present."""
-        result = format_log_search_result({
-            "entries": [
-                {
-                    "timestamp": "2026-03-28T10:00:00Z",
-                    "domain": "example.com",
-                    "status": "default",
-                }
-            ],
-            "count": 1,
-            "next_cursor": "abc123",
-        })
+        result = format_log_search_result(
+            {
+                "entries": [
+                    {
+                        "timestamp": "2026-03-28T10:00:00Z",
+                        "domain": "example.com",
+                        "status": "default",
+                    }
+                ],
+                "count": 1,
+                "next_cursor": "abc123",
+            }
+        )
 
         assert "More results available" in result
 

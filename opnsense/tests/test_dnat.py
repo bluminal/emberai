@@ -39,9 +39,7 @@ def _make_mock_client(**kwargs: Any) -> MagicMock:
     client.get = AsyncMock(return_value=kwargs.get("get_response", {}))
     client.get_cached = AsyncMock(return_value=kwargs.get("get_cached_response", {}))
     client.write = AsyncMock(
-        return_value=kwargs.get(
-            "write_response", {"result": "saved", "uuid": "dnat-uuid-1234"}
-        )
+        return_value=kwargs.get("write_response", {"result": "saved", "uuid": "dnat-uuid-1234"})
     )
     client.post = AsyncMock(return_value=kwargs.get("post_response", {}))
     client.reconfigure = AsyncMock(return_value={"status": "ok"})
@@ -350,9 +348,7 @@ class TestAddPortForward:
             )
         assert exc_info.value.reason == WriteGateReason.APPLY_FLAG_MISSING
 
-    async def test_add_port_forward_apply_called(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_add_port_forward_apply_called(self, mock_client: MagicMock) -> None:
         """d_nat/apply is called after successful add."""
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__add_port_forward
@@ -369,9 +365,7 @@ class TestAddPortForward:
         # Verify d_nat/apply was called
         mock_client.post.assert_any_call("firewall", "d_nat", "apply")
 
-    async def test_add_port_forward_cache_flushed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_add_port_forward_cache_flushed(self, mock_client: MagicMock) -> None:
         """Cache is flushed after successful add."""
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__add_port_forward
@@ -387,9 +381,7 @@ class TestAddPortForward:
 
         mock_client.cache.flush_by_prefix.assert_awaited_once_with("firewall:")
 
-    async def test_add_port_forward_tcp_udp_protocol(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_add_port_forward_tcp_udp_protocol(self, mock_client: MagicMock) -> None:
         """TCP/UDP protocol is accepted and uppercased."""
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
             from opnsense.tools.firewall import opnsense__firewall__add_port_forward
@@ -407,9 +399,7 @@ class TestAddPortForward:
         rule_payload = mock_client.write.call_args.kwargs["data"]["rule"]
         assert rule_payload["protocol"] == "TCP/UDP"
 
-    async def test_add_port_forward_api_error_on_failure(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_add_port_forward_api_error_on_failure(self, mock_client: MagicMock) -> None:
         """APIError raised when addRule response indicates failure."""
         mock_client.write = AsyncMock(
             return_value={"result": "failed", "validations": {"dst_port": "invalid"}}
@@ -427,9 +417,7 @@ class TestAddPortForward:
                     apply=True,
                 )
 
-    async def test_add_port_forward_client_always_closed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_add_port_forward_client_always_closed(self, mock_client: MagicMock) -> None:
         """Client is closed even when add fails."""
         mock_client.write = AsyncMock(side_effect=Exception("Timeout"))
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -456,9 +444,7 @@ class TestAddPortForward:
 class TestDeletePortForward:
     """opnsense__firewall__delete_port_forward -- DNAT rule deletion."""
 
-    async def test_delete_port_forward_success(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_port_forward_success(self, mock_client: MagicMock) -> None:
         """Successful deletion returns UUID and applied status."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -474,9 +460,7 @@ class TestDeletePortForward:
         assert result["applied"] is True
 
         # Verify delRule endpoint
-        mock_client.write.assert_awaited_once_with(
-            "firewall", "d_nat", "delRule/dnat-del-uuid"
-        )
+        mock_client.write.assert_awaited_once_with("firewall", "d_nat", "delRule/dnat-del-uuid")
 
     async def test_delete_port_forward_write_gate_env_disabled(self) -> None:
         """Write gate blocks when env var is disabled."""
@@ -501,9 +485,7 @@ class TestDeletePortForward:
             )
         assert exc_info.value.reason == WriteGateReason.APPLY_FLAG_MISSING
 
-    async def test_delete_port_forward_apply_called(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_port_forward_apply_called(self, mock_client: MagicMock) -> None:
         """d_nat/apply is called after successful delete."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -516,9 +498,7 @@ class TestDeletePortForward:
 
         mock_client.post.assert_any_call("firewall", "d_nat", "apply")
 
-    async def test_delete_port_forward_cache_flushed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_port_forward_cache_flushed(self, mock_client: MagicMock) -> None:
         """Cache is flushed after successful delete."""
         mock_client.write = AsyncMock(return_value={"result": "saved"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -531,9 +511,7 @@ class TestDeletePortForward:
 
         mock_client.cache.flush_by_prefix.assert_awaited_once_with("firewall:")
 
-    async def test_delete_port_forward_api_error_on_failure(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_port_forward_api_error_on_failure(self, mock_client: MagicMock) -> None:
         """APIError raised when delRule response indicates failure."""
         mock_client.write = AsyncMock(return_value={"result": "failed"})
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
@@ -545,9 +523,7 @@ class TestDeletePortForward:
                     apply=True,
                 )
 
-    async def test_delete_port_forward_client_always_closed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_delete_port_forward_client_always_closed(self, mock_client: MagicMock) -> None:
         """Client is closed even when delete fails."""
         mock_client.write = AsyncMock(side_effect=Exception("Connection refused"))
         with patch("opnsense.tools.firewall._get_client", return_value=mock_client):
