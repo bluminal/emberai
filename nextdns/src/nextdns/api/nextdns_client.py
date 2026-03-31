@@ -152,7 +152,9 @@ class NextDNSClient:
         """
         return await self._request("POST", endpoint, json_data=data)
 
-    async def put(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def put(
+        self, endpoint: str, data: dict[str, Any] | list[Any] | None = None
+    ) -> dict[str, Any]:
         """Make a PUT request to the NextDNS API.
 
         Parameters
@@ -441,7 +443,7 @@ class NextDNSClient:
         endpoint: str,
         *,
         params: dict[str, Any] | None = None,
-        json_data: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | list[Any] | None = None,
     ) -> dict[str, Any]:
         """Execute an HTTP request with logging, throttling, and error translation.
 
@@ -776,7 +778,9 @@ class CachedNextDNSClient(NextDNSClient):
         await self._flush_affected_profile(endpoint)
         return result
 
-    async def put(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def put(
+        self, endpoint: str, data: dict[str, Any] | list[Any] | None = None
+    ) -> dict[str, Any]:
         """PUT with post-write cache flush."""
         result = await super().put(endpoint, data=data)
         await self._flush_affected_profile(endpoint)

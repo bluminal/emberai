@@ -251,8 +251,8 @@ async def opnsense__services__get_radius_status() -> dict[str, Any]:
     users_list: list[dict[str, Any]] = []
     for row in user_rows:
         try:
-            parsed = RadiusUser.model_validate(row)
-            users_list.append(parsed.model_dump())
+            user = RadiusUser.model_validate(row)
+            users_list.append(user.model_dump())
         except (PydanticValidationError, KeyError, TypeError, ValueError):
             logger.warning(
                 "Failed to parse RADIUS user: %s",
