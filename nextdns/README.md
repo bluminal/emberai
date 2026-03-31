@@ -20,7 +20,7 @@ The nextdns plugin covers the **DNS layer** of the network: DNS profile configur
 | `nextdns logs` | Search, stream, download, and clear DNS query logs |
 | `nextdns manage` | Profile configuration management (create, update, delete, configure) |
 
-### Skill Groups (37 MCP Tools)
+### Skill Groups (42 MCP Tools)
 
 | Skill | Read Tools | Write Tools | Description |
 |-------|-----------|-------------|-------------|

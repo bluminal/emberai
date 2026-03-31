@@ -382,13 +382,13 @@ User: "Show me my NextDNS profiles"
 
 # Basic: Security audit
 User: "Check the security of my DNS"
--> call nextdns__security__get_security(profile_id)
--> call nextdns__security__get_privacy(profile_id)
+-> call nextdns__profiles__get_security(profile_id)
+-> call nextdns__profiles__get_privacy(profile_id)
 -> present: enabled/disabled features, blocklist count, recommendations
 
 # Advanced: Investigate blocked queries
 User: "Why is example.com being blocked?"
--> call nextdns__logs__get_logs(profile_id, search="example.com", status="blocked")
--> call nextdns__security__get_denylist(profile_id)
--> call nextdns__security__get_privacy(profile_id)  # check blocklists
+-> call nextdns__logs__search(profile_id, domain="example.com", status="blocked")
+-> call nextdns__profiles__get_denylist(profile_id)
+-> call nextdns__profiles__get_privacy(profile_id)  # check blocklists
 -> present: block reason, which list triggered it, recommendation
