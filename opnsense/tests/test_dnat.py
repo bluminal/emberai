@@ -19,12 +19,11 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from opnsense.errors import APIError, ValidationError, WriteGateError, WriteGateReason
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -268,7 +267,7 @@ class TestAddPortForward:
         """Empty target raises ValidationError."""
         from opnsense.tools.firewall import opnsense__firewall__add_port_forward
 
-        with pytest.raises(ValidationError, match="Target.*must not be empty"):
+        with pytest.raises(ValidationError, match=r"Target.*must not be empty"):
             await opnsense__firewall__add_port_forward(
                 interface="wan",
                 protocol="TCP",

@@ -206,7 +206,7 @@ def write_gate(plugin_name: str = "NEXTDNS") -> Callable[[Callable[P, T]], Calla
     return decorator
 
 
-def delete_profile_gate(func: Callable[P, T]) -> Callable[P, T]:
+def delete_profile_gate[**P, T](func: Callable[P, T]) -> Callable[P, T]:
     """Decorator that enforces the delete-profile safety gate (Decision D18).
 
     Wraps an async function and enforces all three conditions:
@@ -244,7 +244,7 @@ def delete_profile_gate(func: Callable[P, T]) -> Callable[P, T]:
         )
 
     # Apply the standard write gate first.
-    gated_func: Callable[P, T] = write_gate("NEXTDNS")(func)
+    write_gate("NEXTDNS")(func)
 
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -301,7 +301,7 @@ def delete_profile_gate(func: Callable[P, T]) -> Callable[P, T]:
     return wrapper  # type: ignore[return-value]
 
 
-def clear_logs_gate(func: Callable[P, T]) -> Callable[P, T]:
+def clear_logs_gate[**P, T](func: Callable[P, T]) -> Callable[P, T]:
     """Decorator that enforces the clear-logs safety gate (Decision D18).
 
     Wraps an async function and enforces all three conditions:

@@ -27,7 +27,6 @@ from opnsense.api.opnsense_client import OPNsenseClient
 from opnsense.errors import ValidationError, WriteGateError
 from opnsense.models.routing import GatewayGroup, GatewayGroupMember
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

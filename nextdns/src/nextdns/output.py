@@ -331,7 +331,9 @@ def format_profile_detail(profile: dict[str, Any]) -> str:
     if privacy:
         priv_data: dict[str, str] = {}
         blocklists = privacy.get("blocklists", [])
-        priv_data["Blocklists"] = str(len(blocklists)) if isinstance(blocklists, list) else str(blocklists)
+        priv_data["Blocklists"] = (
+            str(len(blocklists)) if isinstance(blocklists, list) else str(blocklists)
+        )
         for key, value in privacy.items():
             if key != "blocklists":
                 priv_data[key] = str(value)

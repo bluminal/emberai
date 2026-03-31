@@ -25,7 +25,6 @@ import pytest
 
 from opnsense.errors import APIError, ValidationError, WriteGateError, WriteGateReason
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -474,7 +473,7 @@ class TestUpdateRule:
         assert post_calls[1] == call("firewall", "filter", "apply/rev-abc")
         assert post_calls[2] == call("firewall", "filter", "cancelRollback/rev-abc")
 
-    async def test_update_rule_setRule_endpoint(
+    async def test_update_rule_set_rule_endpoint(
         self, mock_client: MagicMock
     ) -> None:
         """Write goes to setRule/{uuid} endpoint."""

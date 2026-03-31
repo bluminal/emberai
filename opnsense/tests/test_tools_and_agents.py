@@ -697,7 +697,7 @@ class TestGetRule:
     async def test_empty_uuid_raises(self) -> None:
         from opnsense.tools.firewall import opnsense__firewall__get_rule
 
-        with pytest.raises(ValidationError, match="(?i)uuid"):
+        with pytest.raises(ValidationError, match=r"(?i)uuid"):
             await opnsense__firewall__get_rule(uuid="")
 
 
@@ -888,7 +888,7 @@ class TestToggleRule:
         ):
             from opnsense.tools.firewall import opnsense__firewall__toggle_rule
 
-            with pytest.raises(ValidationError, match="(?i)uuid"):
+            with pytest.raises(ValidationError, match=r"(?i)uuid"):
                 await opnsense__firewall__toggle_rule(
                     uuid="",
                     enabled=True,

@@ -30,7 +30,7 @@ import asyncio
 import logging
 import random
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import httpx
 
@@ -563,7 +563,7 @@ class NextDNSClient:
                         endpoint=endpoint,
                     )
                 # Exponential backoff with jitter.
-                jitter = random.uniform(0, backoff * 0.5)  # noqa: S311
+                jitter = random.uniform(0, backoff * 0.5)
                 sleep_time = min(backoff + jitter, _MAX_BACKOFF)
                 logger.info(
                     "Backing off %.2fs before retry %d for %s",
@@ -694,7 +694,7 @@ class CachedNextDNSClient(NextDNSClient):
     """
 
     # TTL mapping by endpoint pattern.
-    _CACHE_TTLS: dict[str, float] = {
+    _CACHE_TTLS: ClassVar[dict[str, float]] = {
         "/profiles": 300.0,  # 5 min for profile list
         "analytics": 30.0,  # 30 sec for analytics
         "logs": 0.0,  # never cache logs

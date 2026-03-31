@@ -22,16 +22,14 @@ import httpx
 import pytest
 
 from nextdns.api.nextdns_client import (
-    CachedNextDNSClient,
-    NextDNSClient,
-    _INITIAL_BACKOFF,
     _MAX_429_RETRIES,
     _SLOW_REQUEST_THRESHOLD,
+    CachedNextDNSClient,
+    NextDNSClient,
 )
 from nextdns.api.url_builder import array_child_url, profile_url, sub_resource_url
 from nextdns.cache import TTLCache
 from nextdns.errors import APIError, AuthenticationError, NetworkError, RateLimitError
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -288,9 +286,11 @@ class TestRateLimiting:
             # Return 429 for more than max retries.
             mock_req.side_effect = [response_429] * (_MAX_429_RETRIES + 2)
 
-            with patch("nextdns.api.nextdns_client.asyncio.sleep", new_callable=AsyncMock):
-                with pytest.raises(RateLimitError) as exc_info:
-                    await client.get("/profiles")
+            with (
+                patch("nextdns.api.nextdns_client.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(RateLimitError) as exc_info,
+            ):
+                await client.get("/profiles")
 
             assert exc_info.value.retry_after_seconds == 30.0
             # Should have been called max_retries + 1 times (initial + retries).
@@ -305,9 +305,11 @@ class TestRateLimiting:
         with patch.object(client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.side_effect = [response_429] * (_MAX_429_RETRIES + 2)
 
-            with patch("nextdns.api.nextdns_client.asyncio.sleep", new_callable=AsyncMock):
-                with pytest.raises(RateLimitError) as exc_info:
-                    await client.get("/profiles")
+            with (
+                patch("nextdns.api.nextdns_client.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(RateLimitError) as exc_info,
+            ):
+                await client.get("/profiles")
 
             assert exc_info.value.retry_after_seconds == 42.0
 
@@ -321,17 +323,19 @@ class TestRateLimiting:
         with patch.object(client._client, "request", new_callable=AsyncMock) as mock_req:
             mock_req.side_effect = [response_429, response_200]
 
-            with patch("nextdns.api.nextdns_client.asyncio.sleep", new_callable=AsyncMock):
-                with patch("nextdns.api.nextdns_client.logger") as mock_logger:
-                    await client.get("/profiles")
+            with (
+                patch("nextdns.api.nextdns_client.asyncio.sleep", new_callable=AsyncMock),
+                patch("nextdns.api.nextdns_client.logger") as mock_logger,
+            ):
+                await client.get("/profiles")
 
-                    # Verify 429 was logged as a warning.
-                    warning_calls = mock_logger.warning.call_args_list
-                    rate_limit_logs = [
-                        c for c in warning_calls
-                        if "Rate limited" in str(c) or "429" in str(c)
-                    ]
-                    assert len(rate_limit_logs) >= 1
+                # Verify 429 was logged as a warning.
+                warning_calls = mock_logger.warning.call_args_list
+                rate_limit_logs = [
+                    c for c in warning_calls
+                    if "Rate limited" in str(c) or "429" in str(c)
+                ]
+                assert len(rate_limit_logs) >= 1
 
     async def test_conservative_throttle(self, api_key: str, mock_response: Any) -> None:
         """Requests respect the minimum inter-request interval."""
@@ -346,11 +350,11 @@ class TestRateLimiting:
 
             # First request: no throttle needed.
             await client.get("/profiles")
-            t1 = time.monotonic()
+            time.monotonic()
 
             # Second request: should throttle.
             await client.get("/profiles")
-            t2 = time.monotonic()
+            time.monotonic()
 
             # The second request should have a very small delay at minimum.
             # We just verify both requests completed successfully.
@@ -978,15 +982,17 @@ class TestSlowRequestWarning:
                     return base + _SLOW_REQUEST_THRESHOLD + 1.0
                 return base
 
-            with patch("nextdns.api.nextdns_client.time.monotonic", side_effect=slow_monotonic):
-                with patch("nextdns.api.nextdns_client.logger") as mock_logger:
-                    await client.get("/profiles")
+            with (
+                patch("nextdns.api.nextdns_client.time.monotonic", side_effect=slow_monotonic),
+                patch("nextdns.api.nextdns_client.logger") as mock_logger,
+            ):
+                await client.get("/profiles")
 
-                    warning_calls = mock_logger.warning.call_args_list
-                    slow_logs = [
-                        c for c in warning_calls if "Slow request" in str(c)
-                    ]
-                    assert len(slow_logs) >= 1
+                warning_calls = mock_logger.warning.call_args_list
+                slow_logs = [
+                    c for c in warning_calls if "Slow request" in str(c)
+                ]
+                assert len(slow_logs) >= 1
 
 
 # ---------------------------------------------------------------------------

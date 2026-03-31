@@ -20,7 +20,6 @@ import pytest
 from opnsense.errors import ValidationError
 from opnsense.validation import validate_path_param
 
-
 # ---------------------------------------------------------------------------
 # Valid inputs -- should pass through
 # ---------------------------------------------------------------------------

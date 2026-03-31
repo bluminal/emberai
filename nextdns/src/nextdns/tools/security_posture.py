@@ -74,7 +74,10 @@ def _audit_profile(profile: Profile) -> list[Finding]:
         findings.append(
             Finding(
                 severity=Severity.HIGH,
-                title=f"[{profile.name}] Low security coverage ({sec_enabled}/{SECURITY_TOGGLE_COUNT})",
+                title=(
+                    f"[{profile.name}] Low security coverage"
+                    f" ({sec_enabled}/{SECURITY_TOGGLE_COUNT})"
+                ),
                 detail=(
                     f"Only {sec_enabled} of {SECURITY_TOGGLE_COUNT} security toggles are enabled. "
                     f"Disabled: {', '.join(disabled)}."
@@ -89,7 +92,10 @@ def _audit_profile(profile: Profile) -> list[Finding]:
             Finding(
                 severity=Severity.HIGH,
                 title=f"[{profile.name}] No privacy blocklists configured",
-                detail="No ad/tracker blocklists are active. DNS queries to known trackers will resolve normally.",
+                detail=(
+                    "No ad/tracker blocklists are active."
+                    " DNS queries to known trackers will resolve normally."
+                ),
                 recommendation="Add at least 'nextdns-recommended' blocklist.",
             )
         )
@@ -128,10 +134,7 @@ def _audit_profile(profile: Profile) -> list[Finding]:
     for entry in profile.allowlist:
         domain = entry.id.lower()
         # Check against known tracker domains
-        if domain in _KNOWN_TRACKER_DOMAINS:
-            broad_entries.append(domain)
-        # Check for wildcard-like patterns (very short TLDs, single-label)
-        elif "." not in domain and len(domain) > 0:
+        if domain in _KNOWN_TRACKER_DOMAINS or ("." not in domain and len(domain) > 0):
             broad_entries.append(domain)
 
     if broad_entries:
@@ -143,7 +146,10 @@ def _audit_profile(profile: Profile) -> list[Finding]:
                     f"Allowlist contains entries that may undermine blocking: "
                     f"{', '.join(broad_entries)}."
                 ),
-                recommendation="Review and remove tracker domains or overly broad entries from the allowlist.",
+                recommendation=(
+                    "Review and remove tracker domains or overly broad"
+                    " entries from the allowlist."
+                ),
             )
         )
 
@@ -334,7 +340,10 @@ def _diff_settings(a: Profile, b: Profile) -> dict[str, tuple[Any, Any]]:
     if a.settings.performance.ecs != b.settings.performance.ecs:
         diff["ecs"] = (a.settings.performance.ecs, b.settings.performance.ecs)
     if a.settings.performance.cache_boost != b.settings.performance.cache_boost:
-        diff["cache_boost"] = (a.settings.performance.cache_boost, b.settings.performance.cache_boost)
+        diff["cache_boost"] = (
+            a.settings.performance.cache_boost,
+            b.settings.performance.cache_boost,
+        )
     if a.settings.performance.cname_flattening != b.settings.performance.cname_flattening:
         diff["cname_flattening"] = (
             a.settings.performance.cname_flattening,

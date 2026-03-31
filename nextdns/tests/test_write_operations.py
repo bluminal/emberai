@@ -20,8 +20,8 @@ Every write tool is tested for:
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, call, patch
+from typing import Any, ClassVar
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -122,7 +122,7 @@ class TestWriteGateEnforcement:
     """Verify that every write tool enforces env var and apply flag gates."""
 
     # All write-gated tools and their minimal arguments for invocation.
-    _WRITE_GATED_TOOLS: list[tuple[Any, dict[str, Any]]] = [
+    _WRITE_GATED_TOOLS: ClassVar[list[tuple[Any, dict[str, Any]]]] = [
         (nextdns__profiles__create_profile, {"name": "Test"}),
         (nextdns__profiles__update_profile, {"profile_id": "abc123", "name": "New"}),
         (nextdns__profiles__update_security, {"profile_id": "abc123", "csam": True}),
@@ -369,7 +369,7 @@ class TestUpdateSecurity:
             patch("nextdns.tools.profile_writes.get_client", return_value=mock_client),
             patch.dict("os.environ", {"NEXTDNS_WRITE_ENABLED": "true"}, clear=False),
         ):
-            result = await nextdns__profiles__update_security(
+            await nextdns__profiles__update_security(
                 "abc123",
                 threat_intelligence_feeds=True,
                 ai_threat_detection=False,

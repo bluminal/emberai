@@ -20,7 +20,6 @@ import pytest
 from unifi.errors import ValidationError
 from unifi.validation import validate_path_param
 
-
 # ---------------------------------------------------------------------------
 # Valid inputs -- should pass through
 # ---------------------------------------------------------------------------

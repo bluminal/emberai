@@ -96,9 +96,11 @@ class TestClientFactory:
         from nextdns.errors import AuthenticationError
         from nextdns.tools._client_factory import get_client
 
-        with patch.dict("os.environ", {"NEXTDNS_API_KEY": ""}, clear=False):
-            with pytest.raises(AuthenticationError, match="NEXTDNS_API_KEY"):
-                get_client()
+        with (
+            patch.dict("os.environ", {"NEXTDNS_API_KEY": ""}, clear=False),
+            pytest.raises(AuthenticationError, match="NEXTDNS_API_KEY"),
+        ):
+            get_client()
 
     def test_creates_client_with_key(self):
         """get_client() returns a CachedNextDNSClient when API key is set."""
