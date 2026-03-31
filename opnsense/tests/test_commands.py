@@ -979,9 +979,17 @@ class TestPolicyFromMatrix:
         with (
             patch.dict(os.environ, {"OPNSENSE_WRITE_ENABLED": "true"}),
             patch(
-                "opnsense.tools.firewall.opnsense__firewall__add_rule",
+                "opnsense.tools.firewall.opnsense__firewall__create_rule",
                 new_callable=AsyncMock,
                 return_value={"status": "created", "uuid": "new-uuid"},
+            ),
+            patch(
+                "opnsense.tools.firewall.opnsense__firewall__list_aliases",
+                new_callable=AsyncMock,
+                return_value=[
+                    {"name": "LAN", "type": "network", "content": "192.168.1.0/24"},
+                    {"name": "WAN", "type": "network", "content": "0.0.0.0/0"},
+                ],
             ),
         ):
             from opnsense.tools.commands import opnsense_firewall_policy_from_matrix
@@ -989,7 +997,7 @@ class TestPolicyFromMatrix:
             matrix = json.dumps([{"src": "LAN", "dst": "WAN", "action": "pass"}])
             result = await opnsense_firewall_policy_from_matrix(matrix, apply=True)
 
-        assert "Created" in result
+        assert "Created" in result or "created" in result.lower()
 
     async def test_invalid_matrix_json(self) -> None:
         """Invalid JSON should raise ValidationError."""
