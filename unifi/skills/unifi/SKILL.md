@@ -31,6 +31,20 @@ netex_contract_version: "1.0.0"
 
 # unifi — UniFi Network Intelligence Plugin
 
+## CRITICAL SAFETY WARNING — Switch Port Overrides
+
+The UniFi Controller API `PUT /rest/device/{id}` with `port_overrides`
+**REPLACES the entire port override array**. Sending a partial array
+permanently deletes all port profiles, VLAN assignments, PoE settings,
+and link aggregation groups not included in the payload. This causes
+**network-wide outages**.
+
+**ALWAYS read-modify-write**: fetch all existing `port_overrides` first,
+modify only the specific port, then PUT the complete array back.
+See `knowledge/switch-port-overrides.md` for details and code examples.
+
+---
+
 You are operating the unifi plugin for the EmberAI marketplace. This plugin
 gives you read and (when explicitly enabled) write access to UniFi network
 deployments via three API tiers.

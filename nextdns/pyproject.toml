@@ -15,7 +15,20 @@ requires-python = ">=3.12"
 authors = [
     { name = "Bluminal Labs" },
 ]
-keywords = ["nextdns", "dns", "mcp", "emberai", "netex", "security"]
+keywords = [
+    "nextdns",
+    "dns",
+    "dns-security",
+    "dns-analytics",
+    "dns-filtering",
+    "mcp",
+    "emberai",
+    "netex",
+    "security",
+    "parental-controls",
+    "ad-blocking",
+    "tracker-blocking",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: System Administrators",
@@ -25,6 +38,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Topic :: Security",
     "Topic :: System :: Networking",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Systems Administration",

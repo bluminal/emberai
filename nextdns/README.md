@@ -14,20 +14,30 @@ The nextdns plugin covers the **DNS layer** of the network: DNS profile configur
 
 | Command | Description |
 |---------|-------------|
-| `nextdns scan` | Discover all DNS profiles and their configuration summary |
-| `nextdns health` | Security posture assessment across profiles |
+| `nextdns profiles` | Discover all DNS profiles and their configuration summary |
 | `nextdns analytics` | Usage dashboard with query volume, block rates, top domains |
-| `nextdns logs` | Search and display recent query logs |
-| `nextdns secure` | Apply security hardening recommendations |
+| `nextdns audit` | Security posture audit with severity-tiered findings |
+| `nextdns logs` | Search, stream, download, and clear DNS query logs |
+| `nextdns manage` | Profile configuration management (create, update, delete, configure) |
 
-### Skill Groups (MCP Tools)
+### Skill Groups (37 MCP Tools)
 
-| Skill | Description |
-|-------|-------------|
-| profiles | Profile inventory and configuration management |
-| analytics | Usage dashboards, top domains, device stats |
-| logs | Query log access and search |
-| security-posture | Security and privacy configuration auditing |
+| Skill | Read Tools | Write Tools | Description |
+|-------|-----------|-------------|-------------|
+| profiles | 8 | 12 | Profile inventory, configuration, and lifecycle management |
+| analytics | 11 | 0 | Usage dashboards, top domains, devices, protocols, encryption |
+| logs | 3 | 1 | Query log search, streaming, download, and clearing |
+| security-posture | 2 | 0 | Security auditing and profile comparison |
+
+### Key Capabilities
+
+- **Profile management** -- list, inspect, create, rename, and delete profiles
+- **Security auditing** -- audit all 12 security toggles, detect weaknesses, compare profiles
+- **Privacy controls** -- manage blocklists, native tracking protection, disguised trackers
+- **Parental controls** -- SafeSearch, YouTube restricted mode, service/category blocking, bypass prevention
+- **Analytics** -- query volume, block rates, top domains, device activity, encryption status, DNSSEC
+- **Log analysis** -- search by domain/device/status, live polling, bulk download
+- **Bulk operations** -- apply security/privacy templates across multiple profiles
 
 All Phase 1 read operations require only `NEXTDNS_API_KEY`. Write operations additionally require `NEXTDNS_WRITE_ENABLED=true`.
 
@@ -71,9 +81,38 @@ python -m nextdns.server
 nextdns-server --check
 ```
 
+## Configuration
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NEXTDNS_API_KEY` | Yes | -- | API key from https://my.nextdns.io/account |
+| `NEXTDNS_WRITE_ENABLED` | No | `false` | Set to `"true"` to enable write operations |
+| `NETEX_CACHE_TTL` | No | `300` | Override cache TTL in seconds |
+
+### Write Safety Model
+
+All write operations follow a three-gate safety model:
+
+1. **Env var gate:** `NEXTDNS_WRITE_ENABLED` must be `"true"`
+2. **Apply flag gate:** `--apply` must be present
+3. **Operator confirmation:** Change plan must be confirmed before execution
+
+Destructive operations have additional safety gates:
+
+| Operation | Additional Flag | Reason |
+|-----------|----------------|--------|
+| Profile deletion | `--delete-profile` | Irreversible loss of all profile configuration |
+| Log clearing | `--clear-logs` | Irreversible loss of all stored DNS query logs |
+
 ## Documentation
 
 - [Plugin Overview](../docs/nextdns/overview.md) -- architecture, API, authentication
+- [Commands Reference](../docs/nextdns/commands.md) -- all 5 commands with parameters and examples
+- [Skills Reference](../docs/nextdns/skills.md) -- all 37 MCP tools documented
+- [Authentication Setup](../docs/getting-started/authentication.md) -- API key configuration
+- [Workflow Examples](../docs/nextdns/workflows/) -- step-by-step guides
 - [SKILL.md](SKILL.md) -- plugin manifest with full tool signatures
 
 ## Development
@@ -104,6 +143,11 @@ nextdns/
     agents/           # Command orchestrators
     models/           # Pydantic data models
     tools/            # MCP tool implementations
+      profiles.py     # 8 profile read tools
+      profile_writes.py # 12 write tools
+      analytics.py    # 11 analytics tools
+      logs.py         # 4 log tools
+      security_posture.py # 2 security posture tools
     server.py         # MCP server setup and entry point
   tests/
     fixtures/         # Test fixture data
@@ -112,14 +156,6 @@ nextdns/
   pyproject.toml
   README.md
 ```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXTDNS_API_KEY` | Yes | API key from https://my.nextdns.io/account |
-| `NEXTDNS_WRITE_ENABLED` | No | Set to `"true"` to enable write operations (default: `false`) |
-| `NETEX_CACHE_TTL` | No | Override cache TTL in seconds (default: `300`) |
 
 ## License
 
