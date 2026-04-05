@@ -1,0 +1,41 @@
+{
+  "messages": [
+    {
+      "metadata": {
+        "hostname": "talos-cp-1",
+        "error": ""
+      },
+      "health": {
+        "ready": true,
+        "unmet_conditions": []
+      }
+    },
+    {
+      "metadata": {
+        "hostname": "talos-cp-2",
+        "error": ""
+      },
+      "health": {
+        "ready": true,
+        "unmet_conditions": []
+      }
+    },
+    {
+      "metadata": {
+        "hostname": "talos-w-1",
+        "error": ""
+      },
+      "health": {
+        "ready": true,
+        "unmet_conditions": []
+      }
+    }
+  ],
+  "cluster_info": {
+    "nodes_healthy": 3,
+    "nodes_total": 3,
+    "etcd_healthy": true,
+    "kubernetes_healthy": true,
+    "all_services_healthy": true
+  }
+}

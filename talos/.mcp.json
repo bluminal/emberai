@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "talos": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/run.sh",
+      "args": ["--transport", "stdio"]
+    }
+  }
+}

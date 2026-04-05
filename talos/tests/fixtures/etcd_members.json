@@ -1,0 +1,44 @@
+{
+  "members": [
+    {
+      "id": "8e9e05c52164694d",
+      "hostname": "talos-cp-1",
+      "peer_urls": [
+        "https://192.168.30.11:2380"
+      ],
+      "client_urls": [
+        "https://192.168.30.11:2379"
+      ],
+      "is_learner": false,
+      "is_leader": true
+    },
+    {
+      "id": "a3f1b8d72e4c9a01",
+      "hostname": "talos-cp-2",
+      "peer_urls": [
+        "https://192.168.30.12:2380"
+      ],
+      "client_urls": [
+        "https://192.168.30.12:2379"
+      ],
+      "is_learner": false,
+      "is_leader": false
+    },
+    {
+      "id": "c5d7e9f1023b4a67",
+      "hostname": "talos-cp-3",
+      "peer_urls": [
+        "https://192.168.30.13:2380"
+      ],
+      "client_urls": [
+        "https://192.168.30.13:2379"
+      ],
+      "is_learner": false,
+      "is_leader": false
+    }
+  ],
+  "metadata": {
+    "cluster_id": "14841639068965178418",
+    "member_id": "10276657743932975437"
+  }
+}

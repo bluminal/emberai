@@ -1,0 +1,42 @@
+TALOS  talos-cp-1 (192.168.30.11)  Talos v1.12.0  Kubernetes v1.32.2
+
+HOST
+  Hostname:       talos-cp-1
+  Machine Type:   controlplane
+  Addresses:      192.168.30.11
+  Uptime:         14d 6h 32m 15s
+  Kernel:         6.12.8-talos
+  Architecture:   amd64
+  CPU:            Intel(R) N100 @ 4x 3.40GHz
+  Memory:         15.4 GiB / 15.6 GiB (98.7%)
+  Disk:           32.0 GB SSD
+
+SERVICES
+  SERVICE      STATE    HEALTH   SINCE
+  apid         Running  OK       14d ago
+  containerd   Running  OK       14d ago
+  cri          Running  OK       14d ago
+  etcd         Running  OK       14d ago
+  kubelet      Running  OK       14d ago
+  machined     Running  OK       14d ago
+  trustd       Running  OK       14d ago
+  udevd        Running  OK       14d ago
+
+KUBERNETES
+  Nodes:          4 (3 control-plane, 1 worker)
+  Pods:           47 running
+  API Server:     https://192.168.30.10:6443 (healthy)
+  Scheduler:      Running
+  Controller:     Running
+
+NETWORK
+  INTERFACE   FLAGS  ADDRESSES              LINK
+  lo          up     127.0.0.1/8, ::1/128   -
+  eth0        up     192.168.30.11/24       UP 1000Mbps
+  flannel.1   up     10.244.0.0/32          UP
+
+ETCD
+  Members:    3
+  Leader:     talos-cp-1
+  Health:     OK
+  DB Size:    42 MB

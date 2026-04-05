@@ -1,0 +1,11 @@
+{
+  "name": "talos",
+  "description": "Talos Linux Kubernetes cluster intelligence for EmberAI",
+  "version": "0.1.0",
+  "author": {
+    "name": "Bluminal Labs"
+  },
+  "repository": "https://github.com/bluminal/emberai",
+  "license": "MIT",
+  "keywords": ["talos", "kubernetes", "k8s", "mcp", "emberai", "netex"]
+}

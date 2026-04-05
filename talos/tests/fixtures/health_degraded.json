@@ -1,0 +1,43 @@
+{
+  "messages": [
+    {
+      "metadata": {
+        "hostname": "talos-cp-1",
+        "error": ""
+      },
+      "health": {
+        "ready": true,
+        "unmet_conditions": []
+      }
+    },
+    {
+      "metadata": {
+        "hostname": "talos-cp-2",
+        "error": ""
+      },
+      "health": {
+        "ready": true,
+        "unmet_conditions": []
+      }
+    },
+    {
+      "metadata": {
+        "hostname": "talos-w-1",
+        "error": "rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial tcp 192.168.30.21:50000: connect: no route to host\""
+      },
+      "health": {
+        "ready": false,
+        "unmet_conditions": [
+          "node not reachable"
+        ]
+      }
+    }
+  ],
+  "cluster_info": {
+    "nodes_healthy": 2,
+    "nodes_total": 3,
+    "etcd_healthy": true,
+    "kubernetes_healthy": true,
+    "all_services_healthy": false
+  }
+}

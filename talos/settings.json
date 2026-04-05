@@ -1,0 +1,23 @@
+{
+  "env": {
+    "TALOS_CONFIG": {
+      "description": "Path to the talosconfig file containing mTLS certificates and endpoint configuration",
+      "required": true
+    },
+    "TALOS_CONTEXT": {
+      "description": "Context name within the talosconfig file (uses default context if not set)",
+      "required": false,
+      "default": ""
+    },
+    "TALOS_WRITE_ENABLED": {
+      "description": "Set to \"true\" to enable write operations (default: false)",
+      "required": false,
+      "default": "false"
+    },
+    "TALOS_NODES": {
+      "description": "Comma-separated list of default node IP addresses (overrides talosconfig nodes)",
+      "required": false,
+      "default": ""
+    }
+  }
+}

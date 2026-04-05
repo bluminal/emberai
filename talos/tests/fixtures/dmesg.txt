@@ -1,0 +1,23 @@
+[    0.000000] Linux version 6.12.8-talos (talos@buildkitsandbox) (gcc (GCC) 13.2.0, GNU ld (GNU Binutils) 2.42) #1 SMP PREEMPT_DYNAMIC Mon Dec 16 09:15:32 UTC 2025
+[    0.000000] Command line: BOOT_IMAGE=/A/vmlinuz talos.platform=metal console=ttyS0 console=tty0 init_on_alloc=1 slab_nomerge pti=on printk.devkmsg=on
+[    0.000000] BIOS-provided physical RAM map:
+[    0.000000] BIOS-e820: [mem 0x0000000000000000-0x000000000009fbff] usable
+[    0.000000] BIOS-e820: [mem 0x0000000000100000-0x000000003ffdffff] usable
+[    0.154832] smpboot: CPU0: Intel(R) N100 (family: 0x6, model: 0xbe, stepping: 0x0)
+[    0.155119] Performance Events: PEBS fmt4+-baseline,  AnyThread deprecated, Alderlake Hybrid different different events, 16-deep LBR, full-width counters, Intel PMU driver.
+[    0.157234] smp: Bringing up secondary CPUs ...
+[    0.158412] smp: Brought up 1 node, 4 CPUs
+[    0.893412] EXT4-fs (sda1): mounted filesystem with ordered data mode. Quota mode: disabled.
+[    1.023456] e1000e 0000:00:1f.6 eth0: Intel(R) PRO/1000 Network Connection
+[    1.034567] e1000e 0000:00:1f.6 eth0: (PCI Express:2.5GT/s:Width x1) d8:bb:c1:0a:2e:34
+[    1.045678] e1000e 0000:00:1f.6 eth0: MAC: 4, PHY: 12, PBA No: FFFFFF-0FF
+[    2.123456] containerd: starting containerd revision=a1496014 version=v2.0.0
+[    2.234567] containerd: started containerd
+[    3.345678] machined: starting Talos machined service
+[    3.456789] machined: Talos v1.12.0 booting
+[    3.567890] machined: platform: metal
+[    4.678901] etcd: starting etcd member
+[    4.789012] etcd: etcd cluster healthy, member 8e9e05c52164694d joined
+[    5.890123] kubelet: starting kubelet v1.32.2
+[    5.901234] kubelet: node talos-cp-1 registered with API server
+[    6.012345] kubelet: node talos-cp-1 is now Ready

@@ -1,0 +1,20 @@
+{
+  "members": [
+    {
+      "id": "8e9e05c52164694d",
+      "hostname": "talos-cp-1",
+      "peer_urls": [
+        "https://192.168.30.11:2380"
+      ],
+      "client_urls": [
+        "https://192.168.30.11:2379"
+      ],
+      "is_learner": false,
+      "is_leader": true
+    }
+  ],
+  "metadata": {
+    "cluster_id": "14841639068965178418",
+    "member_id": "10276657743932975437"
+  }
+}

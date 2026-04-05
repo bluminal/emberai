@@ -1,0 +1,107 @@
+{
+  "messages": [
+    {
+      "metadata": {
+        "hostname": "talos-cp-1"
+      },
+      "services": [
+        {
+          "id": "apid",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:15Z"
+          },
+          "events": {
+            "count": 5
+          }
+        },
+        {
+          "id": "containerd",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:03Z"
+          },
+          "events": {
+            "count": 3
+          }
+        },
+        {
+          "id": "cri",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:05Z"
+          },
+          "events": {
+            "count": 3
+          }
+        },
+        {
+          "id": "etcd",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:10Z"
+          },
+          "events": {
+            "count": 4
+          }
+        },
+        {
+          "id": "kubelet",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:12Z"
+          },
+          "events": {
+            "count": 6
+          }
+        },
+        {
+          "id": "machined",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:01Z"
+          },
+          "events": {
+            "count": 2
+          }
+        },
+        {
+          "id": "trustd",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:08Z"
+          },
+          "events": {
+            "count": 3
+          }
+        },
+        {
+          "id": "udevd",
+          "state": "Running",
+          "health": {
+            "unknown": false,
+            "healthy": true,
+            "last_change": "2026-04-05T08:00:02Z"
+          },
+          "events": {
+            "count": 2
+          }
+        }
+      ]
+    }
+  ]
+}

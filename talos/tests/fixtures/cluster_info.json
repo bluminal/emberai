@@ -1,0 +1,49 @@
+{
+  "cluster_name": "homelab",
+  "endpoint": "https://192.168.30.10:6443",
+  "nodes": [
+    {
+      "hostname": "talos-cp-1",
+      "address": "192.168.30.11",
+      "role": "controlplane",
+      "talos_version": "v1.12.0",
+      "kubernetes_version": "v1.32.2",
+      "ready": true,
+      "etcd_member": true,
+      "etcd_leader": true
+    },
+    {
+      "hostname": "talos-cp-2",
+      "address": "192.168.30.12",
+      "role": "controlplane",
+      "talos_version": "v1.12.0",
+      "kubernetes_version": "v1.32.2",
+      "ready": true,
+      "etcd_member": true,
+      "etcd_leader": false
+    },
+    {
+      "hostname": "talos-cp-3",
+      "address": "192.168.30.13",
+      "role": "controlplane",
+      "talos_version": "v1.12.0",
+      "kubernetes_version": "v1.32.2",
+      "ready": true,
+      "etcd_member": true,
+      "etcd_leader": false
+    },
+    {
+      "hostname": "talos-w-1",
+      "address": "192.168.30.21",
+      "role": "worker",
+      "talos_version": "v1.12.0",
+      "kubernetes_version": "v1.32.2",
+      "ready": true,
+      "etcd_member": false,
+      "etcd_leader": false
+    }
+  ],
+  "total_nodes": 4,
+  "controlplane_nodes": 3,
+  "worker_nodes": 1
+}
