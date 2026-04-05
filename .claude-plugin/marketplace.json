@@ -24,6 +24,11 @@
       "name": "cisco",
       "source": "./cisco",
       "description": "Cisco network intelligence — switch management, VLANs, port config, MAC table, LLDP topology via SSH (Netmiko)"
+    },
+    {
+      "name": "talos",
+      "source": "./talos",
+      "description": "Talos Linux Kubernetes cluster intelligence — cluster lifecycle, node management, etcd, diagnostics via talosctl CLI"
     }
   ]
 }
