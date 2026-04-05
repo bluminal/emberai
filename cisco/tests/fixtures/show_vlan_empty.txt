@@ -1,0 +1,3 @@
+VLAN    Name                             Ports                       Type     Authorization
+----    -------------------------------- --------------------------- -------- -------------
+ 1      default                          gi1-24,Po1-8                Default  Required

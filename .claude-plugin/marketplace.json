@@ -19,6 +19,11 @@
       "name": "netex",
       "source": "./netex",
       "description": "Cross-vendor network orchestration — unified topology, VLAN provisioning, security audit"
+    },
+    {
+      "name": "cisco",
+      "source": "./cisco",
+      "description": "Cisco network intelligence — switch management, VLANs, port config, MAC table, LLDP topology via SSH (Netmiko)"
     }
   ]
 }

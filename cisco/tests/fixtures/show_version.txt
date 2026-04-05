@@ -1,0 +1,9 @@
+SW version    3.0.0.37 ( date  30-Jun-2019 time  18:28:24 )
+Boot version  1.4.1.1 ( date  10-Jun-2018 time  15:29:39 )
+HW version    V01
+
+Unit    MAC Address
+----    -----------------
+1       d8:b3:70:c9:e9:07
+
+Active-image: flash://system/images/simage2.bin

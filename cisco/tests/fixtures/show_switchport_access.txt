@@ -1,0 +1,12 @@
+Port : gi3
+Port Mode: Access
+Gvrp Status: disabled
+Ingress Filtering: true
+Acceptable Frame Type: admitAll
+Ingress UnTagged VLAN ( NATIVE ): 10
+
+Port is member in:
+
+Vlan               Name               Egress rule Port Membership Type
+---- -------------------------------- ----------- --------------------
+ 10  Admin                            Untagged    Static

@@ -1,0 +1,36 @@
+{
+  "env": {
+    "CISCO_HOST": {
+      "description": "IP or hostname of the Cisco SG-300 switch",
+      "required": true
+    },
+    "CISCO_SSH_USERNAME": {
+      "description": "SSH username for CLI access",
+      "required": true
+    },
+    "CISCO_SSH_PASSWORD": {
+      "description": "SSH password for CLI access",
+      "required": true
+    },
+    "CISCO_ENABLE_PASSWORD": {
+      "description": "Enable password for privileged EXEC mode (if configured)",
+      "required": false,
+      "default": ""
+    },
+    "CISCO_SNMP_COMMUNITY": {
+      "description": "SNMP v2c community string for monitoring (default: public)",
+      "required": false,
+      "default": "public"
+    },
+    "CISCO_WRITE_ENABLED": {
+      "description": "Set to \"true\" to enable write operations (default: false)",
+      "required": false,
+      "default": "false"
+    },
+    "CISCO_VERIFY_SSH_HOST_KEY": {
+      "description": "Set to \"false\" to skip SSH host key verification (default: true)",
+      "required": false,
+      "default": "true"
+    }
+  }
+}

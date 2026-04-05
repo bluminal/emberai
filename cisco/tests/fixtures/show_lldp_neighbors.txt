@@ -1,0 +1,4 @@
+    Device ID         Local Intf     Hold-time  Capability      Port ID
+    ---------------   ----------     ---------  ----------      ----------
+    USW-Pro-24-PoE    gi24           120        B               52
+    OPNsense.local    gi23           120        R               igb2

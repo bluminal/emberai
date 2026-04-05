@@ -1,0 +1,11 @@
+VLAN    Name                             Ports                       Type     Authorization
+----    -------------------------------- --------------------------- -------- -------------
+ 1      default                          gi1-2,gi4-22,Po1-8          Default  Required
+ 10     Admin                            gi3                         Static   Required
+ 20     Management                                                   Static   Required
+ 30     Trusted                          gi1-2                       Static   Required
+ 40     Streaming                        gi1                         Static   Required
+ 50     Guest                                                        Static   Required
+ 60     IoT                              gi5-8                       Static   Required
+ 70     Gaming                                                       Static   Required
+ 80     Kids                                                         Static   Required

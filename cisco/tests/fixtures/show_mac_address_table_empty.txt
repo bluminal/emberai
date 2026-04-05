@@ -1,0 +1,6 @@
+          Aging Time: 300 sec
+
+    Vlan    Mac Address         Type        Port
+    ----    -----------         ----        ----
+
+Total Mac Addresses for this criterion: 0

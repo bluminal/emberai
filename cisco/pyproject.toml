@@ -1,0 +1,114 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cisco"]
+
+[project]
+name = "cisco"
+version = "0.1.0"
+description = "Cisco SG-300 managed switch plugin for EmberAI -- VLAN management, port configuration, MAC address table, LLDP topology, and health monitoring via SSH CLI (Netmiko) and SNMP"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Bluminal Labs" },
+]
+keywords = [
+    "cisco",
+    "sg300",
+    "switch",
+    "managed-switch",
+    "vlan",
+    "netmiko",
+    "snmp",
+    "mcp",
+    "emberai",
+    "netex",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Networking :: Monitoring",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+    "Framework :: Pydantic :: 2",
+]
+
+dependencies = [
+    "mcp>=1.26.0,<2",
+    "netmiko>=4.0,<5",
+    "pysnmp-lextudio>=6.0,<7",
+    "pydantic>=2.12.5,<3",
+    "python-dotenv>=1.2.2,<2",
+]
+
+[project.urls]
+Homepage = "https://github.com/bluminal/emberai"
+Documentation = "https://bluminal.github.io/emberai/cisco/"
+Repository = "https://github.com/bluminal/emberai/tree/main/cisco"
+Issues = "https://github.com/bluminal/emberai/issues"
+Changelog = "https://github.com/bluminal/emberai/blob/main/docs/reference/changelog.md"
+
+[project.scripts]
+cisco-server = "cisco.server:main"
+
+[project.entry-points."netex.plugins"]
+cisco = "cisco.server:plugin_info"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "coverage>=7.13.5",
+    "ruff>=0.15.6",
+    "mypy>=1.19.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific rules
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cisco"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/cisco"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

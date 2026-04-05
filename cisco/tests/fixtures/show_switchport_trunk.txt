@@ -1,0 +1,20 @@
+Port : gi24
+Port Mode: Trunk
+Gvrp Status: disabled
+Ingress Filtering: true
+Acceptable Frame Type: admitAll
+Ingress UnTagged VLAN ( NATIVE ): 1
+
+Port is member in:
+
+Vlan               Name               Egress rule Port Membership Type
+---- -------------------------------- ----------- --------------------
+ 1   default                          Untagged    System
+ 10  Admin                            Tagged      Static
+ 20  Management                       Tagged      Static
+ 30  Trusted                          Tagged      Static
+ 40  Streaming                        Tagged      Static
+ 50  Guest                            Tagged      Static
+ 60  IoT                              Tagged      Static
+ 70  Gaming                           Tagged      Static
+ 80  Kids                             Tagged      Static

@@ -1,0 +1,11 @@
+{
+  "name": "cisco",
+  "description": "Cisco SG-300 managed switch plugin for EmberAI — VLAN management, port configuration, MAC address table, LLDP topology, and health monitoring via SSH CLI (Netmiko) and SNMP",
+  "version": "0.1.0",
+  "author": {
+    "name": "Bluminal Labs"
+  },
+  "repository": "https://github.com/bluminal/emberai",
+  "license": "MIT",
+  "keywords": ["cisco", "sg300", "switch", "vlan", "netmiko", "snmp", "mcp", "emberai"]
+}

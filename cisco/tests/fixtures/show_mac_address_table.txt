@@ -1,0 +1,16 @@
+          Aging Time: 300 sec
+
+    Vlan    Mac Address         Type        Port
+    ----    -----------         ----        ----
+     1      00:08:a2:09:78:fa   Dynamic     gi24
+     1      74:ac:b9:4b:2d:3f   Dynamic     gi24
+     10     1c:0b:8b:70:ae:b4   Dynamic     gi3
+     30     28:70:4e:26:e1:85   Dynamic     gi1
+     30     e4:38:83:39:17:31   Dynamic     gi2
+     40     60:ab:14:24:9d:c2   Dynamic     gi1
+     40     20:17:42:d7:b5:b9   Dynamic     gi1
+     60     fc:8c:11:f4:07:7f   Dynamic     gi5
+     60     08:c2:24:eb:b9:34   Dynamic     gi6
+     60     5c:47:5e:90:81:8b   Static      gi5
+
+Total Mac Addresses for this criterion: 10
