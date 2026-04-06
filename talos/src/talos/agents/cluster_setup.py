@@ -212,15 +212,314 @@ def validate_cluster_inputs(
 
 
 # ---------------------------------------------------------------------------
-# Phase 2: Plan -- build the ordered execution steps
+# Config file path constants (relative to a working dir)
 # ---------------------------------------------------------------------------
 
-# Paths used by the setup workflow (relative to a tmp working dir)
 _SECRETS_FILE = "secrets.yaml"
 _OUTPUT_DIR = "."
 _CP_CONFIG = "controlplane.yaml"
 _WORKER_CONFIG = "worker.yaml"
 _TALOSCONFIG = "talosconfig"
+
+
+# ---------------------------------------------------------------------------
+# Standalone config generation helper
+# ---------------------------------------------------------------------------
+
+
+def _is_result_success(result: dict[str, Any]) -> bool:
+    """Return True if a tool result dict indicates success."""
+    status = result.get("status", "")
+    return status in ("success", "ok", "pass")
+
+
+async def build_cluster_config(
+    cluster_name: str,
+    endpoint: str,
+    control_plane_ips: list[str],
+    worker_ips: list[str],
+    *,
+    vip: str | None = None,
+    install_disk: str = "/dev/sda",
+    secrets_file: str | None = None,
+    kubernetes_version: str = "",
+    enable_kubespan: bool = False,
+    patches: list[str] | None = None,
+    output_dir: str = "",
+) -> dict[str, Any]:
+    """Orchestrate config generation for a new Talos cluster.
+
+    This is an internal helper (NOT an MCP tool) that composes the
+    existing config tools into a single end-to-end workflow:
+
+        1. Generate secrets bundle (if no ``secrets_file`` provided)
+        2. Generate cluster configs from secrets
+        3. Apply VIP patch to controlplane config (if ``vip`` specified)
+        4. Apply KubeSpan patch to both configs (if ``enable_kubespan``)
+        5. Apply any additional ``patches`` to both configs
+        6. Validate all generated configs
+        7. Return file paths and summary
+
+    Parameters
+    ----------
+    cluster_name:
+        Name of the Kubernetes cluster.
+    endpoint:
+        Control plane endpoint URL (e.g. ``https://10.0.0.10:6443``).
+    control_plane_ips:
+        Control plane node IP addresses.
+    worker_ips:
+        Worker node IP addresses.
+    vip:
+        Optional Virtual IP for the Kubernetes API load balancer.
+    install_disk:
+        Target disk for Talos installation (default: ``/dev/sda``).
+    secrets_file:
+        Path to an existing secrets bundle.  When ``None``, a new
+        secrets bundle is generated.
+    kubernetes_version:
+        Pin a specific Kubernetes version.
+    enable_kubespan:
+        Enable KubeSpan (WireGuard mesh) between nodes.
+    patches:
+        Additional JSON patch strings to apply to **both**
+        controlplane and worker configs.
+    output_dir:
+        Directory for generated config files.  Defaults to the
+        current directory.
+
+    Returns
+    -------
+    dict
+        On success::
+
+            {
+                "status": "success",
+                "secrets_file": "<path>",
+                "controlplane_config": "<path>",
+                "worker_config": "<path>",
+                "talosconfig": "<path>",
+                "cluster_name": "...",
+                "endpoint": "...",
+                "control_plane_ips": [...],
+                "worker_ips": [...],
+                "vip": "..." | None,
+                "patches_applied": [...],
+            }
+
+        On failure::
+
+            {
+                "status": "error",
+                "phase": "<phase name>",
+                "error": "<message>",
+                "details": { ... },
+            }
+    """
+    from talos.tools.config import (
+        talos__config__gen_config,
+        talos__config__gen_secrets,
+        talos__config__patch_machineconfig,
+        talos__config__validate,
+    )
+
+    work_dir = output_dir or _OUTPUT_DIR
+    secrets_path = (
+        secrets_file
+        if secrets_file
+        else (f"{work_dir}/{_SECRETS_FILE}" if work_dir != "." else _SECRETS_FILE)
+    )
+    cp_config = f"{work_dir}/{_CP_CONFIG}" if work_dir != "." else _CP_CONFIG
+    worker_config = f"{work_dir}/{_WORKER_CONFIG}" if work_dir != "." else _WORKER_CONFIG
+    talosconfig = f"{work_dir}/{_TALOSCONFIG}" if work_dir != "." else _TALOSCONFIG
+
+    patches_applied: list[str] = []
+
+    # ------------------------------------------------------------------
+    # Step 1: Generate secrets (if not provided)
+    # ------------------------------------------------------------------
+    if not secrets_file:
+        logger.info(
+            "Generating cluster secrets bundle",
+            extra={"component": "build_cluster_config"},
+        )
+        result = await talos__config__gen_secrets(secrets_path, apply=True)
+        if not _is_result_success(result):
+            return {
+                "status": "error",
+                "phase": "gen_secrets",
+                "error": result.get("error", "Failed to generate secrets"),
+                "details": result,
+            }
+
+    # ------------------------------------------------------------------
+    # Step 2: Generate cluster configs
+    # ------------------------------------------------------------------
+    logger.info(
+        "Generating cluster configs for '%s'",
+        cluster_name,
+        extra={"component": "build_cluster_config"},
+    )
+    gen_kwargs: dict[str, Any] = {
+        "cluster_name": cluster_name,
+        "endpoint": endpoint,
+        "secrets_file": secrets_path,
+        "install_disk": install_disk,
+        "output_dir": work_dir if work_dir != "." else "",
+        "apply": True,
+    }
+    if kubernetes_version:
+        gen_kwargs["kubernetes_version"] = kubernetes_version
+
+    result = await talos__config__gen_config(**gen_kwargs)
+    if not _is_result_success(result):
+        return {
+            "status": "error",
+            "phase": "gen_config",
+            "error": result.get("error", "Failed to generate configs"),
+            "details": result,
+        }
+
+    # ------------------------------------------------------------------
+    # Step 3: Apply VIP patch to controlplane config
+    # ------------------------------------------------------------------
+    if vip:
+        vip_patch = (
+            '[{"op": "add", "path": "/machine/network/interfaces/-", "value": '
+            '{"interface": "eth0", "vip": {"ip": "' + vip + '"}}}]'
+        )
+        logger.info(
+            "Applying VIP patch (%s) to controlplane config",
+            vip,
+            extra={"component": "build_cluster_config"},
+        )
+        result = await talos__config__patch_machineconfig(
+            cp_config,
+            vip_patch,
+            output_file=cp_config,
+            apply=True,
+        )
+        if not _is_result_success(result):
+            return {
+                "status": "error",
+                "phase": "patch_vip",
+                "error": result.get("error", "Failed to apply VIP patch"),
+                "details": result,
+            }
+        patches_applied.append(f"VIP {vip}")
+
+    # ------------------------------------------------------------------
+    # Step 4: Apply KubeSpan patch to both configs
+    # ------------------------------------------------------------------
+    if enable_kubespan:
+        kubespan_patch = (
+            '[{"op": "add", "path": "/machine/network/kubespan", "value": '
+            '{"enabled": true}}]'
+        )
+        for label, cfg_path in [
+            ("controlplane", cp_config),
+            ("worker", worker_config),
+        ]:
+            logger.info(
+                "Applying KubeSpan patch to %s config",
+                label,
+                extra={"component": "build_cluster_config"},
+            )
+            result = await talos__config__patch_machineconfig(
+                cfg_path,
+                kubespan_patch,
+                output_file=cfg_path,
+                apply=True,
+            )
+            if not _is_result_success(result):
+                return {
+                    "status": "error",
+                    "phase": f"patch_kubespan_{label}",
+                    "error": result.get(
+                        "error", f"Failed to apply KubeSpan patch to {label}"
+                    ),
+                    "details": result,
+                }
+        patches_applied.append("KubeSpan enabled")
+
+    # ------------------------------------------------------------------
+    # Step 5: Apply additional patches to both configs
+    # ------------------------------------------------------------------
+    if patches:
+        for i, patch_str in enumerate(patches):
+            for label, cfg_path in [
+                ("controlplane", cp_config),
+                ("worker", worker_config),
+            ]:
+                logger.info(
+                    "Applying custom patch %d to %s config",
+                    i + 1,
+                    label,
+                    extra={"component": "build_cluster_config"},
+                )
+                result = await talos__config__patch_machineconfig(
+                    cfg_path,
+                    patch_str,
+                    output_file=cfg_path,
+                    apply=True,
+                )
+                if not _is_result_success(result):
+                    return {
+                        "status": "error",
+                        "phase": f"patch_custom_{i + 1}_{label}",
+                        "error": result.get(
+                            "error",
+                            f"Failed to apply custom patch {i + 1} to {label}",
+                        ),
+                        "details": result,
+                    }
+            patches_applied.append(f"custom patch {i + 1}")
+
+    # ------------------------------------------------------------------
+    # Step 6: Validate all generated configs
+    # ------------------------------------------------------------------
+    configs_to_validate = [("controlplane", cp_config)]
+    if worker_ips:
+        configs_to_validate.append(("worker", worker_config))
+
+    for label, cfg_path in configs_to_validate:
+        logger.info(
+            "Validating %s config",
+            label,
+            extra={"component": "build_cluster_config"},
+        )
+        result = await talos__config__validate(cfg_path, mode="metal")
+        if not _is_result_success(result):
+            return {
+                "status": "error",
+                "phase": f"validate_{label}",
+                "error": result.get(
+                    "errors", result.get("error", f"Validation failed for {label}")
+                ),
+                "details": result,
+            }
+
+    # ------------------------------------------------------------------
+    # Step 7: Return summary
+    # ------------------------------------------------------------------
+    return {
+        "status": "success",
+        "secrets_file": secrets_path,
+        "controlplane_config": cp_config,
+        "worker_config": worker_config,
+        "talosconfig": talosconfig,
+        "cluster_name": cluster_name,
+        "endpoint": endpoint,
+        "control_plane_ips": control_plane_ips,
+        "worker_ips": worker_ips,
+        "vip": vip,
+        "patches_applied": patches_applied,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Plan -- build the ordered execution steps
+# ---------------------------------------------------------------------------
 
 
 def build_setup_plan(
