@@ -109,6 +109,54 @@ unifi-server --check
 
 ---
 
+## Talos Linux
+
+### Getting Your Talosconfig
+
+Talos Linux uses **mTLS (mutual TLS)** via a talosconfig file -- not API keys.
+
+1. If setting up a new cluster, `talosctl gen config` generates the talosconfig automatically
+2. If joining an existing cluster, get the talosconfig from the cluster operator
+3. The talosconfig contains contexts (like kubeconfig) -- each context has an endpoint, CA cert, and client cert
+
+### Configuration
+
+Set the required environment variable:
+
+```bash
+TALOS_CONFIG=/path/to/talosconfig     # Path to talosconfig file (required)
+TALOS_CONTEXT=my-cluster              # Context name within talosconfig (optional, uses current context if unset)
+```
+
+### Optional Configuration
+
+```bash
+TALOS_NODES=10.10.10.11,10.10.10.12  # Default node IPs (comma-separated)
+```
+
+### Optional: Enable Write Operations
+
+```bash
+TALOS_WRITE_ENABLED=true
+```
+
+### Verify Connection
+
+```bash
+talos-server --check
+```
+
+### Security Notes
+
+- The talosconfig file contains client certificates -- protect it like a private key
+- Never commit talosconfig to version control
+- Write operations require explicit opt-in via `TALOS_WRITE_ENABLED`
+- Bootstrap is a ONE-TIME irreversible operation with extra safety gates (env var + `--apply` + etcd pre-flight check)
+- Node reset requires an additional `--reset-node` flag beyond the standard write gate
+- Unlike other plugins that use REST APIs, Talos communicates via gRPC + mTLS -- no API key rotation needed, but CA rotation (`talos__security__rotate_ca`) invalidates all existing configs
+
+---
+
 ## NextDNS
 
 ### Getting Your API Key
@@ -187,6 +235,10 @@ This will discover all installed vendor plugins and verify their connectivity.
 | `UNIFI_LOCAL_KEY` | unifi | Yes | API key for local gateway |
 | `UNIFI_API_KEY` | unifi | Phase 2 | API key for Cloud V1 / Site Manager |
 | `UNIFI_WRITE_ENABLED` | unifi | No | Enable write operations |
+| `TALOS_CONFIG` | talos | Yes | Path to talosconfig file |
+| `TALOS_CONTEXT` | talos | No | Context name within talosconfig |
+| `TALOS_NODES` | talos | No | Default node IPs (comma-separated) |
+| `TALOS_WRITE_ENABLED` | talos | No | Enable write operations |
 | `NEXTDNS_API_KEY` | nextdns | Yes | API key from my.nextdns.io/account |
 | `NEXTDNS_WRITE_ENABLED` | nextdns | No | Enable write operations |
 | `NETEX_WRITE_ENABLED` | netex | No | Enable cross-vendor write operations |
