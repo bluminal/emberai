@@ -7,7 +7,7 @@ packages = ["src/opnsense"]
 
 [project]
 name = "opnsense"
-version = "0.2.0"
+version = "0.2.1"
 description = "OPNsense gateway intelligence plugin for EmberAI -- firewall, routing, VPN, DNS, DHCP, IDS/IPS, and diagnostics via MCP"
 readme = "README.md"
 license = "MIT"

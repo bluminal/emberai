@@ -214,12 +214,13 @@ async def _add_dns_override_write(
     ``server`` field containing the target IP address.
     """
     data = {
-        "host_override": {
+        "host": {
+            "enabled": "1",
             "hostname": hostname,
             "domain": domain,
+            "rr": "A",
             "server": ip,
             "description": description,
-            "enabled": "1",
         }
     }
     result = await client.write(
@@ -322,10 +323,11 @@ async def opnsense__services__get_dhcp_leases4(
     *,
     interface: str | None = None,
 ) -> list[dict[str, Any]]:
-    """List DHCPv4 leases from the Kea DHCP server.
+    """List DHCPv4 leases from the DHCP server.
 
-    Queries ``GET /api/kea/leases4/search`` and returns all DHCP leases,
-    optionally filtered by interface.
+    Tries Kea (``GET /api/kea/leases4/search``) first, then falls back
+    to dnsmasq (``GET /api/dnsmasq/settings/searchHost``) if Kea returns
+    404.  OPNsense 26.x typically uses dnsmasq, not Kea.
 
     Parameters
     ----------
@@ -339,7 +341,21 @@ async def opnsense__services__get_dhcp_leases4(
     list[dict]
         List of DHCP lease dictionaries with normalized field names.
     """
-    raw = await client.get("kea", "leases4", "search")
+    try:
+        raw = await client.get("kea", "leases4", "search")
+    except APIError as exc:
+        if exc.status_code == 404:
+            logger.info("Kea DHCP not available (404), trying dnsmasq")
+            try:
+                raw = await client.get(
+                    "dnsmasq", "settings", "searchHost",
+                    params=_ALL_ROWS_PARAMS,
+                )
+            except APIError:
+                logger.warning("Neither Kea nor dnsmasq DHCP leases available")
+                return []
+        else:
+            raise
     rows = raw.get("rows", [])
 
     leases: list[dict[str, Any]] = []

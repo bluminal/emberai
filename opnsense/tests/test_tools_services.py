@@ -312,9 +312,9 @@ class TestAddDNSOverrideWriteGate:
         call_args = client.write.call_args
         assert call_args[0] == ("unbound", "settings", "addHostOverride")
         data = call_args[1]["data"]
-        assert data["host_override"]["hostname"] == "test"
-        assert data["host_override"]["server"] == "1.2.3.4"
-        assert data["host_override"]["enabled"] == "1"
+        assert data["host"]["hostname"] == "test"
+        assert data["host"]["server"] == "1.2.3.4"
+        assert data["host"]["enabled"] == "1"
 
     @pytest.mark.asyncio
     async def test_reconfigure_called_after_write(self) -> None:

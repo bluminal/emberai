@@ -7,7 +7,7 @@ endpoints and handle edge cases including:
 - Pagination parameters on all search calls
 - Graceful 404 degradation when Unbound is not installed
 - Non-404 API errors propagate correctly
-- Write operations use the 26.x payload format (host_override key)
+- Write operations use the 26.x payload format (host key)
 - Model validation with the 26.x 'enabled' field
 - Multiple overrides, disabled entries, missing optional fields
 """
@@ -118,12 +118,13 @@ class TestDNSEndpoint26x:
             "settings",
             "addHostOverride",
             data={
-                "host_override": {
+                "host": {
+                    "enabled": "1",
                     "hostname": "test",
                     "domain": "home.local",
+                    "rr": "A",
                     "server": "10.0.0.1",
                     "description": "",
-                    "enabled": "1",
                 }
             },
         )
@@ -372,7 +373,7 @@ class TestDNSWritePayload26x:
     """Verify the write operation uses the 26.x payload format."""
 
     @pytest.mark.asyncio
-    async def test_write_payload_uses_host_override_key(self) -> None:
+    async def test_write_payload_uses_host_key(self) -> None:
         from opnsense.tools.services import opnsense__services__add_dns_override
 
         client = _make_client()
@@ -390,13 +391,13 @@ class TestDNSWritePayload26x:
         write_call = client.write.call_args
         data = write_call[1]["data"]
 
-        # Must use 'host_override' key (26.x), not 'host' (pre-26.x)
-        assert "host_override" in data
-        assert "host" not in data
+        # Must use 'host' key (26.x actual API format)
+        assert "host" in data
 
-        payload = data["host_override"]
+        payload = data["host"]
         assert payload["hostname"] == "camera"
         assert payload["domain"] == "iot.local"
+        assert payload["rr"] == "A"
         assert payload["server"] == "10.10.10.50"
         assert payload["description"] == "Front door cam"
         assert payload["enabled"] == "1"
@@ -438,7 +439,7 @@ class TestDNSWritePayload26x:
 
         write_call = client.write.call_args
         data = write_call[1]["data"]
-        assert data["host_override"]["description"] == ""
+        assert data["host"]["description"] == ""
 
     @pytest.mark.asyncio
     async def test_write_then_reconfigure_sequence(self) -> None:

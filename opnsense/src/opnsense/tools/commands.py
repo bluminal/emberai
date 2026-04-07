@@ -2052,3 +2052,66 @@ async def opnsense_dns_forward(
         f"- **Forwarding mode:** Enabled\n"
         f"- **Description:** {description or f'DoT: {tls_hostname}'}"
     )
+
+
+# ---------------------------------------------------------------------------
+# DNS host override (write-gated)
+# ---------------------------------------------------------------------------
+
+
+@mcp_server.tool()
+async def opnsense__services__add_dns_override(
+    hostname: str,
+    domain: str,
+    ip: str,
+    description: str = "",
+    apply: bool = False,
+) -> str:
+    """Add a DNS host override to Unbound and apply.
+
+    Creates an A record in the local Unbound DNS resolver so that
+    ``hostname.domain`` resolves to ``ip``.
+
+    Without ``apply``: returns a plan preview.
+    With ``apply=True``: executes (requires OPNSENSE_WRITE_ENABLED=true).
+
+    Args:
+        hostname: Short hostname (e.g. 'automation').
+        domain: Domain suffix (e.g. 'home.example.net').
+        ip: A record target IP address (e.g. '172.18.0.200').
+        description: Optional human-readable label.
+        apply: Execute the changes. Requires OPNSENSE_WRITE_ENABLED=true.
+    """
+    fqdn = f"{hostname}.{domain}"
+    plan = format_change_plan(
+        steps=[
+            {"description": f"Add DNS host override: {fqdn} -> {ip}"},
+            {"description": "Reconfigure Unbound to apply"},
+        ]
+    )
+
+    if not apply:
+        write_status = describe_write_status("OPNSENSE")
+        return f"{plan}\n\n---\n*Plan-only mode.* {write_status}"
+
+    from opnsense.tools.services import (
+        opnsense__services__add_dns_override as _add_override,
+    )
+
+    client = _get_client()
+    try:
+        result = await _add_override(
+            client, hostname, domain, ip, description, apply=True,
+        )
+    finally:
+        await client.close()
+
+    uuid = result.get("write_result", {}).get("uuid", "")
+    return (
+        f"## DNS Host Override Added\n\n"
+        f"- **FQDN:** {fqdn}\n"
+        f"- **IP:** {ip}\n"
+        f"- **UUID:** {uuid}\n"
+        f"- **Description:** {description}\n"
+        f"- **Unbound:** Reconfigured"
+    )

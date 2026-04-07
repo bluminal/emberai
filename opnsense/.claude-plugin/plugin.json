@@ -1,7 +1,7 @@
 {
   "name": "opnsense",
   "description": "OPNsense gateway intelligence plugin for EmberAI — firewall, routing, VPN, DNS, DHCP, IDS/IPS, and diagnostics via the OPNsense REST API",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "Bluminal Labs"
   },

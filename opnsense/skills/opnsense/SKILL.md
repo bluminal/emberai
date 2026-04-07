@@ -1,6 +1,6 @@
 ---
 name: opnsense
-version: 0.2.0
+version: 0.2.1
 description: >
   OPNsense gateway intelligence plugin for EmberAI. Provides interface and
   VLAN management, firewall rule analysis, static routing, VPN tunnel status
