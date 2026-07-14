@@ -20,7 +20,6 @@ import pytest
 from talos.api.talosctl_client import TalosCtlClient, TalosCtlResult
 from talos.errors import TalosCtlError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -186,15 +185,9 @@ class TestClusterStatus:
         version_json = _version_output()
         members_json = _members_output()
 
-        health_result = _make_result(
-            stdout=json.dumps(health_json), parsed=health_json
-        )
-        version_result = _make_result(
-            stdout=json.dumps(version_json), parsed=version_json
-        )
-        members_result = _make_result(
-            stdout=json.dumps(members_json), parsed=members_json
-        )
+        health_result = _make_result(stdout=json.dumps(health_json), parsed=health_json)
+        version_result = _make_result(stdout=json.dumps(version_json), parsed=version_json)
+        members_result = _make_result(stdout=json.dumps(members_json), parsed=members_json)
 
         # The tool calls health and version via their tool functions
         # (which internally call client.run), and then calls client.run
@@ -228,9 +221,7 @@ class TestClusterStatus:
         assert len(result["nodes"]["details"]) == 3
 
         # Per-node ready status merged from health
-        cp1 = next(
-            n for n in result["nodes"]["details"] if n["hostname"] == "talos-cp-1"
-        )
+        cp1 = next(n for n in result["nodes"]["details"] if n["hostname"] == "talos-cp-1")
         assert cp1["ready"] is True
         assert cp1["role"] == "controlplane"
         assert "192.168.30.11" in cp1["addresses"]
@@ -253,12 +244,8 @@ class TestClusterStatus:
         version_json = _version_output()
         members_json = _members_output()
 
-        version_result = _make_result(
-            stdout=json.dumps(version_json), parsed=version_json
-        )
-        members_result = _make_result(
-            stdout=json.dumps(members_json), parsed=members_json
-        )
+        version_result = _make_result(stdout=json.dumps(version_json), parsed=version_json)
+        members_result = _make_result(stdout=json.dumps(members_json), parsed=members_json)
 
         # Health call raises TalosCtlError (caught by health tool internally,
         # returning status=error dict); version and members succeed.
@@ -300,12 +287,8 @@ class TestClusterStatus:
         health_json = _health_output_ok()
         members_json = _members_output()
 
-        health_result = _make_result(
-            stdout=json.dumps(health_json), parsed=health_json
-        )
-        members_result = _make_result(
-            stdout=json.dumps(members_json), parsed=members_json
-        )
+        health_result = _make_result(stdout=json.dumps(health_json), parsed=health_json)
+        members_result = _make_result(stdout=json.dumps(members_json), parsed=members_json)
 
         # Version call raises (caught by version tool, returning error dict);
         # health and members succeed.
@@ -341,12 +324,8 @@ class TestClusterStatus:
         health_json = _health_output_ok()
         version_json = _version_output()
 
-        health_result = _make_result(
-            stdout=json.dumps(health_json), parsed=health_json
-        )
-        version_result = _make_result(
-            stdout=json.dumps(version_json), parsed=version_json
-        )
+        health_result = _make_result(stdout=json.dumps(health_json), parsed=health_json)
+        version_result = _make_result(stdout=json.dumps(version_json), parsed=version_json)
 
         # Members call raises; health and version succeed
         with patch.object(
@@ -471,15 +450,9 @@ class TestClusterStatus:
         version_json = _version_output()
         members_json = _single_node_members()
 
-        health_result = _make_result(
-            stdout=json.dumps(health_json), parsed=health_json
-        )
-        version_result = _make_result(
-            stdout=json.dumps(version_json), parsed=version_json
-        )
-        members_result = _make_result(
-            stdout=json.dumps(members_json), parsed=members_json
-        )
+        health_result = _make_result(stdout=json.dumps(health_json), parsed=health_json)
+        version_result = _make_result(stdout=json.dumps(version_json), parsed=version_json)
+        members_result = _make_result(stdout=json.dumps(members_json), parsed=members_json)
 
         with patch.object(
             TalosCtlClient,
@@ -506,15 +479,10 @@ class TestClusterStatus:
 
         # Simulate talosctl health exiting non-zero (caught internally by
         # talos__cluster__health, which returns a dict with status=error).
-        health_error_result = _make_result(stdout="", stderr="etcd down", exit_code=1)
         version_json = _version_output()
         members_json = _members_output()
-        version_result = _make_result(
-            stdout=json.dumps(version_json), parsed=version_json
-        )
-        members_result = _make_result(
-            stdout=json.dumps(members_json), parsed=members_json
-        )
+        version_result = _make_result(stdout=json.dumps(version_json), parsed=version_json)
+        members_result = _make_result(stdout=json.dumps(members_json), parsed=members_json)
 
         # The health call raises TalosCtlError which the health tool catches
         # and returns as a dict.  So we simulate that sequence: the first

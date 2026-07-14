@@ -69,6 +69,7 @@ dev = [
     "coverage>=7.13.5",
     "ruff>=0.15.6",
     "mypy>=1.19.1",
+    "types-PyYAML>=6.0,<7",
 ]
 
 [tool.ruff]
@@ -91,6 +92,11 @@ select = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["talos"]
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic resolves field annotations at runtime, so imports used only in
+# model field types must stay outside a TYPE_CHECKING block.
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 
 [tool.mypy]
 python_version = "3.12"

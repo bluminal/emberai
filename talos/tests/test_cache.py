@@ -343,10 +343,7 @@ class TestStampedeProtection:
             await asyncio.sleep(0.1)
             return "result"
 
-        tasks = [
-            asyncio.create_task(cache.get_or_fetch("key", slow_fetcher))
-            for _ in range(10)
-        ]
+        tasks = [asyncio.create_task(cache.get_or_fetch("key", slow_fetcher)) for _ in range(10)]
         results = await asyncio.gather(*tasks)
 
         assert all(r == "result" for r in results)
@@ -362,10 +359,7 @@ class TestStampedeProtection:
             await asyncio.sleep(0.05)
             raise ValueError("talosctl timeout")
 
-        tasks = [
-            asyncio.create_task(cache.get_or_fetch("key", failing_fetcher))
-            for _ in range(5)
-        ]
+        tasks = [asyncio.create_task(cache.get_or_fetch("key", failing_fetcher)) for _ in range(5)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         assert all(isinstance(r, ValueError) for r in results)

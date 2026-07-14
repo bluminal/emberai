@@ -4,23 +4,23 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 
-from talos.api.talosctl_client import TalosCtlClient, TalosCtlResult
+from talos.api.talosctl_client import TalosCtlClient
 from talos.cache import TTLCache
 from talos.errors import (
     AuthenticationError,
-    ConfigParseError,
     NetworkError,
     TalosCtlError,
     TalosCtlNotFoundError,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,7 +43,8 @@ def _make_talosconfig(tmp_path: Path, contexts: dict[str, Any] | None = None) ->
     """Write a minimal talosconfig YAML and return its path."""
     data: dict[str, Any] = {
         "context": "homelab",
-        "contexts": contexts or {
+        "contexts": contexts
+        or {
             "homelab": {
                 "endpoints": ["192.168.100.10", "192.168.100.11"],
                 "nodes": ["192.168.100.10", "192.168.100.11", "192.168.100.12"],
@@ -144,7 +145,9 @@ class TestTalosconfigManagement:
         client = TalosCtlClient(config_path=config_path, context="staging")
         assert client.get_current_context() == "staging"
 
-    def test_get_current_context_env_var(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_current_context_env_var(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         config_path = _make_talosconfig(tmp_path)
         monkeypatch.setenv("TALOS_CONTEXT", "staging")
         client = TalosCtlClient(config_path=config_path)

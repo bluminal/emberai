@@ -139,9 +139,7 @@ class TestAuthenticationError:
         assert err.context is None
 
     def test_with_config_path(self) -> None:
-        err = AuthenticationError(
-            "bad cert", config_path="/home/user/.talos/config"
-        )
+        err = AuthenticationError("bad cert", config_path="/home/user/.talos/config")
         assert err.config_path == "/home/user/.talos/config"
         assert "config_path" in err.details
 
@@ -163,9 +161,7 @@ class TestAuthenticationError:
         assert err.status_code is None
 
     def test_with_extra_details(self) -> None:
-        err = AuthenticationError(
-            "bad", details={"extra": "info"}
-        )
+        err = AuthenticationError("bad", details={"extra": "info"})
         assert err.details["extra"] == "info"
 
 
