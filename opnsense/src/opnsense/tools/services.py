@@ -348,7 +348,9 @@ async def opnsense__services__get_dhcp_leases4(
             logger.info("Kea DHCP not available (404), trying dnsmasq")
             try:
                 raw = await client.get(
-                    "dnsmasq", "settings", "searchHost",
+                    "dnsmasq",
+                    "settings",
+                    "searchHost",
                     params=_ALL_ROWS_PARAMS,
                 )
             except APIError:

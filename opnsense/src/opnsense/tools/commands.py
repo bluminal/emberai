@@ -2101,7 +2101,12 @@ async def opnsense__services__add_dns_override(
     client = _get_client()
     try:
         result = await _add_override(
-            client, hostname, domain, ip, description, apply=True,
+            client,
+            hostname,
+            domain,
+            ip,
+            description,
+            apply=True,
         )
     finally:
         await client.close()
