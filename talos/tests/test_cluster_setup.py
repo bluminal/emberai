@@ -31,7 +31,6 @@ from talos.agents.cluster_setup import (
 from talos.api.talosctl_client import TalosCtlClient, TalosCtlResult
 from talos.errors import TalosCtlError, ValidationError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -156,7 +155,7 @@ class TestValidateClusterInputs:
 
     def test_vip_collision_rejected(self) -> None:
         """VIP matching a CP IP raises ValidationError."""
-        with pytest.raises(ValidationError, match="VIP.*must not be the same"):
+        with pytest.raises(ValidationError, match=r"VIP.*must not be the same"):
             validate_cluster_inputs(
                 cluster_name=CLUSTER_NAME,
                 control_plane_ips=CP_IPS,
@@ -166,7 +165,7 @@ class TestValidateClusterInputs:
 
     def test_vip_collision_with_worker_rejected(self) -> None:
         """VIP matching a worker IP raises ValidationError."""
-        with pytest.raises(ValidationError, match="VIP.*must not be the same"):
+        with pytest.raises(ValidationError, match=r"VIP.*must not be the same"):
             validate_cluster_inputs(
                 cluster_name=CLUSTER_NAME,
                 control_plane_ips=CP_IPS,
@@ -336,7 +335,8 @@ class TestBuildSetupPlan:
         steps = build_setup_plan(plan)
 
         vip_patches = [
-            s for s in steps
+            s
+            for s in steps
             if s.tool_name == "talos__config__patch_machineconfig" and "VIP" in s.description
         ]
         assert len(vip_patches) == 0
@@ -347,9 +347,9 @@ class TestBuildSetupPlan:
         steps = build_setup_plan(plan)
 
         kubespan_steps = [
-            s for s in steps
-            if s.tool_name == "talos__config__patch_machineconfig"
-            and "KubeSpan" in s.description
+            s
+            for s in steps
+            if s.tool_name == "talos__config__patch_machineconfig" and "KubeSpan" in s.description
         ]
         # One for CP, one for worker
         assert len(kubespan_steps) == 2
@@ -362,10 +362,7 @@ class TestBuildSetupPlan:
         plan = _make_plan(enable_kubespan=False)
         steps = build_setup_plan(plan)
 
-        kubespan_steps = [
-            s for s in steps
-            if "KubeSpan" in s.description
-        ]
+        kubespan_steps = [s for s in steps if "KubeSpan" in s.description]
         assert len(kubespan_steps) == 0
 
     def test_apply_steps_use_insecure_mode(self) -> None:
@@ -473,13 +470,9 @@ class TestExecuteSetupPlan:
                     "talos__config__gen_secrets",
                     "talos__config__gen_config",
                 ):
-                    mock_registry[step.tool_name] = _mock_tool_fn(
-                        _make_success_result()
-                    )
+                    mock_registry[step.tool_name] = _mock_tool_fn(_make_success_result())
                 else:
-                    mock_registry[step.tool_name] = _mock_tool_fn(
-                        _make_ok_result()
-                    )
+                    mock_registry[step.tool_name] = _mock_tool_fn(_make_ok_result())
 
         # Mock the etcd members poll to succeed immediately
         mock_client = MagicMock(spec=TalosCtlClient)
@@ -488,9 +481,17 @@ class TestExecuteSetupPlan:
                 stdout="",
                 stderr="",
                 exit_code=0,
-                parsed={"messages": [{"members": [
-                    {"id": "1"}, {"id": "2"}, {"id": "3"},
-                ]}]},
+                parsed={
+                    "messages": [
+                        {
+                            "members": [
+                                {"id": "1"},
+                                {"id": "2"},
+                                {"id": "3"},
+                            ]
+                        }
+                    ]
+                },
             )
         )
 
@@ -522,10 +523,7 @@ class TestExecuteSetupPlan:
             return _make_error_result("validation failed: bad config")
 
         # All tools point to the same conditional mock
-        mock_registry = {
-            step.tool_name: conditional_tool
-            for step in steps
-        }
+        mock_registry = {step.tool_name: conditional_tool for step in steps}
 
         mock_client = MagicMock(spec=TalosCtlClient)
 
@@ -549,10 +547,7 @@ class TestExecuteSetupPlan:
         async def exploding_tool(**kwargs: Any) -> dict[str, Any]:
             raise RuntimeError("unexpected explosion")
 
-        mock_registry = {
-            step.tool_name: exploding_tool
-            for step in steps
-        }
+        mock_registry = {step.tool_name: exploding_tool for step in steps}
 
         mock_client = MagicMock(spec=TalosCtlClient)
 
@@ -572,17 +567,12 @@ class TestExecuteSetupPlan:
         steps = build_setup_plan(plan)
 
         # All tools succeed
-        mock_registry = {
-            step.tool_name: _mock_tool_fn(_make_ok_result())
-            for step in steps
-        }
+        mock_registry = {step.tool_name: _mock_tool_fn(_make_ok_result()) for step in steps}
         # Override specific tools that need different statuses
         mock_registry["talos__config__gen_secrets"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__config__gen_config"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__config__validate"] = _mock_tool_fn(_make_pass_result())
-        mock_registry["talos__config__patch_machineconfig"] = _mock_tool_fn(
-            _make_success_result()
-        )
+        mock_registry["talos__config__patch_machineconfig"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__cluster__kubeconfig"] = _mock_tool_fn(
             _make_ok_result(kubeconfig="content")
         )
@@ -594,9 +584,17 @@ class TestExecuteSetupPlan:
                 stdout="",
                 stderr="",
                 exit_code=0,
-                parsed={"messages": [{"members": [
-                    {"id": "1"}, {"id": "2"}, {"id": "3"},
-                ]}]},
+                parsed={
+                    "messages": [
+                        {
+                            "members": [
+                                {"id": "1"},
+                                {"id": "2"},
+                                {"id": "3"},
+                            ]
+                        }
+                    ]
+                },
             )
         )
 
@@ -608,10 +606,7 @@ class TestExecuteSetupPlan:
         # Verify etcd poll was called
         mock_client.run.assert_called()
         # Check that at least one call was for etcd members
-        etcd_calls = [
-            c for c in mock_client.run.call_args_list
-            if "etcd" in str(c)
-        ]
+        etcd_calls = [c for c in mock_client.run.call_args_list if "etcd" in str(c)]
         assert len(etcd_calls) > 0
 
     @pytest.mark.asyncio
@@ -621,16 +616,11 @@ class TestExecuteSetupPlan:
         steps = build_setup_plan(plan)
 
         # All tools succeed
-        mock_registry = {
-            step.tool_name: _mock_tool_fn(_make_ok_result())
-            for step in steps
-        }
+        mock_registry = {step.tool_name: _mock_tool_fn(_make_ok_result()) for step in steps}
         mock_registry["talos__config__gen_secrets"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__config__gen_config"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__config__validate"] = _mock_tool_fn(_make_pass_result())
-        mock_registry["talos__config__patch_machineconfig"] = _mock_tool_fn(
-            _make_success_result()
-        )
+        mock_registry["talos__config__patch_machineconfig"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__cluster__kubeconfig"] = _mock_tool_fn(
             _make_ok_result(kubeconfig="content")
         )
@@ -681,10 +671,7 @@ class TestExecuteSetupPlan:
         plan = _make_plan(vip=None, worker_ips=[])
         steps = build_setup_plan(plan)
 
-        mock_registry = {
-            step.tool_name: _mock_tool_fn(_make_ok_result())
-            for step in steps
-        }
+        mock_registry = {step.tool_name: _mock_tool_fn(_make_ok_result()) for step in steps}
         mock_registry["talos__config__gen_secrets"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__config__gen_config"] = _mock_tool_fn(_make_success_result())
         mock_registry["talos__config__validate"] = _mock_tool_fn(_make_pass_result())
@@ -695,10 +682,20 @@ class TestExecuteSetupPlan:
         mock_client = MagicMock(spec=TalosCtlClient)
         mock_client.run = AsyncMock(
             return_value=TalosCtlResult(
-                stdout="", stderr="", exit_code=0,
-                parsed={"messages": [{"members": [
-                    {"id": "1"}, {"id": "2"}, {"id": "3"},
-                ]}]},
+                stdout="",
+                stderr="",
+                exit_code=0,
+                parsed={
+                    "messages": [
+                        {
+                            "members": [
+                                {"id": "1"},
+                                {"id": "2"},
+                                {"id": "3"},
+                            ]
+                        }
+                    ]
+                },
             )
         )
 
@@ -790,13 +787,12 @@ class TestSetupTool:
         from talos.errors import WriteGateError
         from talos.tools.setup import talos__cluster__setup
 
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(WriteGateError):
-                await talos__cluster__setup(
-                    cluster_name=CLUSTER_NAME,
-                    control_plane_ips=",".join(CP_IPS),
-                    apply=True,
-                )
+        with patch.dict(os.environ, {}, clear=True), pytest.raises(WriteGateError):
+            await talos__cluster__setup(
+                cluster_name=CLUSTER_NAME,
+                control_plane_ips=",".join(CP_IPS),
+                apply=True,
+            )
 
     @pytest.mark.asyncio
     async def test_validation_error_returned_not_raised(self) -> None:
@@ -829,7 +825,7 @@ class TestSetupTool:
                     completed_steps=[],
                     cluster_summary={"cluster_name": CLUSTER_NAME},
                 ),
-            ) as mock_execute,
+            ),
             patch(
                 "talos.tools.setup.build_setup_plan",
                 return_value=[],

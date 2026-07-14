@@ -15,7 +15,7 @@ import logging
 from typing import Any
 
 from talos.api.talosctl_client import TalosCtlClient
-from talos.errors import TalosCtlError, ValidationError
+from talos.errors import TalosCtlError
 from talos.safety import bootstrap_gate, write_gate
 from talos.server import mcp_server
 
@@ -115,9 +115,7 @@ async def talos__cluster__apply_config(
     # Execute apply
     try:
         if insecure:
-            result = await client.run_insecure(
-                args, nodes=node, json_output=False, timeout=60.0
-            )
+            result = await client.run_insecure(args, nodes=node, json_output=False, timeout=60.0)
         else:
             result = await client.run(
                 args, nodes=node, json_output=False, use_cache=False, timeout=60.0
@@ -191,10 +189,7 @@ async def talos__cluster__bootstrap(
             "status": "ok",
             "operation": "bootstrap",
             "node": node,
-            "message": (
-                result.stdout.strip()
-                or "etcd bootstrap initiated successfully."
-            ),
+            "message": (result.stdout.strip() or "etcd bootstrap initiated successfully."),
             "warning": (
                 "Bootstrap is a ONE-TIME operation. Do NOT run this again. "
                 "Monitor cluster health with talos__cluster__health."
@@ -496,12 +491,10 @@ async def talos__cluster__set_endpoints(
 
     # Build command: talosctl config endpoint <ip1> <ip2> ...
     endpoint_list = endpoints.strip().split()
-    args = ["config", "endpoint"] + endpoint_list
+    args = ["config", "endpoint", *endpoint_list]
 
     try:
-        result = await client.run(
-            args, json_output=False, use_cache=False, timeout=10.0
-        )
+        result = await client.run(args, json_output=False, use_cache=False, timeout=10.0)
 
         # Warn about VIP usage
         warnings: list[str] = []
@@ -517,10 +510,7 @@ async def talos__cluster__set_endpoints(
             "status": "ok",
             "operation": "set_endpoints",
             "endpoints": endpoint_list,
-            "message": (
-                result.stdout.strip()
-                or f"Endpoints set to: {', '.join(endpoint_list)}"
-            ),
+            "message": (result.stdout.strip() or f"Endpoints set to: {', '.join(endpoint_list)}"),
         }
         if warnings:
             response["warnings"] = warnings
@@ -681,9 +671,7 @@ async def talos__cluster__status(
     }
 
     # If members data was unavailable, note it
-    if members_data is None and not any(
-        e["component"] == "members" for e in errors
-    ):
+    if members_data is None and not any(e["component"] == "members" for e in errors):
         report["nodes"] = {"error": "member data unavailable"}
 
     # Attach errors if any sub-call failed
@@ -695,9 +683,7 @@ async def talos__cluster__status(
             report["severity"] = "UNKNOWN"
             report["message"] = "All status sub-queries failed."
         else:
-            report["message"] = (
-                f"Partial status: {len(errors)} of 3 sub-queries failed."
-            )
+            report["message"] = f"Partial status: {len(errors)} of 3 sub-queries failed."
     else:
         report["message"] = (
             f"Cluster status: {report['severity']} -- "
@@ -738,17 +724,14 @@ async def talos__cluster__merge_talosconfig(
     args = ["config", "merge", talosconfig_path.strip()]
 
     try:
-        result = await client.run(
-            args, json_output=False, use_cache=False, timeout=10.0
-        )
+        result = await client.run(args, json_output=False, use_cache=False, timeout=10.0)
 
         return {
             "status": "ok",
             "operation": "merge_talosconfig",
             "talosconfig_path": talosconfig_path.strip(),
             "message": (
-                result.stdout.strip()
-                or f"Talosconfig merged from {talosconfig_path.strip()}"
+                result.stdout.strip() or f"Talosconfig merged from {talosconfig_path.strip()}"
             ),
         }
     except TalosCtlError as exc:

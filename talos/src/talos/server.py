@@ -121,8 +121,7 @@ def _check_talosctl_binary() -> tuple[bool, str]:
     talosctl_path = shutil.which("talosctl")
     if talosctl_path is None:
         return False, (
-            "talosctl binary not found on PATH. "
-            "Install: brew install siderolabs/tap/talosctl"
+            "talosctl binary not found on PATH. Install: brew install siderolabs/tap/talosctl"
         )
 
     try:

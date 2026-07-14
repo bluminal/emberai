@@ -19,20 +19,21 @@ import json
 import logging
 import os
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from talos.cache import TTLCache
 from talos.errors import (
     AuthenticationError,
-    ConfigParseError,
     NetworkError,
     TalosCtlError,
     TalosCtlNotFoundError,
 )
+
+if TYPE_CHECKING:
+    from talos.cache import TTLCache
 
 logger = logging.getLogger("talos.api")
 
@@ -134,7 +135,10 @@ class TalosCtlClient:
 
         binary = self._find_binary()
         proc = await asyncio.create_subprocess_exec(
-            binary, "version", "--client", "--short",
+            binary,
+            "version",
+            "--client",
+            "--short",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -341,9 +345,19 @@ class TalosCtlClient:
         # Cache check (read-only commands only)
         cache_key: str | None = None
         is_write_cmd = any(
-            w in args for w in [
-                "apply-config", "bootstrap", "reboot", "shutdown", "reset",
-                "upgrade", "patch", "edit", "etcd", "rotate-ca", "wipe",
+            w in args
+            for w in [
+                "apply-config",
+                "bootstrap",
+                "reboot",
+                "shutdown",
+                "reset",
+                "upgrade",
+                "patch",
+                "edit",
+                "etcd",
+                "rotate-ca",
+                "wipe",
             ]
         )
         # Also skip cache for streaming flags
@@ -362,16 +376,14 @@ class TalosCtlClient:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
-        except asyncio.TimeoutError:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        except TimeoutError as err:
             raise NetworkError(
                 f"talosctl command timed out after {timeout}s",
                 endpoint=",".join(node_list) if node_list else None,
                 retry_hint=f"Command timed out: {' '.join(cmd[:6])}... "
                 f"Try increasing timeout or check node connectivity.",
-            )
+            ) from err
 
         stdout = stdout_bytes.decode() if stdout_bytes else ""
         stderr = stderr_bytes.decode() if stderr_bytes else ""
@@ -445,7 +457,7 @@ class TalosCtlClient:
         Used for first-time connections to unconfigured nodes where
         mTLS has not been established yet.
         """
-        full_args = ["--insecure"] + args if "--insecure" not in args else args
+        full_args = ["--insecure", *args] if "--insecure" not in args else args
         # Insecure mode bypasses talosconfig auth
         binary = self._find_binary()
 
@@ -466,15 +478,13 @@ class TalosCtlClient:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
-        except asyncio.TimeoutError:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        except TimeoutError as err:
             node_str = ",".join([nodes] if isinstance(nodes, str) else nodes or [])
             raise NetworkError(
                 f"talosctl insecure command timed out after {timeout}s",
                 endpoint=node_str or None,
-            )
+            ) from err
 
         stdout = stdout_bytes.decode() if stdout_bytes else ""
         stderr = stderr_bytes.decode() if stderr_bytes else ""

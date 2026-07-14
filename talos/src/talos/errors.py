@@ -30,7 +30,6 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, ClassVar
 
-
 # ---------------------------------------------------------------------------
 # WriteGateReason enum
 # ---------------------------------------------------------------------------
@@ -382,9 +381,7 @@ class WriteGateError(NetexError):
         WriteGateReason.ENV_VAR_DISABLED: (
             "Set TALOS_WRITE_ENABLED=true to allow write operations"
         ),
-        WriteGateReason.APPLY_FLAG_MISSING: (
-            "Add the --apply flag to execute write operations"
-        ),
+        WriteGateReason.APPLY_FLAG_MISSING: ("Add the --apply flag to execute write operations"),
         WriteGateReason.RESET_FLAG_MISSING: (
             "Add the --reset-node flag to confirm node reset (this is destructive)"
         ),

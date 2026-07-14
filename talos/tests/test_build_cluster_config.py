@@ -74,9 +74,11 @@ class TestBuildClusterConfig:
     async def test_full_success_with_vip(self) -> None:
         """Full success path: gen_secrets, gen_config, VIP patch, validate."""
         mock_gen_secrets = AsyncMock(return_value=_success(output_path="secrets.yaml"))
-        mock_gen_config = AsyncMock(return_value=_success(
-            generated_files=["controlplane.yaml", "worker.yaml", "talosconfig"],
-        ))
+        mock_gen_config = AsyncMock(
+            return_value=_success(
+                generated_files=["controlplane.yaml", "worker.yaml", "talosconfig"],
+            )
+        )
         mock_patch = AsyncMock(return_value=_success())
         mock_validate = AsyncMock(return_value=_pass_result())
 
@@ -306,9 +308,7 @@ class TestBuildClusterConfig:
         """Validation failure at step 6 for worker config (CP passes)."""
         call_count = 0
 
-        async def validate_side_effect(
-            config_file: str, *, mode: str = "metal"
-        ) -> dict[str, Any]:
+        async def validate_side_effect(config_file: str, *, mode: str = "metal") -> dict[str, Any]:
             nonlocal call_count
             call_count += 1
             if call_count == 1:

@@ -160,9 +160,7 @@ def validate_cluster_inputs(
 
     # --- control plane node count ---
     if len(control_plane_ips) < 3:
-        errors.append(
-            f"At least 3 control plane IPs required for HA, got {len(control_plane_ips)}"
-        )
+        errors.append(f"At least 3 control plane IPs required for HA, got {len(control_plane_ips)}")
 
     # --- validate all IP formats ---
     all_ips = list(control_plane_ips) + list(worker_ips)
@@ -179,8 +177,7 @@ def validate_cluster_inputs(
             errors.append(f"VIP is not a valid IP address: {vip}")
         elif vip in all_ips:
             errors.append(
-                f"VIP {vip} must not be the same as any node IP. "
-                f"VIP collides with: {vip}"
+                f"VIP {vip} must not be the same as any node IP. VIP collides with: {vip}"
             )
 
     # --- duplicate detection ---
@@ -413,8 +410,7 @@ async def build_cluster_config(
     # ------------------------------------------------------------------
     if enable_kubespan:
         kubespan_patch = (
-            '[{"op": "add", "path": "/machine/network/kubespan", "value": '
-            '{"enabled": true}}]'
+            '[{"op": "add", "path": "/machine/network/kubespan", "value": {"enabled": true}}]'
         )
         for label, cfg_path in [
             ("controlplane", cp_config),
@@ -435,9 +431,7 @@ async def build_cluster_config(
                 return {
                     "status": "error",
                     "phase": f"patch_kubespan_{label}",
-                    "error": result.get(
-                        "error", f"Failed to apply KubeSpan patch to {label}"
-                    ),
+                    "error": result.get("error", f"Failed to apply KubeSpan patch to {label}"),
                     "details": result,
                 }
         patches_applied.append("KubeSpan enabled")
@@ -560,15 +554,17 @@ def build_setup_plan(
 
     # Step 1: Generate secrets
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description="Generate cluster secrets bundle",
-        tool_name="talos__config__gen_secrets",
-        args={
-            "output_path": secrets_path,
-            "apply": True,
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description="Generate cluster secrets bundle",
+            tool_name="talos__config__gen_secrets",
+            args={
+                "output_path": secrets_path,
+                "apply": True,
+            },
+        )
+    )
 
     # Step 2: Generate cluster configs
     step_num += 1
@@ -583,12 +579,14 @@ def build_setup_plan(
     if plan.kubernetes_version:
         gen_config_args["kubernetes_version"] = plan.kubernetes_version
 
-    steps.append(SetupStep(
-        step_number=step_num,
-        description=f"Generate cluster configs for '{plan.cluster_name}'",
-        tool_name="talos__config__gen_config",
-        args=gen_config_args,
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description=f"Generate cluster configs for '{plan.cluster_name}'",
+            tool_name="talos__config__gen_config",
+            args=gen_config_args,
+        )
+    )
 
     # Step 2.5: Patch controlplane config with VIP (if specified)
     if plan.vip:
@@ -597,164 +595,187 @@ def build_setup_plan(
             '[{"op": "add", "path": "/machine/network/interfaces/-", "value": '
             '{"interface": "eth0", "vip": {"ip": "' + plan.vip + '"}}}]'
         )
-        steps.append(SetupStep(
-            step_number=step_num,
-            description=f"Patch controlplane config with VIP {plan.vip}",
-            tool_name="talos__config__patch_machineconfig",
-            args={
-                "config_file": cp_config,
-                "patches": vip_patch,
-                "output_file": cp_config,
-                "apply": True,
-            },
-        ))
+        steps.append(
+            SetupStep(
+                step_number=step_num,
+                description=f"Patch controlplane config with VIP {plan.vip}",
+                tool_name="talos__config__patch_machineconfig",
+                args={
+                    "config_file": cp_config,
+                    "patches": vip_patch,
+                    "output_file": cp_config,
+                    "apply": True,
+                },
+            )
+        )
 
     # Step 2.75: Patch with KubeSpan (if enabled)
     if plan.enable_kubespan:
         step_num += 1
         kubespan_patch = (
-            '[{"op": "add", "path": "/machine/network/kubespan", "value": '
-            '{"enabled": true}}]'
+            '[{"op": "add", "path": "/machine/network/kubespan", "value": {"enabled": true}}]'
         )
         # Patch both controlplane and worker configs
-        steps.append(SetupStep(
-            step_number=step_num,
-            description="Enable KubeSpan on controlplane config",
-            tool_name="talos__config__patch_machineconfig",
-            args={
-                "config_file": cp_config,
-                "patches": kubespan_patch,
-                "output_file": cp_config,
-                "apply": True,
-            },
-        ))
+        steps.append(
+            SetupStep(
+                step_number=step_num,
+                description="Enable KubeSpan on controlplane config",
+                tool_name="talos__config__patch_machineconfig",
+                args={
+                    "config_file": cp_config,
+                    "patches": kubespan_patch,
+                    "output_file": cp_config,
+                    "apply": True,
+                },
+            )
+        )
         step_num += 1
-        steps.append(SetupStep(
-            step_number=step_num,
-            description="Enable KubeSpan on worker config",
-            tool_name="talos__config__patch_machineconfig",
-            args={
-                "config_file": worker_config,
-                "patches": kubespan_patch,
-                "output_file": worker_config,
-                "apply": True,
-            },
-        ))
+        steps.append(
+            SetupStep(
+                step_number=step_num,
+                description="Enable KubeSpan on worker config",
+                tool_name="talos__config__patch_machineconfig",
+                args={
+                    "config_file": worker_config,
+                    "patches": kubespan_patch,
+                    "output_file": worker_config,
+                    "apply": True,
+                },
+            )
+        )
 
     # Step 3: Validate controlplane config
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description="Validate controlplane configuration",
-        tool_name="talos__config__validate",
-        args={
-            "config_file": cp_config,
-            "mode": "metal",
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description="Validate controlplane configuration",
+            tool_name="talos__config__validate",
+            args={
+                "config_file": cp_config,
+                "mode": "metal",
+            },
+        )
+    )
 
     # Step 4: Validate worker config (only if there are workers)
     if plan.worker_ips:
         step_num += 1
-        steps.append(SetupStep(
-            step_number=step_num,
-            description="Validate worker configuration",
-            tool_name="talos__config__validate",
-            args={
-                "config_file": worker_config,
-                "mode": "metal",
-            },
-        ))
+        steps.append(
+            SetupStep(
+                step_number=step_num,
+                description="Validate worker configuration",
+                tool_name="talos__config__validate",
+                args={
+                    "config_file": worker_config,
+                    "mode": "metal",
+                },
+            )
+        )
 
     # Steps 5..N: Apply config to each control plane node (insecure)
     for i, cp_ip in enumerate(plan.control_plane_ips, 1):
         step_num += 1
-        steps.append(SetupStep(
-            step_number=step_num,
-            description=f"Apply controlplane config to CP{i} ({cp_ip})",
-            tool_name="talos__cluster__apply_config",
-            args={
-                "node": cp_ip,
-                "config_file": cp_config,
-                "insecure": True,
-                "apply": True,
-            },
-        ))
+        steps.append(
+            SetupStep(
+                step_number=step_num,
+                description=f"Apply controlplane config to CP{i} ({cp_ip})",
+                tool_name="talos__cluster__apply_config",
+                args={
+                    "node": cp_ip,
+                    "config_file": cp_config,
+                    "insecure": True,
+                    "apply": True,
+                },
+            )
+        )
 
     # Steps N+1..M: Apply config to each worker node (insecure)
     for i, worker_ip in enumerate(plan.worker_ips, 1):
         step_num += 1
-        steps.append(SetupStep(
-            step_number=step_num,
-            description=f"Apply worker config to Worker{i} ({worker_ip})",
-            tool_name="talos__cluster__apply_config",
-            args={
-                "node": worker_ip,
-                "config_file": worker_config,
-                "insecure": True,
-                "apply": True,
-            },
-        ))
+        steps.append(
+            SetupStep(
+                step_number=step_num,
+                description=f"Apply worker config to Worker{i} ({worker_ip})",
+                tool_name="talos__cluster__apply_config",
+                args={
+                    "node": worker_ip,
+                    "config_file": worker_config,
+                    "insecure": True,
+                    "apply": True,
+                },
+            )
+        )
 
     # Step M+1: Set talosctl endpoints to CP IPs
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description="Set talosctl endpoints to control plane IPs",
-        tool_name="talos__cluster__set_endpoints",
-        args={
-            "endpoints": " ".join(plan.control_plane_ips),
-            "apply": True,
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description="Set talosctl endpoints to control plane IPs",
+            tool_name="talos__cluster__set_endpoints",
+            args={
+                "endpoints": " ".join(plan.control_plane_ips),
+                "apply": True,
+            },
+        )
+    )
 
     # Step M+2: Merge talosconfig
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description="Merge generated talosconfig into local config",
-        tool_name="talos__cluster__merge_talosconfig",
-        args={
-            "talosconfig_path": talosconfig,
-            "apply": True,
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description="Merge generated talosconfig into local config",
+            tool_name="talos__cluster__merge_talosconfig",
+            args={
+                "talosconfig_path": talosconfig,
+                "apply": True,
+            },
+        )
+    )
 
     # Step M+3: Bootstrap etcd on CP1
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description=f"Bootstrap etcd on first control plane ({plan.control_plane_ips[0]})",
-        tool_name="talos__cluster__bootstrap",
-        args={
-            "node": plan.control_plane_ips[0],
-            "etcd_members_count": 0,
-            "apply": True,
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description=f"Bootstrap etcd on first control plane ({plan.control_plane_ips[0]})",
+            tool_name="talos__cluster__bootstrap",
+            args={
+                "node": plan.control_plane_ips[0],
+                "etcd_members_count": 0,
+                "apply": True,
+            },
+        )
+    )
 
     # Step M+4: Wait for cluster health
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description="Wait for cluster to become healthy",
-        tool_name="talos__cluster__health",
-        args={
-            "node": plan.control_plane_ips[0],
-            "wait_timeout": "5m",
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description="Wait for cluster to become healthy",
+            tool_name="talos__cluster__health",
+            args={
+                "node": plan.control_plane_ips[0],
+                "wait_timeout": "5m",
+            },
+        )
+    )
 
     # Step M+5: Retrieve kubeconfig
     step_num += 1
-    steps.append(SetupStep(
-        step_number=step_num,
-        description="Retrieve admin kubeconfig",
-        tool_name="talos__cluster__kubeconfig",
-        args={
-            "node": plan.control_plane_ips[0],
-        },
-    ))
+    steps.append(
+        SetupStep(
+            step_number=step_num,
+            description="Retrieve admin kubeconfig",
+            tool_name="talos__cluster__kubeconfig",
+            args={
+                "node": plan.control_plane_ips[0],
+            },
+        )
+    )
 
     return steps
 

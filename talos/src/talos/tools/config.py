@@ -330,11 +330,8 @@ async def talos__config__get_machineconfig(
         )
 
         config_data = result.parsed
-        if config_data is not None:
-            sanitized = _sanitize_config(config_data)
-        else:
-            # Fallback: return raw stdout when JSON parsing fails
-            sanitized = None
+        # Falls back to None when JSON parsing fails (raw stdout returned instead)
+        sanitized = _sanitize_config(config_data) if config_data is not None else None
 
         response: dict[str, Any] = {
             "status": "success",

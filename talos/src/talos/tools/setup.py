@@ -128,8 +128,7 @@ async def talos__cluster__setup(
     if result.status == "success":
         response["cluster_summary"] = result.cluster_summary
         response["message"] = (
-            f"Cluster '{cluster_name}' setup completed successfully. "
-            f"All {len(steps)} steps passed."
+            f"Cluster '{cluster_name}' setup completed successfully. All {len(steps)} steps passed."
         )
     else:
         response["failed_step"] = {

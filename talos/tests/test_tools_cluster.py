@@ -15,13 +15,12 @@ from __future__ import annotations
 import json
 import os
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from talos.api.talosctl_client import TalosCtlClient, TalosCtlResult
 from talos.errors import TalosCtlError, WriteGateError, WriteGateReason
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -262,9 +261,7 @@ class TestBootstrap:
 
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
-                await talos__cluster__bootstrap(
-                    "192.168.30.10", etcd_members_count=3, apply=True
-                )
+                await talos__cluster__bootstrap("192.168.30.10", etcd_members_count=3, apply=True)
             assert exc_info.value.reason == WriteGateReason.BOOTSTRAP_BLOCKED
 
     @pytest.mark.asyncio
@@ -274,9 +271,7 @@ class TestBootstrap:
 
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
-                await talos__cluster__bootstrap(
-                    "192.168.30.10", etcd_members_count=1, apply=True
-                )
+                await talos__cluster__bootstrap("192.168.30.10", etcd_members_count=1, apply=True)
             assert exc_info.value.reason == WriteGateReason.BOOTSTRAP_BLOCKED
 
     @pytest.mark.asyncio
@@ -286,9 +281,7 @@ class TestBootstrap:
 
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(WriteGateError) as exc_info:
-                await talos__cluster__bootstrap(
-                    "192.168.30.10", etcd_members_count=0, apply=True
-                )
+                await talos__cluster__bootstrap("192.168.30.10", etcd_members_count=0, apply=True)
             assert exc_info.value.reason == WriteGateReason.ENV_VAR_DISABLED
 
     @pytest.mark.asyncio
@@ -437,9 +430,7 @@ class TestHealth:
             assert result["cluster"]["nodes_total"] == 3
 
     @pytest.mark.asyncio
-    async def test_health_degraded(
-        self, health_degraded_output: dict[str, Any]
-    ) -> None:
+    async def test_health_degraded(self, health_degraded_output: dict[str, Any]) -> None:
         """One unhealthy node returns severity WARNING."""
         from talos.tools.cluster import talos__cluster__health
 
@@ -514,9 +505,7 @@ class TestGetVersion:
     """Tests for talos__cluster__get_version."""
 
     @pytest.mark.asyncio
-    async def test_get_version_success(
-        self, version_output: dict[str, Any]
-    ) -> None:
+    async def test_get_version_success(self, version_output: dict[str, Any]) -> None:
         """Version info returned from both client and server."""
         from talos.tools.cluster import talos__cluster__get_version
 

@@ -16,13 +16,12 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from talos.api.talosctl_client import TalosCtlClient, TalosCtlResult
 from talos.errors import TalosCtlError, WriteGateError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,12 +90,11 @@ class TestGenSecrets:
     async def test_success(self) -> None:
         from talos.tools.config import talos__config__gen_secrets
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="generating secrets\n")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="generating secrets\n"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__gen_secrets(
-                "/tmp/secrets.yaml", apply=True,
+                "/tmp/secrets.yaml",
+                apply=True,
             )
 
         assert result["status"] == "success"
@@ -113,12 +111,11 @@ class TestGenSecrets:
     async def test_talosctl_error(self) -> None:
         from talos.tools.config import talos__config__gen_secrets
 
-        mock_run = AsyncMock(
-            side_effect=_make_talosctl_error("gen secrets failed", "disk full")
-        )
+        mock_run = AsyncMock(side_effect=_make_talosctl_error("gen secrets failed", "disk full"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__gen_secrets(
-                "/tmp/secrets.yaml", apply=True,
+                "/tmp/secrets.yaml",
+                apply=True,
             )
 
         assert result["status"] == "error"
@@ -127,14 +124,16 @@ class TestGenSecrets:
 
     @pytest.mark.asyncio
     async def test_write_gate_env_disabled(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from talos.tools.config import talos__config__gen_secrets
 
         monkeypatch.setenv("TALOS_WRITE_ENABLED", "false")
         with pytest.raises(WriteGateError, match="disabled"):
             await talos__config__gen_secrets(
-                "/tmp/secrets.yaml", apply=True,
+                "/tmp/secrets.yaml",
+                apply=True,
             )
 
     @pytest.mark.asyncio
@@ -143,7 +142,8 @@ class TestGenSecrets:
 
         with pytest.raises(WriteGateError, match="--apply"):
             await talos__config__gen_secrets(
-                "/tmp/secrets.yaml", apply=False,
+                "/tmp/secrets.yaml",
+                apply=False,
             )
 
 
@@ -159,12 +159,12 @@ class TestGenConfig:
     async def test_success_minimal(self) -> None:
         from talos.tools.config import talos__config__gen_config
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="generating config\n")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="generating config\n"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__gen_config(
-                "homelab", "https://10.0.0.1:6443", apply=True,
+                "homelab",
+                "https://10.0.0.1:6443",
+                apply=True,
             )
 
         assert result["status"] == "success"
@@ -182,9 +182,7 @@ class TestGenConfig:
     async def test_success_all_flags(self) -> None:
         from talos.tools.config import talos__config__gen_config
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="done\n")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="done\n"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__gen_config(
                 "prod",
@@ -216,12 +214,12 @@ class TestGenConfig:
     async def test_talosctl_error(self) -> None:
         from talos.tools.config import talos__config__gen_config
 
-        mock_run = AsyncMock(
-            side_effect=_make_talosctl_error("bad endpoint", "invalid URL")
-        )
+        mock_run = AsyncMock(side_effect=_make_talosctl_error("bad endpoint", "invalid URL"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__gen_config(
-                "homelab", "not-a-url", apply=True,
+                "homelab",
+                "not-a-url",
+                apply=True,
             )
 
         assert result["status"] == "error"
@@ -229,14 +227,17 @@ class TestGenConfig:
 
     @pytest.mark.asyncio
     async def test_write_gate_env_disabled(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from talos.tools.config import talos__config__gen_config
 
         monkeypatch.setenv("TALOS_WRITE_ENABLED", "false")
         with pytest.raises(WriteGateError, match="disabled"):
             await talos__config__gen_config(
-                "homelab", "https://10.0.0.1:6443", apply=True,
+                "homelab",
+                "https://10.0.0.1:6443",
+                apply=True,
             )
 
     @pytest.mark.asyncio
@@ -245,7 +246,9 @@ class TestGenConfig:
 
         with pytest.raises(WriteGateError, match="--apply"):
             await talos__config__gen_config(
-                "homelab", "https://10.0.0.1:6443", apply=False,
+                "homelab",
+                "https://10.0.0.1:6443",
+                apply=False,
             )
 
 
@@ -261,9 +264,7 @@ class TestValidate:
     async def test_success(self) -> None:
         from talos.tools.config import talos__config__validate
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="controlplane.yaml is valid\n")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="controlplane.yaml is valid\n"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__validate("/tmp/controlplane.yaml")
 
@@ -281,12 +282,11 @@ class TestValidate:
     async def test_success_cloud_mode(self) -> None:
         from talos.tools.config import talos__config__validate
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="valid\n")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="valid\n"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__validate(
-                "/tmp/worker.yaml", mode="cloud",
+                "/tmp/worker.yaml",
+                mode="cloud",
             )
 
         assert result["status"] == "pass"
@@ -320,9 +320,7 @@ class TestValidate:
 
         # Even with writes disabled, validate should work
         os.environ["TALOS_WRITE_ENABLED"] = "false"
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="valid\n")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="valid\n"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__validate("/tmp/controlplane.yaml")
         assert result["status"] == "pass"
@@ -340,9 +338,7 @@ class TestPatchMachineconfig:
     async def test_success_inline_patch_with_output(self) -> None:
         from talos.tools.config import talos__config__patch_machineconfig
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout=""))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__patch_machineconfig(
                 "/tmp/controlplane.yaml",
@@ -384,9 +380,7 @@ class TestPatchMachineconfig:
     async def test_success_file_patch(self) -> None:
         from talos.tools.config import talos__config__patch_machineconfig
 
-        mock_run = AsyncMock(
-            return_value=_make_result(stdout="patched output")
-        )
+        mock_run = AsyncMock(return_value=_make_result(stdout="patched output"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__patch_machineconfig(
                 "/tmp/controlplane.yaml",
@@ -402,9 +396,7 @@ class TestPatchMachineconfig:
     async def test_talosctl_error(self) -> None:
         from talos.tools.config import talos__config__patch_machineconfig
 
-        mock_run = AsyncMock(
-            side_effect=_make_talosctl_error("patch failed", "invalid JSON patch")
-        )
+        mock_run = AsyncMock(side_effect=_make_talosctl_error("patch failed", "invalid JSON patch"))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__patch_machineconfig(
                 "/tmp/controlplane.yaml",
@@ -417,14 +409,17 @@ class TestPatchMachineconfig:
 
     @pytest.mark.asyncio
     async def test_write_gate_env_disabled(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from talos.tools.config import talos__config__patch_machineconfig
 
         monkeypatch.setenv("TALOS_WRITE_ENABLED", "false")
         with pytest.raises(WriteGateError, match="disabled"):
             await talos__config__patch_machineconfig(
-                "/tmp/cp.yaml", "[]", apply=True,
+                "/tmp/cp.yaml",
+                "[]",
+                apply=True,
             )
 
     @pytest.mark.asyncio
@@ -433,7 +428,9 @@ class TestPatchMachineconfig:
 
         with pytest.raises(WriteGateError, match="--apply"):
             await talos__config__patch_machineconfig(
-                "/tmp/cp.yaml", "[]", apply=False,
+                "/tmp/cp.yaml",
+                "[]",
+                apply=False,
             )
 
 
@@ -463,9 +460,7 @@ class TestGetMachineconfig:
             },
         }
 
-        mock_run = AsyncMock(
-            return_value=_make_result(parsed=config_data)
-        )
+        mock_run = AsyncMock(return_value=_make_result(parsed=config_data))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__get_machineconfig()
 
@@ -488,9 +483,7 @@ class TestGetMachineconfig:
     async def test_success_with_node(self) -> None:
         from talos.tools.config import talos__config__get_machineconfig
 
-        mock_run = AsyncMock(
-            return_value=_make_result(parsed={"machine": {"type": "worker"}})
-        )
+        mock_run = AsyncMock(return_value=_make_result(parsed={"machine": {"type": "worker"}}))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__get_machineconfig(node="192.168.1.10")
 
@@ -524,7 +517,9 @@ class TestGetMachineconfig:
 
         mock_run = AsyncMock(
             side_effect=_make_talosctl_error(
-                "node unreachable", "connection refused", exit_code=1,
+                "node unreachable",
+                "connection refused",
+                exit_code=1,
             )
         )
         with patch.object(TalosCtlClient, "run", mock_run):
@@ -539,9 +534,7 @@ class TestGetMachineconfig:
         from talos.tools.config import talos__config__get_machineconfig
 
         os.environ["TALOS_WRITE_ENABLED"] = "false"
-        mock_run = AsyncMock(
-            return_value=_make_result(parsed={"machine": {"type": "worker"}})
-        )
+        mock_run = AsyncMock(return_value=_make_result(parsed={"machine": {"type": "worker"}}))
         with patch.object(TalosCtlClient, "run", mock_run):
             result = await talos__config__get_machineconfig()
         assert result["status"] == "success"

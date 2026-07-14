@@ -33,7 +33,7 @@ from __future__ import annotations
 import functools
 import inspect
 import os
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 from talos.errors import WriteGateError, WriteGateReason
 
@@ -118,7 +118,7 @@ def write_gate(plugin_name: str = "TALOS") -> Callable[[Callable[P, T]], Callabl
     return decorator
 
 
-def reset_gate(func: Callable[P, T]) -> Callable[P, T]:
+def reset_gate[**P, T](func: Callable[P, T]) -> Callable[P, T]:
     """Decorator that enforces the extra reset safety flag (TD9).
 
     ``talosctl reset`` wipes a node completely -- OS, data, and cluster
@@ -159,7 +159,7 @@ def reset_gate(func: Callable[P, T]) -> Callable[P, T]:
     return wrapper  # type: ignore[return-value]
 
 
-def bootstrap_gate(func: Callable[P, T]) -> Callable[P, T]:
+def bootstrap_gate[**P, T](func: Callable[P, T]) -> Callable[P, T]:
     """Decorator that blocks bootstrap if etcd already has members (TD5).
 
     ``talosctl bootstrap`` initializes etcd. Running it twice on an
@@ -190,7 +190,7 @@ def bootstrap_gate(func: Callable[P, T]) -> Callable[P, T]:
 
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        etcd_members_count = kwargs.get("etcd_members_count", 0)
+        etcd_members_count = cast("int", kwargs.get("etcd_members_count", 0))
         if etcd_members_count > 0:
             raise WriteGateError(
                 f"etcd cluster already exists with {etcd_members_count} member(s). "

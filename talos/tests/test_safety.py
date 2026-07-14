@@ -46,9 +46,7 @@ async def sample_tool_no_args(*, apply: bool = False) -> str:
 
 @reset_gate
 @write_gate("TALOS")
-async def sample_reset_tool(
-    node: str, *, apply: bool = False, reset_node: bool = False
-) -> str:
+async def sample_reset_tool(node: str, *, apply: bool = False, reset_node: bool = False) -> str:
     """A sample reset tool for testing the reset gate."""
     return f"reset {node}"
 
@@ -312,9 +310,7 @@ class TestResetGate:
     async def test_passes_when_reset_node_true(self) -> None:
         """reset_node=True -> function executes."""
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
-            result = await sample_reset_tool(
-                "192.168.30.11", apply=True, reset_node=True
-            )
+            result = await sample_reset_tool("192.168.30.11", apply=True, reset_node=True)
             assert result == "reset 192.168.30.11"
 
     @pytest.mark.asyncio
@@ -354,9 +350,7 @@ class TestBootstrapGate:
         """etcd_members_count > 0 -> WriteGateError with BOOTSTRAP_BLOCKED."""
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
-                await sample_bootstrap_tool(
-                    "192.168.30.11", apply=True, etcd_members_count=3
-                )
+                await sample_bootstrap_tool("192.168.30.11", apply=True, etcd_members_count=3)
             assert exc_info.value.reason == WriteGateReason.BOOTSTRAP_BLOCKED
 
     @pytest.mark.asyncio
@@ -364,18 +358,14 @@ class TestBootstrapGate:
         """Even a single etcd member should block bootstrap."""
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
-                await sample_bootstrap_tool(
-                    "192.168.30.11", apply=True, etcd_members_count=1
-                )
+                await sample_bootstrap_tool("192.168.30.11", apply=True, etcd_members_count=1)
             assert exc_info.value.reason == WriteGateReason.BOOTSTRAP_BLOCKED
 
     @pytest.mark.asyncio
     async def test_passes_when_no_etcd_members(self) -> None:
         """etcd_members_count=0 -> function executes."""
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
-            result = await sample_bootstrap_tool(
-                "192.168.30.11", apply=True, etcd_members_count=0
-            )
+            result = await sample_bootstrap_tool("192.168.30.11", apply=True, etcd_members_count=0)
             assert result == "bootstrapped 192.168.30.11"
 
     @pytest.mark.asyncio
@@ -389,18 +379,14 @@ class TestBootstrapGate:
     async def test_error_message_mentions_bootstrap(self) -> None:
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
-                await sample_bootstrap_tool(
-                    "192.168.30.11", apply=True, etcd_members_count=3
-                )
+                await sample_bootstrap_tool("192.168.30.11", apply=True, etcd_members_count=3)
             assert "bootstrap" in str(exc_info.value.message).lower()
 
     @pytest.mark.asyncio
     async def test_error_message_includes_member_count(self) -> None:
         with patch.dict(os.environ, {"TALOS_WRITE_ENABLED": "true"}):
             with pytest.raises(WriteGateError) as exc_info:
-                await sample_bootstrap_tool(
-                    "192.168.30.11", apply=True, etcd_members_count=3
-                )
+                await sample_bootstrap_tool("192.168.30.11", apply=True, etcd_members_count=3)
             assert "3" in str(exc_info.value.message)
 
     def test_requires_keyword_only_etcd_members_count(self) -> None:
