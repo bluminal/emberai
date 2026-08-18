@@ -1,6 +1,6 @@
 ---
 name: netex
-version: 0.3.0
+version: 0.3.1
 description: >
   Cross-vendor network orchestration umbrella for EmberAI. Coordinates
   installed vendor plugins (unifi, opnsense, and future vendors) to perform

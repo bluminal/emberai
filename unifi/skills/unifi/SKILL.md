@@ -1,6 +1,6 @@
 ---
 name: unifi
-version: 0.1.0
+version: 0.1.1
 description: >
   UniFi network intelligence plugin for EmberAI. Provides topology discovery,
   health monitoring, WiFi analysis, client management, traffic inspection,
